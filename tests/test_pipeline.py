@@ -4,14 +4,23 @@ from pathlib import Path
 
 import pytest
 from dpyverification import pipeline
+from jsonschema import ValidationError
 
 from tests import TESTS_CONFIGURATION_FILE
 
 
-@pytest.mark.parametrize(("cfile", "ctype"), [("", "runinfo"), (TESTS_CONFIGURATION_FILE, "yaml")])
+@pytest.mark.parametrize(("cfile", "ctype"), [(TESTS_CONFIGURATION_FILE, "yaml")])
+# Add ("", "runinfo"), with first filled in, when a runinfo test file is available
 def test_execute_pipeline_happy(cfile: str, ctype: str) -> None:
     """Test at least one valid conf file for each conf type."""
     pipeline.execute_pipeline(Path(cfile), conf_type=ctype)
+
+
+# remove when runinfo config handling implemented
+def test_execute_pipeline_temp() -> None:
+    """Test that runinfo is not implemented yet."""
+    with pytest.raises(ValidationError, match="is a required property"):  # type: ignore[misc]
+        pipeline.execute_pipeline(Path(), conf_type="runinfo")
 
 
 def test_execute_pipeline_bad_conf_type() -> None:

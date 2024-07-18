@@ -28,8 +28,7 @@ class Config:
             # parse the runinfo into a yaml
             yamlcontent = {
                 "fileversion": "0.0.1",
-                "datasources": [{"datasourcetype": "fewswebservice", "url": "fake"}],
-            }
+            }  # NOT IMPLEMENTED YET, function to convert runinfo xml
         elif configtype is ConfigTypes.YAML:
             with configfile.open() as cf:
                 yamlcontent = yaml.safe_load(cf)
