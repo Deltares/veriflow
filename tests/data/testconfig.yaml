@@ -1,14 +1,12 @@
 fileversion: "0.0.1"
 datasources: [
   {
-    datasourcetype: "localfile",
-    filetype: "pixml",
+    datasourcetype: "pixml",
     directory: "iets",
     filename: "anders",
   },
   {
-    datasourcetype: "localfile",
-    filetype: "pixml",
+    datasourcetype: "pixml",
     directory: "twee",
     filename: "drie",
   },

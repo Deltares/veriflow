@@ -45,6 +45,9 @@ class Config:
                 raise error.parent from error
             raise
 
+        # The validate on the yamlcontent will have ensured correct type. Therefor, a lot of
+        #  type ignore[misc, assignment] from here on when using yamlcontent values.
+
         self.filename = configfile
         self.configtype = configtype
-        self.datasources = yamlcontent["datasources"]
+        self.datasources: list[dict[str, str]] = yamlcontent["datasources"]  # type: ignore[assignment]

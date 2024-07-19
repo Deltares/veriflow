@@ -11,10 +11,9 @@ _FEWSWEBSERVICE = {
 
 _LOCALFILE = {
     "type": "object",
-    "required": ["datasourcetype", "filetype", "directory", "filename"],
+    "required": ["datasourcetype", "directory", "filename"],
     "properties": {
-        "datasourcetype": {"type": "string", "const": "localfile"},
-        "filetype": {"enum": ["pixml", "fewsnetcdf"]},
+        "datasourcetype": {"type": "string", "enum": ["pixml", "fewsnetcdf"]},
         "directory": {"type": "string"},
         "filename": {"type": "string"},
     },
