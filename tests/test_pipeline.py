@@ -3,21 +3,32 @@
 from pathlib import Path
 
 import pytest
+import yaml
 from dpyverification import pipeline
 from jsonschema import ValidationError
 
-from tests import TESTS_CONFIGURATION_FILE
+from tests import (
+    TESTS_CONFIGURATION_FILE,
+    TESTS_FORECASTS_FILE,
+    TESTS_OBSERVATIONS_FILE,
+)
 
 
-@pytest.mark.parametrize(("cfile", "ctype"), [(TESTS_CONFIGURATION_FILE, "yaml")])
-# Add ("", "runinfo"), with first filled in, when a runinfo test file is available
-def test_execute_pipeline_happy(cfile: str, ctype: str) -> None:
+def test_execute_pipeline_happy_yaml(tmp_path: Path) -> None:
     """Test at least one valid conf file for each conf type."""
-    pipeline.execute_pipeline(Path(cfile), conf_type=ctype)
+    tmpfile = tmp_path / "tempconf.yaml"
+    with TESTS_CONFIGURATION_FILE.open() as cf:
+        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
+        testconf["datasources"][0]["directory"] = str(TESTS_OBSERVATIONS_FILE.parent)
+        testconf["datasources"][0]["filename"] = TESTS_OBSERVATIONS_FILE.name
+        testconf["datasources"][1]["directory"] = str(TESTS_FORECASTS_FILE.parent)
+        testconf["datasources"][1]["filename"] = TESTS_FORECASTS_FILE.name
+    with tmpfile.open(mode="w") as tf:
+        yaml.dump(testconf, tf)
+    pipeline.execute_pipeline(tmpfile, conf_type="yaml")
 
 
-# remove when runinfo config handling implemented
-def test_execute_pipeline_temp() -> None:
+def test_execute_pipeline_happy_runinfo() -> None:
     """Test that runinfo is not implemented yet."""
     with pytest.raises(ValidationError, match="is a required property"):  # type: ignore[misc]
         pipeline.execute_pipeline(Path(), conf_type="runinfo")
