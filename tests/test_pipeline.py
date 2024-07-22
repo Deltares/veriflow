@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 from dpyverification import pipeline
-from jsonschema import ValidationError
+from pydantic import ValidationError
 
 from tests import (
     TESTS_CONFIGURATION_FILE,
@@ -30,7 +30,7 @@ def test_execute_pipeline_happy_yaml(tmp_path: Path) -> None:
 
 def test_execute_pipeline_happy_runinfo() -> None:
     """Test that runinfo is not implemented yet."""
-    with pytest.raises(ValidationError, match="is a required property"):  # type: ignore[misc]
+    with pytest.raises(ValidationError, match="Field required"):
         pipeline.execute_pipeline(Path(), conf_type="runinfo")
 
 

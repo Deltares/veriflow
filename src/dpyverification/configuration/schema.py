@@ -1,39 +1,42 @@
-"""The schema definition for the configuration yaml file."""
+"""The schema definition for the configuration yaml file.
 
-_FEWSWEBSERVICE = {
-    "type": "object",
-    "required": ["datasourcetype", "url"],
-    "properties": {
-        "datasourcetype": {"type": "string", "const": "fewswebservice"},
-        "url": {"type": "string"},
-    },
-}
+To generate a yaml / json file with the json representation of this schema:
+    with FILEPATH.open() as myfile:
+        yaml.dump(YamlSchema.model_json_schema(), myfile)
 
-_LOCALFILE = {
-    "type": "object",
-    "required": ["datasourcetype", "directory", "filename"],
-    "properties": {
-        "datasourcetype": {"type": "string", "enum": ["pixml", "fewsnetcdf"]},
-        "directory": {"type": "string"},
-        "filename": {"type": "string"},
-    },
-}
+"""
 
-YAMLSCHEMA = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "object",
-    "properties": {
-        "fileversion": {"type": "string"},
-        "datasources": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-                "anyOf": [
-                    _FEWSWEBSERVICE,
-                    _LOCALFILE,
-                ],
-            },
-        },
-    },
-    "required": ["fileversion", "datasources"],
-}
+
+# ruff: noqa: D101 Do not require class docstrings for the classes in this file
+
+from enum import StrEnum
+from typing import Annotated, Literal, TypeAlias
+
+from pydantic import BaseModel, Field
+
+
+class DataSourceTypeEnum(StrEnum):
+    pixml = "pixml"
+    fewsnetcdf = "fewsnetcdf"
+    fewswebservice = "fewswebservice"
+
+
+class FewsWebservice(BaseModel):
+    datasourcetype: Literal[DataSourceTypeEnum.fewswebservice]
+    url: str
+
+
+class LocalFile(BaseModel):
+    datasourcetype: Literal[DataSourceTypeEnum.pixml, DataSourceTypeEnum.fewsnetcdf]
+    directory: str
+    filename: str
+
+
+DataSource: TypeAlias = (
+    FewsWebservice | LocalFile
+)  # A Type Alias for the combination of data source schema classes
+
+
+class YamlSchema(BaseModel):
+    datasources: Annotated[list[DataSource], Field(min_length=1)]
+    fileversion: str

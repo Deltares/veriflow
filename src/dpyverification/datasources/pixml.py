@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import xarray as xr
 from fewsio.pi import Timeseries  # type: ignore[import-untyped]
 
+from dpyverification.configuration import DataSource, DataSourceTypeEnum
 from dpyverification.datasources import GenericDatasource
 
 if TYPE_CHECKING:
@@ -65,7 +66,10 @@ class PiXmlFile(GenericDatasource):
         return pi_df2.to_xarray()
 
     @staticmethod
-    def get_data(dsconfig: dict[str, str]) -> xr.DataArray:
+    def get_data(dsconfig: DataSource) -> xr.DataArray:
         """Retrieve pixml content as an xarray DataArray."""
-        filepath = Path(dsconfig["directory"]) / dsconfig["filename"]
+        if dsconfig.datasourcetype != DataSourceTypeEnum.pixml:
+            msg = "Input dsconfig does not have datasourcetype pixml"
+            raise TypeError(msg)
+        filepath = Path(dsconfig.directory) / dsconfig.filename
         return PiXmlFile._pi_xml_to_xarray(filepath)

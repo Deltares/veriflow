@@ -4,17 +4,15 @@ import pathlib
 from enum import Enum
 
 import yaml
-from jsonschema import ValidationError, validate
 
-from .schema import YAMLSCHEMA
+from .schema import DataSource, YamlSchema
 
 
 class ConfigTypes(Enum):
     """The types of configuration files that are supported."""
 
     YAML = "yaml"
-    """ A yaml / json file. Actually only a subset of yaml, since will use jsonschema to validate,
-     but should be ok for our purposes"""
+    """ A yaml / json file"""
 
     RUNINFO = "runinfo"
     """ FEWS general adapter runinfo file """
@@ -35,19 +33,9 @@ class Config:
             # conversion from older fileversion to current schema
             # NOT IMPLEMENTED YET, because we have not had a fileversion update
 
-        # check the yaml
-        try:
-            validate(yamlcontent, YAMLSCHEMA)
-        except ValidationError as error:  # type: ignore[misc]
-            if error.parent:
-                # When there is an error in an anyOf schema part, the parent often has a clearer
-                # description of the problem
-                raise error.parent from error
-            raise
-
-        # The validate on the yamlcontent will have ensured correct type. Therefor, a lot of
-        #  type ignore[misc, assignment] from here on when using yamlcontent values.
+        # check the yaml and create python objects
+        parsed_content = YamlSchema(**yamlcontent)  # type: ignore[arg-type] # The derived type based on the hardcoded dict is not correct, but that is expected for now
 
         self.filename = configfile
         self.configtype = configtype
-        self.datasources: list[dict[str, str]] = yamlcontent["datasources"]  # type: ignore[assignment]
+        self.datasources: list[DataSource] = parsed_content.datasources

@@ -11,7 +11,7 @@ def test_main_yaml_happy() -> None:
 
     assert config.filename == TESTS_CONFIGURATION_FILE
     assert config.configtype == ConfigTypes.YAML
-    assert config.datasources[0] == {
+    assert config.datasources[0].model_dump() == {  # type: ignore[misc]
         "datasourcetype": "pixml",
         "directory": "iets",
         "filename": "anders",

@@ -7,7 +7,7 @@ Results can at least be written to netcdf file.
 
 import pathlib
 
-from dpyverification.configuration import Config, ConfigTypes
+from dpyverification.configuration import Config, ConfigTypes, DataSourceTypeEnum
 from dpyverification.datasources.pixml import PiXmlFile
 
 
@@ -23,7 +23,7 @@ def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -
     datalist = []
     for datasource in config.datasources:
         # Might want to turn this if-elif into a mapping when many different datasourcetypes
-        if datasource["datasourcetype"] == "pixml":
+        if datasource.datasourcetype == DataSourceTypeEnum.pixml:
             datalist.append(PiXmlFile.get_data(datasource))
         else:
             raise NotImplementedError
