@@ -13,6 +13,7 @@ def test_main_yaml_happy() -> None:
     assert config.configtype == ConfigTypes.YAML
     assert config.datasources[0].model_dump() == {  # type: ignore[misc]
         "datasourcetype": "pixml",
+        "simobstype": "obs",
         "directory": "iets",
         "filename": "anders",
     }

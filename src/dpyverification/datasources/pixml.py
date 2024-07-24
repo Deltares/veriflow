@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import xarray as xr
 from fewsio.pi import Timeseries  # type: ignore[import-untyped]
 
-from dpyverification.configuration import DataSource, DataSourceTypeEnum
+from dpyverification.configuration import DataSource, DataSourceTypeEnum, SimObsType
 from dpyverification.datasources import GenericDatasource
 
 if TYPE_CHECKING:
@@ -71,5 +71,8 @@ class PiXmlFile(GenericDatasource):
         if dsconfig.datasourcetype != DataSourceTypeEnum.pixml:
             msg = "Input dsconfig does not have datasourcetype pixml"
             raise TypeError(msg)
+        if dsconfig.simobstype == SimObsType.combined:
+            msg = "Cannot yet handle combined simobs data"
+            raise NotImplementedError(msg)
         filepath = Path(dsconfig.directory) / dsconfig.filename
         return PiXmlFile._pi_xml_to_xarray(filepath)

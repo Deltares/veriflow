@@ -21,13 +21,21 @@ class DataSourceTypeEnum(StrEnum):
     fewswebservice = "fewswebservice"
 
 
+class SimObsType(StrEnum):
+    sim = "sim"
+    obs = "obs"
+    combined = "combined"
+
+
 class FewsWebservice(BaseModel):
     datasourcetype: Literal[DataSourceTypeEnum.fewswebservice]
+    simobstype: SimObsType
     url: str
 
 
 class LocalFile(BaseModel):
     datasourcetype: Literal[DataSourceTypeEnum.pixml, DataSourceTypeEnum.fewsnetcdf]
+    simobstype: SimObsType
     directory: str
     filename: str
 
