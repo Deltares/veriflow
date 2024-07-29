@@ -1,5 +1,6 @@
 """Module with the base class that all datasources should inherit from."""
 
+import pathlib
 from typing import Self
 
 import xarray
@@ -39,3 +40,20 @@ class GenericDatasource:
         Returns a list of datasource objects, one for each sim or obs
         """
         return [cls(dsconfig)]
+
+    @classmethod
+    def write_to_file(cls, path: pathlib.Path, dataset: xarray.Dataset) -> None:
+        """Write the data in the xarray Dataset to the file at path.
+
+        Details of how to write will need to be implemented in subclass.
+        """
+        if path.exists():
+            msg = "File already exists"
+            raise FileExistsError(msg)
+
+        msg = (
+            "Writing Dataset to file is dependent on the file type to write to,"
+            " no generic implementation."
+        )
+        _ = dataset
+        raise NotImplementedError(msg)
