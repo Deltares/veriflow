@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import xarray as xr
 import yaml
-from dpyverification.configuration import YamlSchema
+from dpyverification.configuration import ConfigSchema
 from dpyverification.datasources.fewsnetcdf import (
     FewsNetcdfFile,
     FewsNetcdfSchema,
@@ -23,7 +23,7 @@ def test_get_data_happy() -> None:
         testconf["datasources"][0]["directory"] = str(TESTS_FEWS_COMPLIANT_FILE.parent)  # type: ignore[misc]
         testconf["datasources"][0]["filename"] = TESTS_FEWS_COMPLIANT_FILE.name  # type: ignore[misc]
         testconf["datasources"][0]["simobstype"] = "sim"  # type: ignore[misc]
-    parsed_content = YamlSchema(**testconf)  # type: ignore[misc]
+    parsed_content = ConfigSchema(**testconf)  # type: ignore[misc]
 
     with pytest.raises(NotImplementedError):
         _ = FewsNetcdfFile.get_data(parsed_content.datasources[0])

@@ -5,7 +5,7 @@ from enum import Enum
 
 import yaml
 
-from .schema import DataSource, YamlSchema
+from .schema import ConfigSchema, DataSource
 
 
 class ConfigTypes(Enum):
@@ -34,7 +34,7 @@ class Config:
             # NOT IMPLEMENTED YET, because we have not had a fileversion update
 
         # check the yaml and create python objects
-        parsed_content = YamlSchema(**yamlcontent)  # type: ignore[arg-type] # The derived type based on the hardcoded dict is not correct, but that is expected for now
+        parsed_content = ConfigSchema(**yamlcontent)  # type: ignore[arg-type] # The derived type based on the hardcoded dict is not correct, but that is expected for now
 
         self.filename = configfile
         self.configtype = configtype

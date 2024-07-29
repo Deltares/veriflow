@@ -2,8 +2,12 @@
 
 To generate a yaml / json file with the json representation of this schema:
     with FILEPATH.open() as myfile:
-        yaml.dump(YamlSchema.model_json_schema(), myfile)
+        yaml.dump(ConfigSchema.model_json_schema(), myfile)
 
+To generate a pydantic schema from a yaml/json file, see datamodel_code_generator,
+for example from https://docs.pydantic.dev/latest/integrations/datamodel_code_generator/
+Note that this can generate a pydantic model that is not up-to-date with the latest
+pydantic / python, and might need some modifications.
 """
 
 
@@ -45,6 +49,6 @@ DataSource: TypeAlias = (
 )  # A Type Alias for the combination of data source schema classes
 
 
-class YamlSchema(BaseModel):
+class ConfigSchema(BaseModel):
     datasources: Annotated[list[DataSource], Field(min_length=1)]
     fileversion: str
