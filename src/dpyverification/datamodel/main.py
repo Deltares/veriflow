@@ -146,3 +146,27 @@ class DataModel:
 
                 raise NotImplementedError(msg)
         return time_coord
+
+    def add_to_output(self, new_output: xarray.Dataset) -> None:
+        """Add the Dataset, with the result of a specific verification, to the datamodel output."""
+        # check that the to-be-added output does not overwrite any existing variables
+        # OR, allow appending to a certain dimension?
+        # OR, allow overwriting if only NaNs are overwritten (i.e. the var was created with only
+        #  partial data)?
+        a = [str(x) for x in new_output.data_vars]
+        b = [str(x) for x in self.output.data_vars]
+        match = any(var in b for var in a)
+        if match:
+            msg = (
+                "Cannot add to output, variables with same name already present in output."
+                " Existing: " + str(b) + " To be added: " + str(a)
+            )
+            raise RuntimeError(msg)
+
+        # check that dimensions and coordinates match
+        # OR, allow extending of dimensions
+
+        # Ok to add
+        # No conflicts between the to-be-added output and earlier created outputs
+        # Do we indeed want to use merge here?
+        self.output = self.output.merge(new_output)

@@ -8,9 +8,15 @@ Results can at least be written to netcdf file.
 import itertools
 import pathlib
 
-from dpyverification.configuration import Config, ConfigTypes, DataSourceTypeEnum
+from dpyverification.configuration import (
+    CalculationTypeEnum,
+    Config,
+    ConfigTypes,
+    DataSourceTypeEnum,
+)
 from dpyverification.datamodel import DataModel
 from dpyverification.datasources.pixml import PiXmlFile
+from dpyverification.verifications import simobspairs
 
 
 def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -> None:
@@ -32,6 +38,10 @@ def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -
     datalist = list(itertools.chain.from_iterable(datalists))
 
     datamodel = DataModel(datalist)
+
+    for calculation in config.calculations:
+        if calculation.calculationtype == CalculationTypeEnum.simobspairs:
+            datamodel.add_to_output(simobspairs.simobspairs(calculation, datamodel, config))
 
     # Until pipeline complete enough, as a last action mention the last-generated object
     _ = datamodel
