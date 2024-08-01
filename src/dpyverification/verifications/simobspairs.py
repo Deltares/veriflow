@@ -3,7 +3,8 @@
 import xarray
 from numpy import datetime64, timedelta64
 
-from dpyverification.configuration import Calculation, CalculationTypeEnum, Config
+from dpyverification.configuration import Calculation, Config
+from dpyverification.constants import CalculationTypeEnum
 from dpyverification.datamodel import DataModel, DataModelCoords
 
 

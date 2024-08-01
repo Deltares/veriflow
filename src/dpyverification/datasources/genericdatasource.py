@@ -5,7 +5,8 @@ from typing import Self
 
 import xarray
 
-from dpyverification.configuration import DataSource, SimObsType
+from dpyverification.configuration import DataSource
+from dpyverification.constants import SimObsType
 
 
 class GenericDatasource:

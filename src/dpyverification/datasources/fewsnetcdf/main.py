@@ -5,7 +5,8 @@ from typing import Self
 
 import xarray as xr
 
-from dpyverification.configuration import DataSource, DataSourceTypeEnum, SimObsType
+from dpyverification.configuration import DataSource
+from dpyverification.constants import DataSourceTypeEnum, SimObsType
 from dpyverification.datasources.genericdatasource import GenericDatasource
 
 from .schema import FewsNetcdfSchema

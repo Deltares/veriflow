@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Self
 import xarray as xr
 from fewsio.pi import Timeseries  # type: ignore[import-untyped]
 
-from dpyverification.configuration import DataSource, DataSourceTypeEnum, SimObsType
+from dpyverification.configuration import DataSource
+from dpyverification.constants import DataSourceTypeEnum, SimObsType
 from dpyverification.datasources.genericdatasource import GenericDatasource
 
 if TYPE_CHECKING:

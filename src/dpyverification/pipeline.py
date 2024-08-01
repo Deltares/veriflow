@@ -9,11 +9,10 @@ import itertools
 import pathlib
 
 from dpyverification.configuration import (
-    CalculationTypeEnum,
     Config,
     ConfigTypes,
-    DataSourceTypeEnum,
 )
+from dpyverification.constants import CalculationTypeEnum, DataSourceTypeEnum
 from dpyverification.datamodel import DataModel
 from dpyverification.datasources.pixml import PiXmlFile
 from dpyverification.verifications import simobspairs

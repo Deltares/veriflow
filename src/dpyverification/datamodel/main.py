@@ -5,7 +5,8 @@ from collections.abc import Sequence
 import numpy as np
 import xarray
 
-from dpyverification.datasources.genericdatasource import GenericDatasource, SimObsType
+from dpyverification.constants import SimObsType
+from dpyverification.datasources.genericdatasource import GenericDatasource
 
 
 class DataModelCoords:

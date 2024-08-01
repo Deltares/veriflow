@@ -13,22 +13,11 @@ pydantic / python, and might need some modifications.
 
 # ruff: noqa: D101 Do not require class docstrings for the classes in this file
 
-from enum import StrEnum
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
 
-
-class DataSourceTypeEnum(StrEnum):
-    pixml = "pixml"
-    fewsnetcdf = "fewsnetcdf"
-    fewswebservice = "fewswebservice"
-
-
-class SimObsType(StrEnum):
-    sim = "sim"
-    obs = "obs"
-    combined = "combined"
+from dpyverification.constants import CalculationTypeEnum, DataSourceTypeEnum, SimObsType
 
 
 class FewsWebservice(BaseModel):
@@ -47,11 +36,6 @@ class LocalFile(BaseModel):
 DataSource: TypeAlias = (
     FewsWebservice | LocalFile
 )  # A Type Alias for the combination of data source schema classes
-
-
-class CalculationTypeEnum(StrEnum):
-    simobspairs = "simobspair"
-    pinscore = "pinscore"
 
 
 class SimObsPair(BaseModel):
