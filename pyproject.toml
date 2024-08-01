@@ -13,6 +13,7 @@ pyyaml = "^6.0.1"
 fews-io = "^0.0.2"
 pydantic = "^2.8.2"
 netcdf4 = "^1.7.1.post1" # explicitly use this package, instead of through xarray with extras = io
+importlib-metadata = ">7, <9"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
