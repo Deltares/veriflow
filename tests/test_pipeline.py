@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from tests import (
     TESTS_CONFIGURATION_FILE,
+    TESTS_FORECASTS_2_FILE,
     TESTS_FORECASTS_FILE,
     TESTS_OBSERVATIONS_FILE,
 )
@@ -23,6 +24,8 @@ def test_execute_pipeline_happy_yaml(tmp_path: Path) -> None:
         testconf["datasources"][0]["filename"] = TESTS_OBSERVATIONS_FILE.name
         testconf["datasources"][1]["directory"] = str(TESTS_FORECASTS_FILE.parent)
         testconf["datasources"][1]["filename"] = TESTS_FORECASTS_FILE.name
+        testconf["datasources"].append(copy.deepcopy(testconf["datasources"][1]))
+        testconf["datasources"][2]["filename"] = TESTS_FORECASTS_2_FILE.name
     with tmpfile.open(mode="w") as tf:
         yaml.dump(testconf, tf)
     pipeline.execute_pipeline(tmpfile, conf_type="yaml")

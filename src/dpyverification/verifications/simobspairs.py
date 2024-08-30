@@ -4,8 +4,8 @@ import xarray
 from numpy import datetime64, timedelta64
 
 from dpyverification.configuration import Calculation, Config
-from dpyverification.constants import CalculationTypeEnum
-from dpyverification.datamodel import DataModel, DataModelCoords
+from dpyverification.constants import CalculationTypeEnum, DataModelCoords, DataModelDims
+from dpyverification.datamodel import DataModel
 
 
 def simobspairs(
@@ -18,6 +18,7 @@ def simobspairs(
         msg = "Input calcconfig does not have datasourcetype simobspairs"
         raise TypeError(msg)
     if calcconfig.leadtimes:
+        # Check that only subset of general leadtimes used
         leadtimes = calcconfig.leadtimes
         leadtimesunit = str(calcconfig.leadtimesunit)
     elif fullconfig.general.leadtimes:
@@ -27,27 +28,52 @@ def simobspairs(
         leadtimes = [0]
         leadtimesunit = "m"
     leadsets = []
+    # FROM HERE: make this a function? Have data.input as argument, instead of full data?
     for leadtime in leadtimes:
         leadset = data.input.coords.to_dataset()
         # need to document that leadtime is expected to be in minutes
         newtime: list[datetime64] = list(
-            data.input[DataModelCoords.time].data + timedelta64(leadtime, leadtimesunit),  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time].data will be a 1D array of datetime64
+            data.input[DataModelCoords.simstart].data + timedelta64(leadtime, leadtimesunit),  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time].data will be a 1D array of datetime64
         )
-        newcoord = {DataModelCoords.time: newtime}
-        leadset = leadset.assign_coords(newcoord)
+        new_coords = {DataModelCoords.time: newtime}
+        leadset = leadset.assign_coords(new_coords)
         for pair in calcconfig.variablepairs:
-            # varnamegeneral_calctypename_simvar_leadtime
+            # varnamegeneral_calctypename_simvar
             # Where
             # - varnamegeneral is assumed equal to obsvar name
             # - calctypename is taken to be equal to enum string value
-            outnamesim = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.sim}_{leadtime}"
-            outnameobs = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.obs}_{leadtime}"
-            dims = data.input[pair.obs].dims
-            leadset[outnameobs] = (dims, data.input[pair.obs].data)  # type: ignore[misc] # data.input[pair.obs].data is indeed Any, but no problem when assigning to a dataset again
-            # sim can have an extra ensemble_member / realizations dimension,
-            #  how to handle that in the sim-obs-pairs output?
-            dims = data.input[pair.sim].dims
-            leadset[outnamesim] = (dims, data.input[pair.sim].data)  # type: ignore[misc] # data.input[pair.obs].data is indeed Any, but no problem when assigning to a dataset again
+            outnamesim = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.sim}"
+            outnameobs = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.obs}"
+            # HERE, wait for adaptation of example input files, when smaller, can use large leadtime
+            #  to be beyond end. To test what if any newtime values are not part of the input time
+            #  dimension? -> Will give KeyError. What do we want to do in that case? Skip leadtime
+            #  entirely? Or do create, but fully empty? Truncate newtime at min and max of time can
+            #  be a first step, to only get valid time values. But what if newtime is then empty?
+            select_at = {
+                DataModelCoords.time: leadset[DataModelCoords.time],
+            }
+            vals = data.input[pair.obs].sel(select_at)
+            leadset[outnameobs] = vals.expand_dims(
+                dim={"leadtime": [leadtime]},
+                axis=len(vals.dims),
+            )
+            # Select all sim values at specific simstart - time combinations
+            #   For each simstart, since inside loop for specific leadtime, want only values for one
+            #   specific time.
+            #   Based on http://xarray.pydata.org/en/stable/indexing.html#more-advanced-indexing,
+            #   pointwise indexing can be done by creating DataArrays for indexing, including what
+            #   resulting dimension / coordinates the values map to.
+            select_at[DataModelCoords.simstart] = xarray.DataArray(
+                data.input[DataModelCoords.simstart].data,  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.simstart].data will be a 1D array of datetime64
+                dims=DataModelDims.time,
+            )
+            vals = data.input[pair.sim].sel(select_at)
+            leadset[outnamesim] = vals.expand_dims(
+                dim={"leadtime": [leadtime]},
+                axis=len(vals.dims),
+            )
+        # This should not work if obs and sim have different length of dimensions?
+        # Should expand each of the variables individually?
         leadsets.append(leadset)
     # merge will expand time to cover all leadtimes
     return xarray.merge(leadsets)

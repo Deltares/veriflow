@@ -1,8 +1,9 @@
 fileversion: "0.0.1"
 general: {
   leadtimes: [
+    240,
+    480,
     1440,
-    2880,
   ]
 }
 datasources: [
