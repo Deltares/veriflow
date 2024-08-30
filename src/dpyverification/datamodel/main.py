@@ -5,7 +5,14 @@ from collections.abc import Sequence
 import numpy as np
 import xarray
 
-from dpyverification.constants import NAME, VERSION_FULL, DataModelCoords, DataModelDims, SimObsType
+from dpyverification.constants import (
+    NAME,
+    VERSION_FULL,
+    DataModelAttributes,
+    DataModelCoords,
+    DataModelDims,
+    SimObsType,
+)
 from dpyverification.datasources.genericdatasource import GenericDatasource
 
 
@@ -29,7 +36,7 @@ class DataModel:
             "DataModel.output cannot be set directly, use the add_to_output method to specify"
             " how to combine the existing output and the new output."
         )
-        raise ValueError(msg)
+        raise AttributeError(msg)
 
     def _xarrays_from_inputs(self, datalist: Sequence[GenericDatasource]) -> None:
         # Determine sizes and values of combined dimensions.
@@ -41,6 +48,7 @@ class DataModel:
         locations_list: list[xarray.Coordinates] = []
         ensemble_list: list[int] = []
         simstart_list: list[np.datetime64] = []
+        coords = xarray.Coordinates()
         for ds in datalist:
             obs_list.append(ds) if ds.simobstype == SimObsType.obs else sim_list.append(ds)
 
@@ -56,48 +64,73 @@ class DataModel:
             ensemble_list += ens
             simstart_list += simstart
 
+        # Add location coordinates to coords
         try:
             locations = xarray.merge(locations_list)
         except Exception as incompat:
             # STILL NEEDS: list of ids, lat, lon, ordered by id, to be able to find the problem
             msg = "Incompatible locations in combination of datasources"
             raise AttributeError(msg) from incompat
-        ensemble_list = list(set(ensemble_list))
-        simstart_list = list(set(simstart_list))
+        coords = coords.assign(locations.coords)
 
-        time_coord = self._create_time_coord(
+        # Add time coordinate to coords
+        time_coord, time_step = self._create_time_coord(
             time_starts,
             time_ends,
             time_steps,
-            datalist,
+            datalist[0].xarray[DataModelCoords.time].coords,  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
         )
+        coords = coords.assign(time_coord)
+
+        # SHOULD HERE CHECK If leadtimes defined, check that they are multiples of time_step
+
+        # What if dimensions without a coordinate are used, how to know that two datasets mean
+        # the same thing with the dimension, if there are no coordinates at all that use the
+        # dimension?
+        # The xarray.merge() has certain input flags that can be set, can we use those to trigger
+        # errors on merging empty datasets with a subselection of the dimensions / coordinates, to
+        # then provide as-specific-as-possible error messages to the user? -> Can do something, e.g.
+        # merge will indeed give error when e.g. loc1 and loc2 have switched lat/lon values, but it
+        # will be cryptic for the end user what the problem is.
 
         # When we allow datasets with leadtime already taken into account, cannot mix with simstart
         #  based datasets? In that case, need to parse the simstart datasets approximately HERE
         #  into leadtime datasets.
 
-        # Add the other coordinates to the location coordinates to get the full set
-        coords = locations.coords.assign(
-            {
-                DataModelCoords.time: time_coord.data,  # type: ignore[misc]  # Due to the numpy arrays
-                DataModelCoords.ensemble: ensemble_list,
-                DataModelCoords.simstart: simstart_list,
-            },
-        )
+        # Add the other coordinates to get the full set
+        ensemble_list = list(set(ensemble_list))
+        simstart_list = list(set(simstart_list))
+        additional_coords = {
+            DataModelCoords.ensemble: ensemble_list,
+            DataModelCoords.simstart: simstart_list,
+        }
+        coords = coords.assign(additional_coords)
 
         self.input = xarray.Dataset(coords=coords)
         # THERE REALLY HAS NOT BEEN ENOUGH CHECKING YET, e.g. on variable names being unique
+        # And, what if different sims have different number of ensembles?
         obs_sets = [obs.xarray for obs in obs_list]
         sim_sets = [sim.xarray for sim in sim_list]
         merge_set = [self.input, *obs_sets, *sim_sets]
         self.input = xarray.merge(merge_set)
+        # Register the timestep as an attribute, for easy access
+        self.input.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
 
         # Add extra output dimensions / coordinates here, e.g. leadtime
         # Do make sure to check that that does not affect the self.input
+        # On leadtime: do we even want to allow different leadtimes for different calculations?
+        #   Because, that would make the leadtime dimension very irregular, and introduce a lot of
+        #   missing values, when parameters use different lead times, but the same leadtime coord.
+        #   Could alternatively have a calculation-specific leadtime dimension, and only when the
+        #   calculation uses different leadtimes than the general leadtimes?
+        #   Update: calc specific leadtimes need to be a subset of the general leadtimes
 
         self._output = xarray.Dataset(coords=coords)
+        # Register the timestep as an attribute, for easy access
+        self._output.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        # Register how this output was created
         source_str = NAME + " version " + VERSION_FULL
-        self._output.attrs.update(source=source_str)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        self._output.attrs.update({DataModelAttributes.source: source_str})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
 
     @staticmethod
     def _check_source_dims_and_coords(ds: GenericDatasource) -> None:
@@ -215,12 +248,11 @@ class DataModel:
         time_starts: list[np.datetime64],
         time_ends: list[np.datetime64],
         time_steps: list[np.timedelta64],
-        datalist: Sequence[GenericDatasource],
-    ) -> xarray.DataArray:
-        time_coord: xarray.DataArray
-
+        default_time_array: xarray.Coordinates,
+    ) -> tuple[xarray.Coordinates, np.timedelta64]:
         if len(set(time_steps)) == 1 and len(set(time_starts)) == 1 and len(set(time_ends)) == 1:
-            time_coord = datalist[0].xarray.time
+            time_coord = default_time_array
+            time_step = time_steps[0]
         else:
             if len(set(time_steps)) != 1:
                 # This will require quite some thought:
@@ -235,11 +267,14 @@ class DataModel:
             time_step = time_steps[0]
             time_start = np.min(time_starts)
             time_end = np.max(time_ends)
-            time_coord = xarray.DataArray(
-                np.arange(time_start, time_end + time_step, time_step, dtype=np.datetime64),  # type: ignore[misc] # Due to the numpy array
+            time_values = np.arange(
+                time_start,
+                time_end + time_step,
+                time_step,
+                dtype=np.datetime64,
             )
-            if not all(x in time_coord for x in time_starts) or not all(
-                x in time_coord for x in time_ends
+            if not all(x in time_values for x in time_starts) or not all(
+                x in time_values for x in time_ends
             ):
                 msg = (
                     "Time dimensions have the same timestep, but with a timeshift for some"
@@ -247,7 +282,9 @@ class DataModel:
                 )
 
                 raise NotImplementedError(msg)
-        return time_coord
+            coord_dict = {DataModelCoords.time: time_values}
+            time_coord = xarray.Coordinates(coord_dict)
+        return time_coord, time_step
 
     def add_to_output(self, new_output: xarray.Dataset) -> None:
         """Add the Dataset, with the result of a specific verification, to the datamodel output."""

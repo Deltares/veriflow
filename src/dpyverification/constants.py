@@ -76,10 +76,24 @@ class DataModelCoords:
     simstart = DataModelDims.simstart
 
 
+class DataModelAttributes:
+    """List of attribute names.
+
+    To avoid hardcoded strings in multiple places,
+    have a single list with the names of known attributes.
+    """
+
+    source = "source"
+    timestep = "timestep"
+
+
 def _set_version_info() -> tuple[str, str]:
     version = importlib_metadata.version("dpyverification")
     version_extra = ""
 
+    # It would be preferable to use available tools for our versioning, e.g.
+    # https://github.com/mtkennerly/dunamai and / or https://github.com/mtkennerly/poetry-dynamic-versioning
+    # so we also do not rely on (updating the) hardcoded version in the pyproject.toml
     this_dir = pathlib.Path(__file__).parent
     command = ["git", "rev-parse", "HEAD"]
     completed = subprocess.run(command, cwd=this_dir, capture_output=True, check=False, text=True)  # noqa: S603 # No S603 since we are pretty certain the input is not dangerous
