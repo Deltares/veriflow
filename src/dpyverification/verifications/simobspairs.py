@@ -38,17 +38,21 @@ def simobspairs(
         new_coords = {DataModelCoords.time.name: newtime}
         leadset = leadset.assign_coords(new_coords)
         for pair in calcconfig.variablepairs:
-            # varnamegeneral_calctypename_simvar
+            # Construct variable names:
+            #   varnamegeneral_calctypename_varname
             # Where
             # - varnamegeneral is assumed equal to obsvar name
             # - calctypename is taken to be equal to enum string value
             outnamesim = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.sim}"
             outnameobs = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.obs}"
+
             # HERE, wait for adaptation of example input files, when smaller, can use large leadtime
             #  to be beyond end. To test what if any newtime values are not part of the input time
             #  dimension? -> Will give KeyError. What do we want to do in that case? Skip leadtime
             #  entirely? Or do create, but fully empty? Truncate newtime at min and max of time can
             #  be a first step, to only get valid time values. But what if newtime is then empty?
+
+            # Parse the obs values
             select_at = {
                 DataModelCoords.time.name: leadset[DataModelCoords.time.name],
             }
@@ -57,6 +61,11 @@ def simobspairs(
                 dim={"leadtime": [leadtime]},
                 axis=len(vals.dims),
             )
+            if "units" in data.input[pair.obs].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
+                leadset[outnameobs].attrs.update({"units": data.input[pair.obs].attrs["units"]})  # type: ignore[misc] # attrs is a dict[Any,Any]
+
+            # Parse the sim values
+            #
             # Select all sim values at specific simstart - time combinations
             #   For each simstart, since inside loop for specific leadtime, want only values for one
             #   specific time.
@@ -72,8 +81,8 @@ def simobspairs(
                 dim={"leadtime": [leadtime]},
                 axis=len(vals.dims),
             )
-        # This should not work if obs and sim have different length of dimensions?
-        # Should expand each of the variables individually?
+            if "units" in data.input[pair.sim].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
+                leadset[outnamesim].attrs.update({"units": data.input[pair.sim].attrs["units"]})  # type: ignore[misc] # attrs is a dict[Any,Any]
         leadsets.append(leadset)
     # merge will expand time to cover all leadtimes
     return xarray.merge(leadsets)
