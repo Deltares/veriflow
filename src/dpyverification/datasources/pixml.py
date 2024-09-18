@@ -82,12 +82,12 @@ class PiXmlFile(GenericDatasource):
                 ):
                     location_id, lat, lon = get_location_info(pi_series, timeseries_id)  # type: ignore[misc]  # pi_series is Any
                     coords = {  # separate variable for readability and type hinting
-                        DataModelCoords.time: times,
-                        DataModelCoords.location: [location_id],
-                        DataModelCoords.ensemble: [ensemble_member],
-                        DataModelCoords.lat: ([DataModelDims.location], [lat]),
-                        DataModelCoords.lon: ([DataModelDims.location], [lon]),
-                        DataModelCoords.simstart: [simulation_starttime],
+                        DataModelCoords.time.name: times,
+                        DataModelCoords.location.name: [location_id],
+                        DataModelCoords.ensemble.name: [ensemble_member],
+                        DataModelCoords.lat.name: ([DataModelDims.location], [lat]),
+                        DataModelCoords.lon.name: ([DataModelDims.location], [lon]),
+                        DataModelCoords.simstart.name: [simulation_starttime],
                     }
                     da = xr.DataArray(
                         data=np.expand_dims(data, axis=(1, 2, 3)),  # type: ignore[misc] # data and ndarray are Any
@@ -106,10 +106,10 @@ class PiXmlFile(GenericDatasource):
             for timeseries_id, data in pi_series.items():  # type: ignore[misc] # pi_series and data are Any
                 location_id, lat, lon = get_location_info(pi_series, timeseries_id)  # type: ignore[misc]  # pi_series is Any
                 coords = {
-                    DataModelCoords.time: times,
-                    DataModelCoords.location: [location_id],
-                    DataModelCoords.lat: ([DataModelDims.location], [lat]),
-                    DataModelCoords.lon: ([DataModelDims.location], [lon]),
+                    DataModelCoords.time.name: times,
+                    DataModelCoords.location.name: [location_id],
+                    DataModelCoords.lat.name: ([DataModelDims.location], [lat]),
+                    DataModelCoords.lon.name: ([DataModelDims.location], [lon]),
                 }
                 da = xr.DataArray(
                     data=np.expand_dims(data, axis=(1)),  # type: ignore[misc] # data and ndarray are Any

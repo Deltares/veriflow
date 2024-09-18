@@ -52,7 +52,7 @@ def test_write_happy(tmp_path: Path) -> None:
     # Adapt the ds to look like our internal datamodel
     # When get_data has been implemented for fewsnetcdf, use that instead
     ds_datamodel = ds.rename_dims({"analysis_time": DataModelDims.simstart})  # type: ignore[misc] # attrs is a dict[Any,Any]
-    ds_datamodel = ds_datamodel.rename_vars({"analysis_time": DataModelCoords.simstart})  # type: ignore[misc] # attrs is a dict[Any,Any]
+    ds_datamodel = ds_datamodel.rename_vars({"analysis_time": DataModelCoords.simstart.name})  # type: ignore[misc] # attrs is a dict[Any,Any]
     ds_datamodel.attrs[DataModelAttributes.timestep] = 1  # type: ignore[misc] # attrs is a dict[Any,Any]
 
     tmpfile = tmp_path / "test.nc"
@@ -89,7 +89,7 @@ def test_read_write_equal(tmp_path: Path) -> None:
     # Adapt the ds to look like our internal datamodel
     # When get_data has been implemented for fewsnetcdf, use that instead
     ds_datamodel = ds.rename_dims({"analysis_time": DataModelDims.simstart})  # type: ignore[misc] # attrs is a dict[Any,Any]
-    ds_datamodel = ds_datamodel.rename_vars({"analysis_time": DataModelCoords.simstart})  # type: ignore[misc] # attrs is a dict[Any,Any]
+    ds_datamodel = ds_datamodel.rename_vars({"analysis_time": DataModelCoords.simstart.name})  # type: ignore[misc] # attrs is a dict[Any,Any]
     ds_datamodel.attrs[DataModelAttributes.timestep] = 1  # type: ignore[misc] # attrs is a dict[Any,Any]
 
     FewsNetcdfFile.write_data(parsed_content.output[0], ds_datamodel)
