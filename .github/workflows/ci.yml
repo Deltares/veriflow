@@ -1,4 +1,6 @@
 name: DPyVerification CI
+# Note that this workflow is referenced by name in other workflows,
+#   any name change thus needs to be propagated.
 
 on:
   push:
@@ -41,7 +43,15 @@ jobs:
           cache: 'poetry'
       - run: poetry install
       # Missing coverage and junit results for now
-      - run: poetry run pytest
+      - run: poetry run pytest --junit-xml=test-results-${{ matrix.os }}-${{ matrix.python-version }}.xml
+      # Upload the test results, to be parsed by second workflow
+      # Two workflows, in order to support PRs from forks, as per
+      # explanation at https://github.com/dorny/test-reporter
+      - uses: actions/upload-artifact@v4  # upload test results
+        if: success() || failure()        # run this step even if previous step failed
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-results*.xml
   # Testing the documentation generation can be a job that
   #   is separate from the pytest job
   #   Doc build testing probably only needs to run for one python version and
