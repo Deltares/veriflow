@@ -2,3 +2,4 @@
 
 # The public interface
 from .main import Config, ConfigTypes
+from .schema import Calculation, ConfigSchema, DataSource, FewsNetcdfOutput, Output

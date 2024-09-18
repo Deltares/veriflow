@@ -20,32 +20,32 @@ def test_ruff_format() -> None:
     """Whether ruff format would reformat a file."""
     ruff: str = find_ruff_bin()
     command = [ruff, "format", "--quiet", "--check", "--force-exclude"]
-    completed = subprocess.run(command, capture_output=True, check=False)  # noqa: S603
+    completed = subprocess.run(command, capture_output=True, check=False, text=True)  # noqa: S603
     # No S603 since we are pretty certain the input is not dangerous
     stdout = completed.stdout
     stderr = completed.stderr
 
     if completed.returncode == RUFF_ASSERT_CODE:
-        msg = "Ruff format: at least one file would be reformatted.\n" + stdout.decode()
+        msg = "Ruff format: at least one file would be reformatted.\n" + stdout
         raise AssertionError(msg)
 
     if completed.returncode == RUFF_ERROR_CODE:
-        raise RuntimeError("Ruff format encountered an error.\n" + stderr.decode())
+        raise RuntimeError("Ruff format encountered an error.\n" + stderr)
 
 
 def test_ruff_linting() -> None:
     """Whether ruff check would report any issues."""
     ruff: str = find_ruff_bin()
     command = [ruff, "check", "--quiet", "--output-format=full", "--force-exclude"]
-    completed = subprocess.run(command, capture_output=True, check=False)  # noqa: S603
+    completed = subprocess.run(command, capture_output=True, check=False, text=True)  # noqa: S603
     # No S603 since we are pretty certain the input is not dangerous
     stdout = completed.stdout
     stderr = completed.stderr
 
     if completed.returncode == RUFF_ASSERT_CODE:
-        raise AssertionError("Ruff check found at least one issue.\n" + stdout.decode())
+        raise AssertionError("Ruff check found at least one issue.\n" + stdout)
     if completed.returncode == RUFF_ERROR_CODE:
-        raise RuntimeError("Ruff check encountered an error.\n" + stderr.decode())
+        raise RuntimeError("Ruff check encountered an error.\n" + stderr)
 
 
 def test_mypy() -> None:

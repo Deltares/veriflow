@@ -1,1 +1,40 @@
-fileversion: 0.0.1
+fileversion: "0.0.1"
+general: {
+  leadtimes: [
+    240,
+    480,
+    1440,
+  ]
+}
+datasources: [
+  {
+    datasourcetype: "pixml",
+    simobstype: "obs",
+    directory: "iets",
+    filename: "anders",
+  },
+  {
+    datasourcetype: "pixml",
+    simobstype: "sim",
+    directory: "twee",
+    filename: "drie",
+  },
+]
+calculations: [
+  {
+    calculationtype: "simobspair",
+    variablepairs: [
+      {
+        sim: "Q.fs",
+        obs: "Q.m",
+      },
+    ]
+  },
+]
+output: [
+  {
+    datasourcetype: "fewsnetcdf",
+    directory: "somewhere",
+    filename: "something",
+  }
+]

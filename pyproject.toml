@@ -8,24 +8,27 @@ packages = [{include = "dpyverification", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-xarray = "^2024.6.0"
+xarray = "^2024.6.0" # for now NOT with the io extra, since only want netcdf4 support, not all the other packages that are part of io like scipy
 pyyaml = "^6.0.1"
-jsonschema = "^4.23.0"
+pydantic = "^2.8.2"
+netcdf4 = "^1.7.1.post1" # explicitly use this package, instead of through xarray with extras = io
+importlib-metadata = ">7, <9"
+fews-io = "^0.0.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
 ruff = "^0.5.0"
 mypy = "^1.10.1"
-# types definitions needed for mypy
-types-pyyaml = "^6.0.12.20240311"
-types-jsonschema = "^4.22.0.20240610"
+types-pyyaml = "^6.0.12.20240311" # types definitions needed for mypy
+pandas-stubs = "^2.2.2.240603" # types definitions needed for mypy
 
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
 files = ["**/*.py"]
 warn_unused_configs = true
-python_version = "3.10"
+python_version = "3.11"
+plugins = ["pydantic.mypy", ]
 platform = "linux" # even though the development is done on Windows
 warn_unused_ignores = true
 warn_return_any = true
@@ -42,6 +45,9 @@ disallow_any_explicit = true
 # Move to above this commment when enabled
 #explicit_package_bases = true
 
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
 
 [tool.ruff]
 target-version = "py310"
