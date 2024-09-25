@@ -20,7 +20,9 @@ def simobspairs(
     # This should be done in config object creation, so can use calcconfig.leadtimes
     # unconditionally here.
     if calcconfig.leadtimes:
-        # Check that only subset of general leadtimes used
+        # TODO(AU): Check that specific leadtimes are subset of general leadtimes # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/16
+        #   Here, this if-elif should then no longer be needed.
         leadtimes = calcconfig.leadtimes.timedelta64
     elif fullconfig.general.leadtimes:
         leadtimes = fullconfig.general.leadtimes.timedelta64

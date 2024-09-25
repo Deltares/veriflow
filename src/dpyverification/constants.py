@@ -136,7 +136,8 @@ class DataModelAttributes:
     have a single list with the names of known attributes.
     """
 
-    # Rework to be somewhat similar to DataModelCoords, with both names and (default) values?
+    # TODO(AU): Make similar to DataModelCoords, with both name and (default) value # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/17
     source = "source"
     timestep = "timestep"
     featuretype = "featureType"

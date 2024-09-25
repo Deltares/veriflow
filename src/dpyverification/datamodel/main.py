@@ -24,6 +24,10 @@ class DataModel:
 
     def __init__(self, datalist: Sequence[GenericDatasource]) -> None:
         coords, time_step = self._construct_input_dataset(datalist)
+        # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/11
+        #   See issue for full description.
+        #   Here, create the 'intermediate' Dataset
         self._initialize_output_dataset(coords, time_step)
 
     @property
@@ -89,7 +93,8 @@ class DataModel:
         try:
             locations = xarray.merge(locations_list)
         except Exception as incompat:
-            # STILL NEEDS: list of ids, lat, lon, ordered by id, to be able to find the problem
+            # TODO(AU): User-readable list of to be able to find the problem # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/13
             msg = "Incompatible locations in combination of datasources"
             raise AttributeError(msg) from incompat
         coords = coords.assign(locations.coords)
@@ -118,8 +123,8 @@ class DataModel:
         coords = coords.assign(additional_coords)
 
         self.input = xarray.Dataset(coords=coords)
-        # THERE REALLY HAS NOT BEEN ENOUGH CHECKING YET, e.g. on variable names being unique
-        # And, what if different sims have different number of ensembles?
+        # TODO(AU): Add more checks on the combination before merge() # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/14
         obs_sets = [obs.xarray for obs in obs_list]
         sim_sets = [sim.xarray for sim in sim_list]
         merge_set = [self.input, *obs_sets, *sim_sets]
@@ -137,19 +142,13 @@ class DataModel:
         time_step: np.timedelta64,
     ) -> None:
         """Initialize the output dataset with coordinates and attributes."""
-        # Add extra output dimensions / coordinates here, e.g. leadtime
-        # Do make sure to check that that does not affect the self.input
-        # Check that if leadtimes defined, they are multiples of time_step
-        # On leadtime: do we even want to allow different leadtimes for different calculations?
-        #   Because, that would make the leadtime dimension very irregular, and introduce a lot of
-        #   missing values, when parameters use different lead times, but the same leadtime coord.
-        #   Could alternatively have a calculation-specific leadtime dimension, and only when the
-        #   calculation uses different leadtimes than the general leadtimes?
-        #   Update: calc specific leadtimes need to be a subset of the general leadtimes
-        # Set units attribute on leadtime, and/or use timedelta64 for the leadtime coordinate?
-        #   Depending on answer, also need to update simobspairs use of leadtime.
+        # TODO(AU): Add leadtime dimension and coordinate during initialization # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/15
 
         self._output = xarray.Dataset(coords=coords)
+        # TODO(AU): Refactor the _output.attrs update calls here # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/17
+
         # Register the timestep as an attribute, for easy access
         self._output.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
         # Register how this output was created
@@ -276,16 +275,19 @@ class DataModel:
         #  X.tolist() would convert to python type
 
         if DataModelCoords.ensemble.name in ds.xarray.coords:
-            # SHOULD CHECK that ensemble_members are indeed int
+            # TODO(AU): Add more checks on the the datasources before merge() # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/14
+            # Here, check that ensemble_members are indeed int. Or already
+            #  in _check_source_dims_and_coords?
             ens: list[int] = list(ds.xarray[DataModelCoords.ensemble.name].data)  # type: ignore[misc]
         else:
             ens = []
 
         if DataModelCoords.simstart.name in ds.xarray.coords:
-            # SHOULD CHECK that simstart are indeed np.datetime64
-            # SHOULD CHECK that simstart is part of the time coord values (actually, just that it is
-            #  at a valid timediff, does not need to be part of the time coord values)
-            #  Because simstart+leadtime needs to be a potentially valid time coord value
+            # TODO(AU): Add more checks on the the datasources before merge() # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/14
+            # Here, check that simstart are indeed np.datetime64. Or already
+            #  in _check_source_dims_and_coords?
             simstart: list[np.datetime64] = list(ds.xarray[DataModelCoords.simstart.name].data)  # type: ignore[misc]
         else:
             simstart = []
