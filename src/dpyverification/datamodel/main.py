@@ -20,10 +20,11 @@ class DataModel:
     """The dpyverification internal DataModel."""
 
     input: xarray.Dataset
+    # output is a @property with an explicit setter
 
     def __init__(self, datalist: Sequence[GenericDatasource]) -> None:
-        # unpack the list
-        self._xarrays_from_inputs(datalist)
+        coords, time_step = self._construct_input_dataset(datalist)
+        self._initialize_output_dataset(coords, time_step)
 
     @property
     def output(self) -> xarray.Dataset:
@@ -38,13 +39,16 @@ class DataModel:
         )
         raise AttributeError(msg)
 
-    def _xarrays_from_inputs(self, datalist: Sequence[GenericDatasource]) -> None:
+    def _construct_input_dataset(
+        self,
+        datalist: Sequence[GenericDatasource],
+    ) -> tuple[xarray.Coordinates, np.timedelta64]:
         """
         Parse the list of datasources.
 
         Check whether the datasources form a compatible combination.
         Create an xarray with the combined input information.
-        Initialize the output xarray.
+        Assign the xarray dataset to self.input.
         """
         # Determine sizes and values of combined dimensions.
         obs_list: list[GenericDatasource] = []
@@ -123,6 +127,16 @@ class DataModel:
         # Register the timestep as an attribute, for easy access
         self.input.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
 
+        # Return the constructed coords, without any changes that the xarray.merge() might have
+        #  caused to the self.input coordinates
+        return coords, time_step
+
+    def _initialize_output_dataset(
+        self,
+        coords: xarray.Coordinates,
+        time_step: np.timedelta64,
+    ) -> None:
+        """Initialize the output dataset with coordinates and attributes."""
         # Add extra output dimensions / coordinates here, e.g. leadtime
         # Do make sure to check that that does not affect the self.input
         # Check that if leadtimes defined, they are multiples of time_step
@@ -134,11 +148,6 @@ class DataModel:
         #   Update: calc specific leadtimes need to be a subset of the general leadtimes
         # Set units attribute on leadtime, and/or use timedelta64 for the leadtime coordinate?
         #   Depending on answer, also need to update simobspairs use of leadtime.
-
-        # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
-        #   https://github.com/Deltares-research/DPyVerification/issues/11
-        #   See issue for full description.
-        #   Here, create the 'intermediate' Dataset
 
         self._output = xarray.Dataset(coords=coords)
         # Register the timestep as an attribute, for easy access
