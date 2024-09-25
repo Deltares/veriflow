@@ -1,5 +1,8 @@
 """Test the fewswebservice module of the dpyverification.datasources package."""
 
+import os
+
+import pytest
 import requests
 import yaml
 from dpyverification.configuration import ConfigSchema
@@ -13,7 +16,10 @@ SIM_TIME_DIM_LENGTH = 49
 OBS_TIME_DIM_LENGTH = 49
 VALID_RESPONSE_CODE = 200
 
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
+
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
 def test_webservice_live() -> None:
     """Test that a webservice is live and can find filters."""
     url = "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
@@ -23,6 +29,7 @@ def test_webservice_live() -> None:
     assert response.status_code == VALID_RESPONSE_CODE
 
 
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
 def test_get_timeseries_sim_happy() -> None:
     """Check that the imported pixml gives an xarray with the expected content."""
     with TESTS_CONFIGURATION_FILE.open() as cf:
@@ -51,6 +58,7 @@ def test_get_timeseries_sim_happy() -> None:
     assert len(data[0].xarray.time) == SIM_TIME_DIM_LENGTH  # type: ignore[misc]
 
 
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
 def test_get_timeseries_obs_happy() -> None:
     """Check that the imported pixml gives an xarray with the expected content."""
     with TESTS_CONFIGURATION_FILE.open() as cf:
