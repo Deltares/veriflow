@@ -1,4 +1,4 @@
-"""Classes to generate a valid configuration object from the specifcation in a file."""
+"""Classes to generate a valid configuration object from the specification in a file."""
 
 import pathlib
 from enum import Enum

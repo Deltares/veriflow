@@ -45,8 +45,19 @@ class FileInput(LocalFile):
 
 class FewsNetcdfOutput(LocalFile):
     datasourcetype: Literal[DataSourceTypeEnum.fewsnetcdf]
-    title: str | None = None  # A title will be generated if not provided
-    institution: str = "Deltares"
+    title: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Value for the title attribute in the generated netcdf."
+                " A title will be generated if not provided"
+            ),
+        ),
+    ] = None
+    institution: Annotated[
+        str,
+        Field(description="Value for the institution attribute in the generated netcdf."),
+    ] = "Deltares"
 
 
 DataSource: TypeAlias = (

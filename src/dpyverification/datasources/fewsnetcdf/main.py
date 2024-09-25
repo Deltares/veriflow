@@ -105,16 +105,20 @@ class FewsNetcdfFile(GenericDatasource):
         # Renames from DPyVerification datamodel to FewsNetcdf compliance
         renames = {DataModelDims.simstart: "analysis_time"}
         dataset = dataset.rename_dims(renames)
-        renames = {DataModelCoords.simstart: "analysis_time"}
+        renames = {DataModelCoords.simstart.name: "analysis_time"}
         dataset = dataset.rename_vars(renames)
 
         # Remove attributes not usable / desired in the netcdf
         dataset.attrs.pop(DataModelAttributes.timestep)  # type: ignore[misc] # attrs is a dict[Any,Any]
 
         # Add any missing information required for CF compliance
+        #   Note that most CF compliance will already be done in the creation of the xarray as
+        #   part of the datamodel
         cls.add_global_attrs(dataset, dsconfig)
         cls.add_coord_attrs(dataset)
         cls.add_var_attrs(dataset)
+
+        # Rename variable to only have letters, digits and underscores?
 
         # Check the dataset against the required schema
         # For now, assume the schema used for fewsnetcdf input, also holds for fewsnetcdf output
@@ -150,12 +154,11 @@ class FewsNetcdfFile(GenericDatasource):
         # Where to get the default mappings for coordinate names?
         for coord in dataset.coords:
             coord_attrs: dict[str, Hashable] = {}
-            if coord == "time":
-                coord_attrs["standard_name"] = "time"
-                coord_attrs["long_name"] = "time"
-            elif "standard_name" not in dataset.coords[coord].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
-                coord_attrs["standard_name"] = coord
-            elif "long_name" not in dataset.coords[coord].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
+            if coord == "leadtime":
+                # Temp, leadtime should be added in datamodel init already,
+                #   and become a standard coordinate
+                coord_attrs["standard_name"] = "forecast_period"
+            elif not any(k in dataset.coords[coord].attrs for k in ("standard_name", "long_name")):  # type: ignore[misc] # attrs is a dict[Any,Any]
                 coord_attrs["long_name"] = coord
             dataset.coords[coord].attrs.update(coord_attrs)  # type: ignore[misc] # attrs is a dict[Any,Any]
 
@@ -164,6 +167,8 @@ class FewsNetcdfFile(GenericDatasource):
         """Add required variable attributes if missing."""
         for var in dataset.variables:
             var_attrs = {}
-            if "long_name" not in dataset.variables[var].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
+            if not any(k in dataset.variables[var].attrs for k in ("standard_name", "long_name")):  # type: ignore[misc] # attrs is a dict[Any,Any]
                 var_attrs["long_name"] = var
             dataset.variables[var].attrs.update(var_attrs)  # type: ignore[misc] # attrs is a dict[Any,Any]
+            # What about standard_name, for instance water_volume_transport_in_river_channel
+            #  for Q variables? How to determine, where to get from?

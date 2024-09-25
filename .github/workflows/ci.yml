@@ -1,0 +1,60 @@
+name: DPyVerification CI
+# Note that this workflow is referenced by name in other workflows,
+#   any name change thus needs to be propagated.
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+jobs: 
+  # Consider adding lint as a separate job (ruff and mypy)
+  #   The linters are also part of the pytest tests, so local users
+  #   only have to run 'poetry run pytest' to also check linting.
+  #   For faster CI, and more fine-grained error info, it would be
+  #   advantageous to have a separate lint job, and exclude the
+  #   pytest lint-related tests (i.e. have a pytest mark for 
+  #   excluding certain tests in CI)
+  #   Linting probably only needs to run for one python version and
+  #   one os, assuming release and publish will be a separate workflow
+  # lint:
+  #   name: Linting
+  pytest:
+    name: Pytest with Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Might want to cache the pipx-poetry as well, to speed up CI runs
+      #   Some hints are already given at https://github.com/pypa/pipx/discussions/1051
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'poetry'
+      - run: poetry install
+      # Missing coverage and junit results for now
+      - run: poetry run pytest --junit-xml=test-results-${{ matrix.os }}-${{ matrix.python-version }}.xml
+      # Upload the test results, to be parsed by second workflow
+      # Two workflows, in order to support PRs from forks, as per
+      # explanation at https://github.com/dorny/test-reporter
+      - uses: actions/upload-artifact@v4  # upload test results
+        if: success() || failure()        # run this step even if previous step failed
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-results*.xml
+  # Testing the documentation generation can be a job that
+  #   is separate from the pytest job
+  #   Doc build testing probably only needs to run for one python version and
+  #   one os, assuming release and publish will be a separate workflow
+  # doc:
+  #   name: Documentation generation

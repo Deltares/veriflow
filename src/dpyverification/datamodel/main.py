@@ -39,30 +39,38 @@ class DataModel:
         raise AttributeError(msg)
 
     def _xarrays_from_inputs(self, datalist: Sequence[GenericDatasource]) -> None:
+        """
+        Parse the list of datasources.
+
+        Check whether the datasources form a compatible combination.
+        Create an xarray with the combined input information.
+        Initialize the output xarray.
+        """
         # Determine sizes and values of combined dimensions.
-        time_starts: list[np.datetime64] = []
-        time_ends: list[np.datetime64] = []
-        time_steps: list[np.timedelta64] = []
         obs_list: list[GenericDatasource] = []
         sim_list: list[GenericDatasource] = []
+        time_steps: list[np.timedelta64] = []
+        time_starts: list[np.datetime64] = []
+        time_ends: list[np.datetime64] = []
         locations_list: list[xarray.Coordinates] = []
         ensemble_list: list[int] = []
         simstart_list: list[np.datetime64] = []
-        coords = xarray.Coordinates()
         for ds in datalist:
             obs_list.append(ds) if ds.simobstype == SimObsType.obs else sim_list.append(ds)
 
             self._check_source_dims_and_coords(
                 ds,
             )  # Method will raise an error when there is a problem
-            step, start, end, location, ens, simstart = self._parse_source(ds)
+            step, start, end, location, ensemble_numbers, simstart_values = self._parse_source(ds)
 
             time_steps.append(step)
             time_starts.append(start)
             time_ends.append(end)
             locations_list.append(location)
-            ensemble_list += ens
-            simstart_list += simstart
+            ensemble_list += ensemble_numbers
+            simstart_list += simstart_values
+
+        coords = xarray.Coordinates()
 
         # Add location coordinates to coords
         try:
@@ -78,7 +86,7 @@ class DataModel:
             time_starts,
             time_ends,
             time_steps,
-            datalist[0].xarray[DataModelCoords.time].coords,  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
+            datalist[0].xarray[DataModelCoords.time.name].coords,  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
         )
         coords = coords.assign(time_coord)
 
@@ -101,8 +109,8 @@ class DataModel:
         ensemble_list = list(set(ensemble_list))
         simstart_list = list(set(simstart_list))
         additional_coords = {
-            DataModelCoords.ensemble: ensemble_list,
-            DataModelCoords.simstart: simstart_list,
+            DataModelCoords.ensemble.name: ensemble_list,
+            DataModelCoords.simstart.name: simstart_list,
         }
         coords = coords.assign(additional_coords)
 
@@ -124,6 +132,8 @@ class DataModel:
         #   Could alternatively have a calculation-specific leadtime dimension, and only when the
         #   calculation uses different leadtimes than the general leadtimes?
         #   Update: calc specific leadtimes need to be a subset of the general leadtimes
+        # Set units attribute on leadtime, and/or use timedelta64 for the leadtime coordinate?
+        #   Depending on answer, also need to update simobspairs use of leadtime.
 
         self._output = xarray.Dataset(coords=coords)
         # Register the timestep as an attribute, for easy access
@@ -131,6 +141,24 @@ class DataModel:
         # Register how this output was created
         source_str = NAME + " version " + VERSION_FULL
         self._output.attrs.update({DataModelAttributes.source: source_str})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        self._output.attrs.update({DataModelAttributes.featuretype: "timeSeries"})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        # Make sure the location_id variable (a string array in python) is encoded as NC_CHAR in
+        #   netcdf export, to be CF compliant
+        to_char = {"dtype": "S1"}
+        self._output[DataModelCoords.location.name].encoding.update(to_char)  # type: ignore[misc]  # Yes, encoding is een any-any dict, however here we only add to it.
+        # Update all coordinates with (CF compliancy) attributes
+        self._output[DataModelCoords.time.name].attrs.update(DataModelCoords.time.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        self._output[DataModelCoords.location.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+            DataModelCoords.location.attributes,
+        )
+        self._output[DataModelCoords.lat.name].attrs.update(DataModelCoords.lat.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        self._output[DataModelCoords.lon.name].attrs.update(DataModelCoords.lon.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        self._output[DataModelCoords.ensemble.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+            DataModelCoords.ensemble.attributes,
+        )
+        self._output[DataModelCoords.simstart.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+            DataModelCoords.simstart.attributes,
+        )
 
     @staticmethod
     def _check_source_dims_and_coords(ds: GenericDatasource) -> None:
@@ -143,17 +171,17 @@ class DataModel:
         )
         obs_coords = frozenset(
             [
-                DataModelCoords.time,
-                DataModelCoords.location,
-                DataModelCoords.lat,
-                DataModelCoords.lon,
+                DataModelCoords.time.name,
+                DataModelCoords.location.name,
+                DataModelCoords.lat.name,
+                DataModelCoords.lon.name,
             ],
         )
         # sim ds are allowed to have these dimensions
         # DO THEY need to have simstart, or can do without? Will depend on whether leadtime already
         #   taken into account in the ds? So need either simstart or leadtime?
         sim_dims = [DataModelDims.ensemble, DataModelDims.simstart, *obs_dims]
-        sim_coords = [DataModelCoords.ensemble, DataModelCoords.simstart, *obs_coords]
+        sim_coords = [DataModelCoords.ensemble.name, DataModelCoords.simstart.name, *obs_coords]
 
         if ds.simobstype == SimObsType.obs:
             if frozenset(ds.xarray.sizes) != obs_dims:
@@ -197,7 +225,7 @@ class DataModel:
         list[int],
         list[np.datetime64],
     ]:
-        if not ds.xarray.sizes[DataModelCoords.time] > 1:
+        if not ds.xarray.sizes[DataModelCoords.time.name] > 1:
             # Not inside _check_source_dims_and_coords, because might want to allow this, in that
             # case directly related to the code line following
             msg = "Scalar time dimension not supported"
@@ -213,24 +241,24 @@ class DataModel:
             raise ValueError(msg)
 
         # This will return a Coordinates object, that holds has the lat and lon coordinates (i.e.
-        #  all coordinates for the dimensions of ds.xarray[DataModelCoords.location])
-        location = ds.xarray[DataModelCoords.location].coords  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
+        #  all coordinates for the dimensions of ds.xarray[DataModelCoords.location.name])
+        location = ds.xarray[DataModelCoords.location.name].coords  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
 
         # Note: in the following statements, use list(X) since that conserves numpy datatype, using
         #  X.tolist() would convert to python type
 
-        if DataModelCoords.ensemble in ds.xarray.coords:
+        if DataModelCoords.ensemble.name in ds.xarray.coords:
             # SHOULD CHECK that ensemble_members are indeed int
-            ens: list[int] = list(ds.xarray[DataModelCoords.ensemble].data)  # type: ignore[misc]
+            ens: list[int] = list(ds.xarray[DataModelCoords.ensemble.name].data)  # type: ignore[misc]
         else:
             ens = []
 
-        if DataModelCoords.simstart in ds.xarray.coords:
+        if DataModelCoords.simstart.name in ds.xarray.coords:
             # SHOULD CHECK that simstart are indeed np.datetime64
             # SHOULD CHECK that simstart is part of the time coord values (actually, just that it is
             #  at a valid timediff, does not need to be part of the time coord values)
             #  Because simstart+leadtime needs to be a potentially valid time coord value
-            simstart: list[np.datetime64] = list(ds.xarray[DataModelCoords.simstart].data)  # type: ignore[misc]
+            simstart: list[np.datetime64] = list(ds.xarray[DataModelCoords.simstart.name].data)  # type: ignore[misc]
         else:
             simstart = []
 
@@ -282,7 +310,7 @@ class DataModel:
                 )
 
                 raise NotImplementedError(msg)
-            coord_dict = {DataModelCoords.time: time_values}
+            coord_dict = {DataModelCoords.time.name: time_values}
             time_coord = xarray.Coordinates(coord_dict)
         return time_coord, time_step
 
@@ -309,14 +337,14 @@ class DataModel:
         #   xarray.merge will not complain about adding intermediate times, but we want to have
         #   a fixed timestep
         try:
-            self._output[DataModelCoords.time].sel(
-                {DataModelCoords.time: new_output[DataModelCoords.time].data},  # type: ignore[misc] # data is Any, we assume np.datetime64 array
+            self._output[DataModelCoords.time.name].sel(
+                {DataModelCoords.time.name: new_output[DataModelCoords.time.name].data},  # type: ignore[misc] # data is Any, we assume np.datetime64 array
             )
         except KeyError as mismatch:
             # new times are not a subset of existing times, what to do?
             timestep: np.timedelta64 = self.output.attrs[DataModelAttributes.timestep]  # type: ignore[misc] # Due to the Any attrs
-            timestart: np.datetime64 = min(self.output[DataModelCoords.time].data)  # type: ignore[misc] # Due to the numpy array .data
-            new_time = new_output[DataModelCoords.time]
+            timestart: np.datetime64 = min(self.output[DataModelCoords.time.name].data)  # type: ignore[misc] # Due to the numpy array .data
+            new_time = new_output[DataModelCoords.time.name]
             new_start: np.datetime64 = min(new_time.data)  # type: ignore[misc] # Due to the numpy array .data
             new_diffs = np.unique(np.diff(new_time.data))  # type: ignore[misc] # Due to the time_coord numpy array
             # All timediffs should be larger and integer divisible with timestep of _output
@@ -328,7 +356,7 @@ class DataModel:
             if not is_compatible:
                 msg = (
                     f"Timecoordinate values of new output are not compatible: not all values are"
-                    f" at a position start_time {min(self.output[DataModelCoords.time].data)}"  # type: ignore[misc] # Due to the numpy arrays
+                    f" at a position start_time {min(self.output[DataModelCoords.time.name].data)}"  # type: ignore[misc] # Due to the numpy arrays
                     f" +/- integer multiple of timestep {timestep}"
                 )
                 raise ValueError from mismatch
@@ -336,7 +364,7 @@ class DataModel:
             #  monotonic time. Therefore, explicitly create new time coord values
             time_starts = [timestart, new_start]
             time_ends: list[np.datetime64] = [
-                max(self.output[DataModelCoords.time].data),  # type: ignore[misc] # Due to the numpy arrays
+                max(self.output[DataModelCoords.time.name].data),  # type: ignore[misc] # Due to the numpy arrays
                 max(new_time.data),  # type: ignore[misc] # Due to the numpy arrays
             ]
 
@@ -344,7 +372,7 @@ class DataModel:
                 time_starts,
                 time_ends,
                 [timestep],
-                self.output[DataModelCoords.time].coords,  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
+                self.output[DataModelCoords.time.name].coords,  # type: ignore[misc] # coords is a DataArrayCoordinates[Any]
             )
             self._output = self._output.merge(time_coord)
 
