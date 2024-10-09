@@ -58,6 +58,7 @@ class DataModelDims:
     location = "location_id"
     ensemble = "ensemble_member"
     simstart = "simulation_starttime"
+    leadtime = "leadtime"
 
 
 class DataModelCoords:
