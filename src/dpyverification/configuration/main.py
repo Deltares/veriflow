@@ -1,14 +1,14 @@
 """Classes to generate a valid configuration object from the specification in a file."""
 
 import pathlib
-from enum import Enum
+from enum import StrEnum
 
 import yaml
 
 from .schema import ConfigSchema, FewsWebserviceInput, GeneralInfo, SimObsPairs
 
 
-class ConfigTypes(Enum):
+class ConfigTypes(StrEnum):
     """The types of configuration files that are supported."""
 
     YAML = "yaml"
@@ -21,15 +21,18 @@ class ConfigTypes(Enum):
 class Config:
     """The configuration definition of the dpyverification pipeline."""
 
-    def __init__(self, configfile: pathlib.Path, configtype: ConfigTypes) -> None:
-        if configtype is ConfigTypes.RUNINFO:
+    def __init__(self, configfile: pathlib.Path, configtype: ConfigTypes | str) -> None:
+        conftype = ConfigTypes(
+            configtype,
+        )
+        if conftype is ConfigTypes.RUNINFO:
             # parse the runinfo into a yaml
             yamlcontent = {
                 "fileversion": "0.0.1",
             }
             # TODO(AU): Implement parsing of a runinfo xml file to valid config dict # noqa: FIX002
             #   https://github.com/Deltares-research/DPyVerification/issues/8
-        elif configtype is ConfigTypes.YAML:
+        elif conftype is ConfigTypes.YAML:
             with configfile.open() as cf:
                 yamlcontent = yaml.safe_load(cf)
             # conversion from older fileversion to current schema

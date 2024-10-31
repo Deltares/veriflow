@@ -35,7 +35,7 @@ def test_execute_pipeline_happy_yaml(tmp_path: Path) -> None:
         testconf["output"][0]["filename"] = tmpout.name
     with tmpfile.open(mode="w") as tf:
         yaml.dump(testconf, tf)
-    pipeline.execute_pipeline(tmpfile, conf_type="yaml")
+    pipeline.execute_pipeline(tmpfile, configtype="yaml")
 
     assert tmpout.exists()
 
@@ -43,10 +43,10 @@ def test_execute_pipeline_happy_yaml(tmp_path: Path) -> None:
 def test_execute_pipeline_happy_runinfo() -> None:
     """Test that runinfo is not implemented yet."""
     with pytest.raises(ValidationError, match="Field required"):
-        pipeline.execute_pipeline(Path(), conf_type="runinfo")
+        pipeline.execute_pipeline(Path(), configtype="runinfo")
 
 
 def test_execute_pipeline_bad_conf_type() -> None:
     """Check that error on invalid conf type."""
     with pytest.raises(ValueError, match="'1234567890' is not a valid ConfigTypes"):
-        pipeline.execute_pipeline(Path(), conf_type="1234567890")
+        pipeline.execute_pipeline(Path(), configtype="1234567890")
