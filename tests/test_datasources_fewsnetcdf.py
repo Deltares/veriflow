@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import xarray as xr
 import yaml
-from dpyverification.configuration import ConfigSchema
+from dpyverification.configuration import Config
 from dpyverification.constants import DataModelAttributes, DataModelCoords, DataModelDims
 from dpyverification.datasources.fewsnetcdf import (
     FewsNetcdfFile,
@@ -16,18 +16,28 @@ from tests import TESTS_CONFIGURATION_FILE, TESTS_FEWS_COMPLIANT_FILE
 
 
 # Not so very happy yet
-def test_get_data_happy() -> None:
+def test_get_data_happy(tmp_path: Path) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
+    # Create an adapted testconfig, based on default testconfig
+    # - load default config
+    # - adapt config
+    # - create config object from adapted config
+    # Load:
     with TESTS_CONFIGURATION_FILE.open() as cf:
-        testconf = yaml.safe_load(cf)  # type: ignore[misc]
-        testconf["datasources"][0]["datasourcetype"] = "fewsnetcdf"  # type: ignore[misc]
-        testconf["datasources"][0]["directory"] = str(TESTS_FEWS_COMPLIANT_FILE.parent)  # type: ignore[misc]
-        testconf["datasources"][0]["filename"] = TESTS_FEWS_COMPLIANT_FILE.name  # type: ignore[misc]
-        testconf["datasources"][0]["simobstype"] = "sim"  # type: ignore[misc]
-    parsed_content = ConfigSchema(**testconf)  # type: ignore[misc]
+        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
+    # Adapt:
+    testconf["datasources"][0]["datasourcetype"] = "fewsnetcdf"
+    testconf["datasources"][0]["directory"] = str(TESTS_FEWS_COMPLIANT_FILE.parent)
+    testconf["datasources"][0]["filename"] = TESTS_FEWS_COMPLIANT_FILE.name
+    testconf["datasources"][0]["simobstype"] = "sim"
+    # Create:
+    tmp_conf_file = tmp_path / "tempconf.yaml"
+    with tmp_conf_file.open(mode="w") as tf:
+        yaml.dump(testconf, tf)
+    conf = Config(tmp_conf_file, "yaml")
 
     with pytest.raises(NotImplementedError):
-        _ = FewsNetcdfFile.get_data(parsed_content.datasources[0])
+        _ = FewsNetcdfFile.get_data(conf.content.datasources[0])
 
     # When no longer not-implemented, assert the contents
     # Also, when implemented, add to TESTS_CONFIGURATION_FILE?
@@ -58,16 +68,26 @@ def test_write_happy(tmp_path: Path) -> None:
     tmpfile = tmp_path / "test.nc"
     assert not tmpfile.exists()
 
+    # Create an adapted testconfig, based on default testconfig
+    # - load default config
+    # - adapt config
+    # - create config object from adapted config
+    # Load:
     with TESTS_CONFIGURATION_FILE.open() as cf:
-        testconf = yaml.safe_load(cf)  # type: ignore[misc]
-        testconf["output"][0]["directory"] = str(tmpfile.parent)  # type: ignore[misc]
-        testconf["output"][0]["filename"] = tmpfile.name  # type: ignore[misc]
-    parsed_content = ConfigSchema(**testconf)  # type: ignore[misc]
+        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
+    # Adapt:
+    testconf["output"][0]["directory"] = str(tmpfile.parent)
+    testconf["output"][0]["filename"] = tmpfile.name
+    # Create:
+    tmp_conf_file = tmp_path / "tempconf.yaml"
+    with tmp_conf_file.open(mode="w") as tf:
+        yaml.dump(testconf, tf)
+    conf = Config(tmp_conf_file, "yaml")
 
     # rename_dims
     # rename_vars
 
-    FewsNetcdfFile.write_data(parsed_content.output[0], ds_datamodel)
+    FewsNetcdfFile.write_data(conf.content.output[0], ds_datamodel)
 
     assert tmpfile.exists()
 
@@ -79,11 +99,21 @@ def test_read_write_equal(tmp_path: Path) -> None:
     tmpfile = tmp_path / "test.nc"
     assert not tmpfile.exists()
 
+    # Create an adapted testconfig, based on default testconfig
+    # - load default config
+    # - adapt config
+    # - create config object from adapted config
+    # Load:
     with TESTS_CONFIGURATION_FILE.open() as cf:
-        testconf = yaml.safe_load(cf)  # type: ignore[misc]
-        testconf["output"][0]["directory"] = str(tmpfile.parent)  # type: ignore[misc]
-        testconf["output"][0]["filename"] = tmpfile.name  # type: ignore[misc]
-    parsed_content = ConfigSchema(**testconf)  # type: ignore[misc]
+        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
+    # Adapt:
+    testconf["output"][0]["directory"] = str(tmpfile.parent)
+    testconf["output"][0]["filename"] = tmpfile.name
+    # Create:
+    tmp_conf_file = tmp_path / "tempconf.yaml"
+    with tmp_conf_file.open(mode="w") as tf:
+        yaml.dump(testconf, tf)
+    conf = Config(tmp_conf_file, "yaml")
 
     # A fewscompliant nc file uses different names than our internal datamodel
     # Adapt the ds to look like our internal datamodel
@@ -92,7 +122,7 @@ def test_read_write_equal(tmp_path: Path) -> None:
     ds_datamodel = ds_datamodel.rename_vars({"analysis_time": DataModelCoords.simstart.name})  # type: ignore[misc] # attrs is a dict[Any,Any]
     ds_datamodel.attrs[DataModelAttributes.timestep] = 1  # type: ignore[misc] # attrs is a dict[Any,Any]
 
-    FewsNetcdfFile.write_data(parsed_content.output[0], ds_datamodel)
+    FewsNetcdfFile.write_data(conf.content.output[0], ds_datamodel)
 
     assert tmpfile.exists()
 

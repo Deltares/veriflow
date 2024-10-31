@@ -18,24 +18,25 @@ from tests import (
 
 def test_execute_pipeline_happy_yaml(tmp_path: Path) -> None:
     """Test at least one valid conf file for each conf type."""
-    tmpfile = tmp_path / "tempconf.yaml"
     tmpout = tmp_path / "out.netcdf"
-
     assert not tmpout.exists()
 
     with TESTS_CONFIGURATION_FILE.open() as cf:
         testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
-        testconf["datasources"][0]["directory"] = str(TESTS_OBSERVATIONS_FILE.parent)
-        testconf["datasources"][0]["filename"] = TESTS_OBSERVATIONS_FILE.name
-        testconf["datasources"][1]["directory"] = str(TESTS_FORECASTS_FILE.parent)
-        testconf["datasources"][1]["filename"] = TESTS_FORECASTS_FILE.name
-        testconf["datasources"].append(copy.deepcopy(testconf["datasources"][1]))
-        testconf["datasources"][2]["filename"] = TESTS_FORECASTS_2_FILE.name
-        testconf["output"][0]["directory"] = str(tmpout.parent)
-        testconf["output"][0]["filename"] = tmpout.name
-    with tmpfile.open(mode="w") as tf:
+
+    # Create an adapted testconfig, based on default testconfig, and write to temporary file
+    testconf["datasources"][0]["directory"] = str(TESTS_OBSERVATIONS_FILE.parent)
+    testconf["datasources"][0]["filename"] = TESTS_OBSERVATIONS_FILE.name
+    testconf["datasources"][1]["directory"] = str(TESTS_FORECASTS_FILE.parent)
+    testconf["datasources"][1]["filename"] = TESTS_FORECASTS_FILE.name
+    testconf["datasources"].append(copy.deepcopy(testconf["datasources"][1]))
+    testconf["datasources"][2]["filename"] = TESTS_FORECASTS_2_FILE.name
+    testconf["output"][0]["directory"] = str(tmpout.parent)
+    testconf["output"][0]["filename"] = tmpout.name
+    tmp_conf_file = tmp_path / "tempconf.yaml"
+    with tmp_conf_file.open(mode="w") as tf:
         yaml.dump(testconf, tf)
-    pipeline.execute_pipeline(tmpfile, configtype="yaml")
+    pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
 
     assert tmpout.exists()
 
