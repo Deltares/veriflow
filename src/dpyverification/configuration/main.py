@@ -54,36 +54,72 @@ class Config:
         # NOTE: for now, all in one method. When more validation added, have one function per
         #  top-level attribute?
 
-        def propagate_leadtimes(
-            specific: FewsWebserviceInput | SimObsPairs,
-            general: GeneralInfo,
-            name: str,
-        ) -> None:
-            if specific.leadtimes and general.leadtimes:
-                missing = [
-                    dslead
-                    for dslead in specific.leadtimes.timedelta64
-                    if dslead not in general.leadtimes.timedelta64
-                ]
-                if any(missing):
-                    msg = (
-                        f"The following leadtimes are used in {name}, but are not"
-                        f" present in the general leadtimes: {missing}"
-                    )
-                    raise ValueError(msg)
-            elif general.leadtimes:
-                specific.leadtimes = general.leadtimes
-            else:
-                msg = (
-                    f"A {name} is used, but neither it nor the general section specifies the"
-                    f"leadtimes to be used."
-                )
-                raise ValueError(msg)
-
         for datasource in self.content.datasources:
             if isinstance(datasource, FewsWebserviceInput):
-                propagate_leadtimes(datasource, self.content.general, "FewsWebserviceInput")
+                self._propagate_leadtimes(datasource, self.content.general, "FewsWebserviceInput")
+                self._propagate_verificationperiod(
+                    datasource,
+                    self.content.general,
+                    "FewsWebserviceInput",
+                )
 
         for calculation in self.content.calculations:
             if isinstance(calculation, SimObsPairs):
-                propagate_leadtimes(calculation, self.content.general, "SimObsPairs")
+                self._propagate_leadtimes(calculation, self.content.general, "SimObsPairs")
+
+    @staticmethod
+    def _propagate_leadtimes(
+        specific: FewsWebserviceInput | SimObsPairs,
+        general: GeneralInfo,
+        name: str,
+    ) -> None:
+        if specific.leadtimes and general.leadtimes:
+            missing = [
+                dslead
+                for dslead in specific.leadtimes.timedelta64
+                if dslead not in general.leadtimes.timedelta64
+            ]
+            if any(missing):
+                msg = (
+                    f"The following leadtimes are used in {name}, but are not"
+                    f" present in the general leadtimes: {missing}"
+                )
+                raise ValueError(msg)
+        elif general.leadtimes:
+            specific.leadtimes = general.leadtimes
+        else:
+            msg = (
+                f"A {name} is used, but neither it nor the general section specifies the"
+                f"leadtimes to be used."
+            )
+            raise ValueError(msg)
+
+    @staticmethod
+    def _propagate_verificationperiod(
+        specific: FewsWebserviceInput,
+        general: GeneralInfo,
+        name: str,
+    ) -> None:
+        if specific.verificationperiod and general.verificationperiod:
+            specific_period = specific.verificationperiod
+            general_period = general.verificationperiod
+            if (
+                specific_period.start.datetime != general_period.start.datetime
+                or specific_period.end.datetime != general_period.end.datetime
+            ):
+                msg = (
+                    f"The verificationperiod used in {name} ({specific_period}) is not exactly"
+                    f" equal to the verificationperiod in the general section"
+                    f" ({general_period})."
+                )
+                raise ValueError(msg)
+        elif general.verificationperiod:
+            # NOTE: Do NOT use the X_period variables here, as this change needs to be applied
+            #  to the `specific` object itself.
+            specific.verificationperiod = general.verificationperiod
+        else:
+            msg = (
+                f"A {name} is used, but neither it nor the general section specifies the"
+                f"verificationperiod to be used."
+            )
+            raise ValueError(msg)

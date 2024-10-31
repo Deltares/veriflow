@@ -82,7 +82,14 @@ class FewsWebserviceInput(FewsWebservice):
     qualifier_ids: list[str]
     document_format: Literal["PI_XML"]
     document_version: Literal["1.32"]  # What version we support
-    leadtimes: LeadTimes | None = Field(None, description="Required for simulations.")
+    leadtimes: LeadTimes | None = Field(
+        None,
+        description="Value from General leadtimes used if not set.",
+    )
+    verificationperiod: TimePeriod | None = Field(
+        None,
+        description="Value from General verificationperiod used if not set.",
+    )
 
     @field_validator("leadtimes")
     @classmethod
