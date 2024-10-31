@@ -34,9 +34,12 @@ def test_get_timeseries_sim_happy() -> None:
     """Check that the imported pixml gives an xarray with the expected content."""
     with TESTS_CONFIGURATION_FILE.open() as cf:
         leadtimes = LeadTimes(unit=TimeUnits.hour, values=[3, 6])
+        verificationperiod = {
+            "start": {"value": "2024-06-01T00:00:00Z"},
+            "end": {"value": "2024-06-03T00:00:00Z"},
+        }
         testconf = yaml.safe_load(cf)  # type: ignore[misc]
-        testconf["general"]["verificationperiod"]["start"]["value"] = "2024-06-01T00:00:00Z"  # type: ignore[misc]
-        testconf["general"]["verificationperiod"]["end"]["value"] = "2024-06-03T00:00:00Z"  # type: ignore[misc]
+        testconf["general"]["verificationperiod"] = verificationperiod  # type: ignore[misc]
         testconf["datasources"][0]["simobstype"] = "sim"  # type: ignore[misc]
         testconf["datasources"][0]["datasourcetype"] = "fewswebservice"  # type: ignore[misc]
         testconf["datasources"][0]["url"] = (  # type: ignore[misc]
@@ -49,11 +52,11 @@ def test_get_timeseries_sim_happy() -> None:
         testconf["datasources"][0]["document_format"] = "PI_XML"  # type: ignore[misc]
         testconf["datasources"][0]["document_version"] = "1.32"  # type: ignore[misc]
         testconf["datasources"][0]["leadtimes"] = leadtimes  # type: ignore[misc]
-        testconf["datasources"][0]["document_version"] = "1.32"  # type: ignore[misc]
+        testconf["datasources"][0]["verificationperiod"] = verificationperiod  # type: ignore[misc]
 
     parsed_content = ConfigSchema(**testconf)  # type: ignore[misc]
 
-    data = FewsWebService.get_data(parsed_content.datasources[0], giconfig=parsed_content.general)
+    data = FewsWebService.get_data(parsed_content.datasources[0])
 
     assert len(data[0].xarray.time) == SIM_TIME_DIM_LENGTH  # type: ignore[misc]
 
@@ -62,9 +65,12 @@ def test_get_timeseries_sim_happy() -> None:
 def test_get_timeseries_obs_happy() -> None:
     """Check that the imported pixml gives an xarray with the expected content."""
     with TESTS_CONFIGURATION_FILE.open() as cf:
+        verificationperiod = {
+            "start": {"value": "2024-06-01T00:00:00Z"},
+            "end": {"value": "2024-06-03T00:00:00Z"},
+        }
         testconf = yaml.safe_load(cf)  # type: ignore[misc]
-        testconf["general"]["verificationperiod"]["start"]["value"] = "2024-06-01T00:00:00Z"  # type: ignore[misc]
-        testconf["general"]["verificationperiod"]["end"]["value"] = "2024-06-03T00:00:00Z"  # type: ignore[misc]
+        testconf["general"]["verificationperiod"] = verificationperiod  # type: ignore[misc]
         testconf["datasources"][0]["simobstype"] = "obs"  # type: ignore[misc]
         testconf["datasources"][0]["datasourcetype"] = "fewswebservice"  # type: ignore[misc]
         testconf["datasources"][0]["url"] = (  # type: ignore[misc]
@@ -76,9 +82,10 @@ def test_get_timeseries_obs_happy() -> None:
         testconf["datasources"][0]["qualifier_ids"] = []  # type: ignore[misc]
         testconf["datasources"][0]["document_format"] = "PI_XML"  # type: ignore[misc]
         testconf["datasources"][0]["document_version"] = "1.32"  # type: ignore[misc]
+        testconf["datasources"][0]["verificationperiod"] = verificationperiod  # type: ignore[misc]
 
     parsed_content = ConfigSchema(**testconf)  # type: ignore[misc]
 
-    data = FewsWebService.get_data(parsed_content.datasources[0], giconfig=parsed_content.general)
+    data = FewsWebService.get_data(parsed_content.datasources[0])
 
     assert len(data[0].xarray.time) == OBS_TIME_DIM_LENGTH  # type: ignore[misc]
