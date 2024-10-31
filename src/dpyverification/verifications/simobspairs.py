@@ -1,34 +1,31 @@
 """Create simobspair for specific lead times."""
 
-import xarray
-from numpy import datetime64, timedelta64
+from typing import TYPE_CHECKING
 
-from dpyverification.configuration import Calculation, Config
+import xarray
+
+from dpyverification.configuration import Calculation
 from dpyverification.constants import CalculationTypeEnum, DataModelCoords, DataModelDims
 from dpyverification.datamodel import DataModel
+
+if TYPE_CHECKING:
+    from numpy import datetime64
 
 
 def simobspairs(
     calcconfig: Calculation,
     data: DataModel,
-    fullconfig: Config,
 ) -> xarray.Dataset:
     """Create pairs of obs and sim values, for the given leadtimes (default leadtime 0)."""
     if calcconfig.calculationtype != CalculationTypeEnum.simobspairs:
         msg = "Input calcconfig does not have datasourcetype simobspairs"
         raise TypeError(msg)
-    # TODO(AU): Adapt config creation to be able to pass general items to other parts # noqa: FIX002
-    #   https://github.com/Deltares-research/DPyVerification/issues/21
-    #   Here, should be able to use calcconfig.leadtimes unconditionally
-    if calcconfig.leadtimes:
-        # TODO(AU): Check that specific leadtimes are subset of general leadtimes # noqa: FIX002
-        #   https://github.com/Deltares-research/DPyVerification/issues/16
-        #   Here, this if-elif should then no longer be needed.
-        leadtimes = calcconfig.leadtimes.timedelta64
-    elif fullconfig.content.general.leadtimes:
-        leadtimes = fullconfig.content.general.leadtimes.timedelta64
-    else:
-        leadtimes = [timedelta64(0)]
+    if not calcconfig.leadtimes:
+        # When called from pipeline, this should not be possible. However, do need to check in case
+        # this function is called from a custom implementation.
+        msg = "No leadtimes specified in SimObsPairs configuration"
+        raise ValueError(msg)
+    leadtimes = calcconfig.leadtimes.timedelta64
 
     leadsets = []
     # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002

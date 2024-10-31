@@ -44,7 +44,7 @@ def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -
 
     for calculation in config.content.calculations:
         if calculation.calculationtype == CalculationTypeEnum.simobspairs:
-            datamodel.add_to_output(simobspairs.simobspairs(calculation, datamodel, config))
+            datamodel.add_to_output(simobspairs.simobspairs(calculation, datamodel))
         else:
             # If an unknown calculation is used, error
             raise NotImplementedError
