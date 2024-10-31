@@ -14,22 +14,22 @@ def test_main_yaml_happy() -> None:
 
     assert config.filename == TESTS_CONFIGURATION_FILE
     assert config.configtype == ConfigTypes.YAML
-    assert config.datasources[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
+    assert config.content.datasources[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
         "datasourcetype": "pixml",
         "simobstype": "obs",
         "directory": "iets",
         "filename": "anders",
     }
-    assert config.general.verificationperiod.model_dump() == {  # type: ignore[misc] # model_dump can have Any
+    assert config.content.general.verificationperiod.model_dump() == {  # type: ignore[misc] # model_dump can have Any
         "start": {"format": "%Y-%m-%dT%H:%M:%S%z", "value": "2000-01-01T00:00:00Z"},
         "end": {"format": "%Y-%m-%dT%H:%M:%S%z", "value": "2001-01-01T00:00:00Z"},
     }
-    assert config.calculations[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
+    assert config.content.calculations[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
         "calculationtype": "simobspair",
         "leadtimes": None,
         "variablepairs": [{"obs": "Q.m", "sim": "Q.fs"}],
     }
-    assert config.output[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
+    assert config.content.output[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
         "datasourcetype": "fewsnetcdf",
         "directory": "somewhere",
         "filename": "something",

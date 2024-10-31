@@ -25,8 +25,8 @@ def simobspairs(
         #   https://github.com/Deltares-research/DPyVerification/issues/16
         #   Here, this if-elif should then no longer be needed.
         leadtimes = calcconfig.leadtimes.timedelta64
-    elif fullconfig.general.leadtimes:
-        leadtimes = fullconfig.general.leadtimes.timedelta64
+    elif fullconfig.content.general.leadtimes:
+        leadtimes = fullconfig.content.general.leadtimes.timedelta64
     else:
         leadtimes = [timedelta64(0)]
 

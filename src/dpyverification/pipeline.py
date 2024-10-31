@@ -31,7 +31,7 @@ def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -
     config = Config(configfile, conftype)
 
     datalists = []
-    for datasource in config.datasources:
+    for datasource in config.content.datasources:
         # Might want to turn this if-elif into a mapping when many different datasourcetypes
         if datasource.datasourcetype == DataSourceTypeEnum.pixml:
             datalists.append(PiXmlFile.get_data(datasource))
@@ -42,14 +42,14 @@ def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -
 
     datamodel = DataModel(datalist)
 
-    for calculation in config.calculations:
+    for calculation in config.content.calculations:
         if calculation.calculationtype == CalculationTypeEnum.simobspairs:
             datamodel.add_to_output(simobspairs.simobspairs(calculation, datamodel, config))
         else:
             # If an unknown calculation is used, error
             raise NotImplementedError
 
-    for output in config.output:
+    for output in config.content.output:
         if output.datasourcetype == DataSourceTypeEnum.fewsnetcdf:
             FewsNetcdfFile.write_data(output, datamodel.output)
         else:
