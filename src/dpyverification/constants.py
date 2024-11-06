@@ -62,6 +62,7 @@ class DataModelDims:
     location = "location_id"
     ensemble = "ensemble_member"
     simstart = "simulation_starttime"
+    leadtime = "leadtime"
 
 
 class DataModelCoords:
@@ -133,6 +134,13 @@ class DataModelCoords:
         (
             ("standard_name", "forecast_reference_time"),
             ("long_name", "forecast_reference_time"),
+        ),
+    )
+    leadtime = CoordinateProperties(
+        DataModelDims.leadtime,
+        (
+            ("standard_name", "forecast_period"),
+            ("long_name", "forecast_period"),
         ),
     )
 

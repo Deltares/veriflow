@@ -34,7 +34,7 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
             raise NotImplementedError
     datalist = list(itertools.chain.from_iterable(datalists))
 
-    datamodel = DataModel(datalist)
+    datamodel = DataModel(datalist, config.content.general)
 
     for calculation in config.content.calculations:
         if calculation.calculationtype == CalculationType.SIMOBSPAIRS:
