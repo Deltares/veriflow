@@ -25,7 +25,7 @@ from typing import Annotated, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field
 
 from dpyverification.constants import CalculationType, DataSourceType, SimObsType, TimeUnits
 
@@ -75,30 +75,64 @@ class FewsWebservice(BaseModel):
 
 
 class FewsWebserviceInput(FewsWebservice):
-    simobstype: Literal[SimObsType.OBS, SimObsType.SIM]
-    location_ids: list[str]
-    parameter_ids: list[str]
-    module_instance_ids: list[str]
-    qualifier_ids: list[str]
-    document_format: Literal["PI_XML"]
-    document_version: Literal["1.32"]  # What version we support
-    leadtimes: LeadTimes | None = Field(
-        None,
-        description="Value from General leadtimes used if not set.",
-    )
+    location_ids: Annotated[list[str], Field(min_length=1)]
+    parameter_ids: Annotated[list[str], Field(min_length=1)]
+    module_instance_ids: Annotated[list[str], Field(min_length=1)]
+    qualifier_ids: list[str] = []  # Note that no min_length, so empty list is ok.
     verificationperiod: TimePeriod | None = Field(
         None,
         description="Value from General verificationperiod used if not set.",
     )
+    _document_format: Annotated[
+        Literal["PI_XML"],
+        Field(
+            description=(
+                "A private attribute with a default value:"
+                " 1. A literal with a default value, as users are not expected to set it."
+                " 2. Private, since the code only supports this one option for now, but it is"
+                " likely that other values may be needed in the future, depending on what FEWS"
+                " system this code interacts with. Then this value does need to be configurable,"
+                " therefore do have it as a configuration setting already."
+            ),
+        ),
+    ] = "PI_XML"
+    _document_version: Annotated[
+        Literal["1.32"],
+        Field(
+            description=(
+                "A private attribute with a default value:"
+                " 1. A literal with a default value, as users are not expected to set it."
+                " 2. Private, since the code only supports this one option for now, but it is"
+                " likely that other values may be needed in the future, depending on what FEWS"
+                " system this code interacts with. Then this value does need to be configurable,"
+                " therefore do have it as a configuration setting already."
+            ),
+        ),
+    ] = "1.32"
 
-    @field_validator("leadtimes")
-    @classmethod
-    def check_field_leadtimes(cls, v: LeadTimes | None, info: ValidationInfo) -> LeadTimes | None:
-        """Check if leadtimes defined, when simobstype is sim."""
-        if info.data["simobstype"] == SimObsType.sim and v is None:  # type: ignore[misc]
-            msg = "Lead times are required when simobstype is SimObsType.sim."
-            raise ValueError(msg)
-        return v
+
+class FewsWebserviceInputObs(FewsWebserviceInput):
+    simobstype: Literal[SimObsType.OBS]
+
+
+class FewsWebserviceInputSim(FewsWebserviceInput):
+    simobstype: Literal[SimObsType.SIM]
+    leadtimes: Annotated[
+        LeadTimes | None,
+        Field(
+            description="Value from General leadtimes used if not set.",
+        ),
+    ] = None
+    forecastcount: Annotated[
+        int,
+        Field(
+            description=(
+                "Number of forecast runs to retrieve."
+                " When value is 0 (default), ALL matching forecast runs will be used."
+            ),
+        ),
+    ] = 0
+    ensemble_id: str | None = None
 
 
 class FewsWebserviceOutput(FewsWebservice):
@@ -140,7 +174,7 @@ class FewsNetcdfOutput(LocalFile):
 
 
 DataSource: TypeAlias = (
-    FewsWebserviceInput | FileInputPixml | FileInputFewsnetcdf
+    FewsWebserviceInputSim | FewsWebserviceInputObs | FileInputPixml | FileInputFewsnetcdf
 )  # A Type Alias for the combination of data source schema classes
 
 Output: TypeAlias = (
