@@ -1,13 +1,21 @@
-"""The schema definition for the configuration yaml file.
+"""The definition of the configuration settings.
+
+This definition is used both as the schema for the configuration yaml file, and as the content of
+the dpyverification configuration object.
 
 To generate a yaml / json file with the json representation of this schema:
-    with FILEPATH.open() as myfile:
+    import pathlib
+    import yaml
+    from dpyverification.configuration import ConfigSchema
+    FILEPATH = pathlib.Path("YOUR_PATH_HERE")
+    with FILEPATH.open("w") as myfile:
         yaml.dump(ConfigSchema.model_json_schema(), myfile)
 
-To generate a pydantic schema from a yaml/json file, see datamodel_code_generator,
-for example from https://docs.pydantic.dev/latest/integrations/datamodel_code_generator/
-Note that this can generate a pydantic model that is not up-to-date with the latest
-pydantic / python, and might need some modifications.
+Sidenote: It is also possible to go the other way around and generate a pydantic schema from a
+yaml/json file, see datamodel_code_generator, for example from
+https://docs.pydantic.dev/latest/integrations/datamodel_code_generator/ . Note that this can
+generate a pydantic model that is not up-to-date with the latest pydantic / python, and might
+need some modifications.
 """
 
 # TODO(AU): Add pydantic Field with description, and maybe title, to all attributes. # noqa: FIX002
@@ -31,7 +39,7 @@ from dpyverification.constants import CalculationType, DataSourceType, SimObsTyp
 
 
 class DateTime(BaseModel):
-    format: str | None = "%Y-%m-%dT%H:%M:%S%z"
+    format: str = "%Y-%m-%dT%H:%M:%S%z"
     value: str
 
     @property
@@ -195,7 +203,12 @@ class SimObsPairs(BaseModel):
     calculationtype: Literal[CalculationType.SIMOBSPAIRS]
     # One combination of list-of-leadtimes and list-of-variablepairs, use multiple SimObsPairs
     # to define more combinations
-    leadtimes: LeadTimes | None = None  # Default from GeneralInfo
+    leadtimes: Annotated[
+        LeadTimes | None,
+        Field(
+            description="Value from General leadtimes used if not set.",
+        ),
+    ] = None
     variablepairs: list[SimObsVariables]
 
 
@@ -205,9 +218,8 @@ Calculation: TypeAlias = (
 
 
 class GeneralInfo(BaseModel):
-    # Is this general info, or might it be different for different calculations?
     verificationperiod: TimePeriod
-    leadtimes: LeadTimes | None = None
+    leadtimes: LeadTimes = LeadTimes(values=[0], unit=TimeUnits("h"))
 
 
 class ConfigSchema(BaseModel):
