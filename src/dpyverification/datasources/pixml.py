@@ -15,7 +15,7 @@ from dpyverification.configuration import DataSource
 from dpyverification.constants import (
     DataModelCoords,
     DataModelDims,
-    DataSourceTypeEnum,
+    DataSourceType,
     SimObsType,
 )
 from dpyverification.datasources.genericdatasource import GenericDatasource
@@ -74,7 +74,7 @@ class PiXmlFile(GenericDatasource):
                 raise ValueError(msg)
             return str(timeseries_id.location_id), lat, lon  # type: ignore[misc] # timeseries_id is Any
 
-        if simobstype == SimObsType.sim:
+        if simobstype == SimObsType.SIM:
             simulation_starttime: datetime.datetime = pi_series.forecast_datetime  # type: ignore[misc]  # pi_series is Any
             ensemble_member: int
             for ensemble_member in range(pi_series.ensemble_size):  # type: ignore[misc]  # pi_series is Any
@@ -106,7 +106,7 @@ class PiXmlFile(GenericDatasource):
                     da.name = variable_name
                     data_arrays.append(da)
 
-        elif simobstype == SimObsType.obs:
+        elif simobstype == SimObsType.OBS:
             for timeseries_id, data in pi_series.items():  # type: ignore[misc] # pi_series and data are Any
                 location_id, lat, lon = get_location_info(pi_series, timeseries_id)  # type: ignore[misc]  # pi_series is Any
                 coords = {
@@ -135,10 +135,10 @@ class PiXmlFile(GenericDatasource):
     @classmethod
     def get_data(cls, dsconfig: DataSource) -> list[Self]:
         """Retrieve pixml content as an xarray DataArray."""
-        if dsconfig.datasourcetype != DataSourceTypeEnum.pixml:
+        if dsconfig.datasourcetype != DataSourceType.PIXML:
             msg = "Input dsconfig does not have datasourcetype pixml"
             raise TypeError(msg)
-        if dsconfig.simobstype == SimObsType.combined:
+        if dsconfig.simobstype == SimObsType.COMBINED:
             msg = "Cannot yet handle combined simobs data"
             raise NotImplementedError(msg)
 

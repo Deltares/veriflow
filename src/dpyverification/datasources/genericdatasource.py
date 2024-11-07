@@ -23,7 +23,7 @@ class GenericDatasource:
 
     @simobstype.setter
     def simobstype(self, new_simobstype: SimObsType) -> None:
-        if new_simobstype not in (SimObsType.sim, SimObsType.obs):
+        if new_simobstype not in (SimObsType.SIM, SimObsType.OBS):
             # Even if the underlying file or service can contain combined data, the creation of the
             #  datasource objects should split those. This assumption can then be used in the
             #  creation of the data model.

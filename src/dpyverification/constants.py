@@ -7,44 +7,48 @@ These values are can be used throughout DPyVerification.
 import pathlib
 import subprocess
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import StrEnum, unique
 
 import importlib_metadata
 
 
-class DataSourceTypeEnum(StrEnum):
+@unique
+class DataSourceType(StrEnum):
     """Enumeration of the supported input and / or output datasource types."""
 
-    pixml = "pixml"
-    fewsnetcdf = "fewsnetcdf"
-    fewswebservice = "fewswebservice"
+    PIXML = "pixml"
+    FEWSNETCDF = "fewsnetcdf"
+    FEWSWEBSERVICE = "fewswebservice"
 
 
+@unique
 class SimObsType(StrEnum):
     """Enumeration of the supported types of input data."""
 
-    sim = "sim"
-    obs = "obs"
-    combined = "combined"
+    SIM = "sim"
+    OBS = "obs"
+    COMBINED = "combined"
 
 
-class CalculationTypeEnum(StrEnum):
+@unique
+class CalculationType(StrEnum):
     """Enumeration of the implemented verification calculations."""
 
-    simobspairs = "simobspair"
-    pinscore = "pinscore"
+    SIMOBSPAIRS = "simobspair"
+    PINSCORE = "pinscore"
 
 
+@unique
 class TimeUnits(StrEnum):
     """Time unit strings, compatible with numpy datetime64 and timedelta64."""
 
-    year = "Y"
-    month = "M"
-    week = "W"
-    day = "D"
-    hour = "h"
-    minute = "m"
-    second = "s"
+    YEAR = "Y"
+    MONTH = "M"
+    WEEK = "W"
+    DAY = "D"
+    HOUR = "h"
+    MINUTE = "m"
+    SECOND = "s"
 
 
 class DataModelDims:

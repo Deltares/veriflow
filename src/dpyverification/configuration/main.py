@@ -1,13 +1,14 @@
 """Classes to generate a valid configuration object from the specification in a file."""
 
 import pathlib
-from enum import StrEnum
+from enum import StrEnum, unique
 
 import yaml
 
 from .schema import ConfigSchema, FewsWebserviceInput, GeneralInfo, SimObsPairs
 
 
+@unique
 class ConfigTypes(StrEnum):
     """The types of configuration files that are supported."""
 

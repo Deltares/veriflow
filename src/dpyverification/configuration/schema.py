@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-from dpyverification.constants import CalculationTypeEnum, DataSourceTypeEnum, SimObsType, TimeUnits
+from dpyverification.constants import CalculationType, DataSourceType, SimObsType, TimeUnits
 
 
 class DateTime(BaseModel):
@@ -70,12 +70,12 @@ class TimePeriod(BaseModel):
 
 
 class FewsWebservice(BaseModel):
-    datasourcetype: Literal[DataSourceTypeEnum.fewswebservice]
+    datasourcetype: Literal[DataSourceType.FEWSWEBSERVICE]
     url: str
 
 
 class FewsWebserviceInput(FewsWebservice):
-    simobstype: Literal[SimObsType.obs, SimObsType.sim]
+    simobstype: Literal[SimObsType.OBS, SimObsType.SIM]
     location_ids: list[str]
     parameter_ids: list[str]
     module_instance_ids: list[str]
@@ -111,12 +111,12 @@ class LocalFile(BaseModel):
 
 
 class FileInput(LocalFile):
-    datasourcetype: Literal[DataSourceTypeEnum.pixml, DataSourceTypeEnum.fewsnetcdf]
+    datasourcetype: Literal[DataSourceType.PIXML, DataSourceType.FEWSNETCDF]
     simobstype: SimObsType
 
 
 class FewsNetcdfOutput(LocalFile):
-    datasourcetype: Literal[DataSourceTypeEnum.fewsnetcdf]
+    datasourcetype: Literal[DataSourceType.FEWSNETCDF]
     title: Annotated[
         str | None,
         Field(
@@ -147,11 +147,11 @@ class SimObsVariables(BaseModel):
 
 
 class PinScore(BaseModel):
-    calculationtype: Literal[CalculationTypeEnum.pinscore]
+    calculationtype: Literal[CalculationType.PINSCORE]
 
 
 class SimObsPairs(BaseModel):
-    calculationtype: Literal[CalculationTypeEnum.simobspairs]
+    calculationtype: Literal[CalculationType.SIMOBSPAIRS]
     # One combination of list-of-leadtimes and list-of-variablepairs, use multiple SimObsPairs
     # to define more combinations
     leadtimes: LeadTimes | None = None  # Default from GeneralInfo

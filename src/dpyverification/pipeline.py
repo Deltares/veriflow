@@ -9,7 +9,7 @@ import itertools
 import pathlib
 
 from dpyverification.configuration import Config
-from dpyverification.constants import CalculationTypeEnum, DataSourceTypeEnum
+from dpyverification.constants import CalculationType, DataSourceType
 from dpyverification.datamodel import DataModel
 from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
 from dpyverification.datasources.pixml import PiXmlFile
@@ -27,7 +27,7 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
     datalists = []
     for datasource in config.content.datasources:
         # Might want to turn this if-elif into a mapping when many different datasourcetypes
-        if datasource.datasourcetype == DataSourceTypeEnum.pixml:
+        if datasource.datasourcetype == DataSourceType.PIXML:
             datalists.append(PiXmlFile.get_data(datasource))
         else:
             # If an unknown datasource is used, error
@@ -37,14 +37,14 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
     datamodel = DataModel(datalist)
 
     for calculation in config.content.calculations:
-        if calculation.calculationtype == CalculationTypeEnum.simobspairs:
+        if calculation.calculationtype == CalculationType.SIMOBSPAIRS:
             datamodel.add_to_output(simobspairs.simobspairs(calculation, datamodel))
         else:
             # If an unknown calculation is used, error
             raise NotImplementedError
 
     for output in config.content.output:
-        if output.datasourcetype == DataSourceTypeEnum.fewsnetcdf:
+        if output.datasourcetype == DataSourceType.FEWSNETCDF:
             FewsNetcdfFile.write_data(output, datamodel.output)
         else:
             # If an unknown output is specified, error

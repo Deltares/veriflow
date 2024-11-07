@@ -9,7 +9,7 @@ import requests
 
 from dpyverification.configuration import DataSource
 from dpyverification.configuration.schema import FewsWebserviceInput
-from dpyverification.constants import DataSourceTypeEnum, SimObsType
+from dpyverification.constants import DataSourceType, SimObsType
 from dpyverification.datasources.genericdatasource import GenericDatasource
 from dpyverification.datasources.pixml import PiXmlFile
 
@@ -35,7 +35,7 @@ class FewsWebService(GenericDatasource):
         start = dsconfig.verificationperiod.start.datetime
         end = dsconfig.verificationperiod.end.datetime
 
-        if dsconfig.simobstype == SimObsType.sim:
+        if dsconfig.simobstype == SimObsType.SIM:
             # Work out the correct forecastStartTime and forecastEndTime
             # so that all forecasts overlapping with the verification period
             # defined by start_time and end_time will be requested from the web service.
@@ -80,7 +80,7 @@ class FewsWebService(GenericDatasource):
     @classmethod
     def get_data(cls, dsconfig: DataSource) -> list[Self]:
         """Retrieve :py::class`~xarray.Dataset` from Delft-FEWS Webservice."""
-        if dsconfig.datasourcetype != DataSourceTypeEnum.fewswebservice:
+        if dsconfig.datasourcetype != DataSourceType.FEWSWEBSERVICE:
             msg = "Input dsconfig does not have datasourcetype fewswebservice"
             raise TypeError(msg)
         fws = cls(dsconfig)
