@@ -24,8 +24,10 @@ def execute_pipeline(configfile: pathlib.Path, conf_type: str | None = "yaml") -
     conftype = ConfigTypes(
         conf_type,
     )
-    # AU: does this give the possible values in the error, or at least the class?
-    # Else use try-except for nice error message
+    # TODO(AU): Implement parsing of a runinfo xml file into a valid config dict # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/8
+    #   As part of that, add a unit test on what happens if a wrong conftype is passed, and make
+    #   sure it gives a nice error message
     config = Config(configfile, conftype)
 
     datalists = []

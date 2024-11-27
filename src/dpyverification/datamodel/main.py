@@ -20,10 +20,15 @@ class DataModel:
     """The dpyverification internal DataModel."""
 
     input: xarray.Dataset
+    # output is a @property with an explicit setter
 
     def __init__(self, datalist: Sequence[GenericDatasource]) -> None:
-        # unpack the list
-        self._xarrays_from_inputs(datalist)
+        coords, time_step = self._construct_input_dataset(datalist)
+        # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/11
+        #   See issue for full description.
+        #   Here, create the 'intermediate' Dataset
+        self._initialize_output_dataset(coords, time_step)
 
     @property
     def output(self) -> xarray.Dataset:
@@ -38,13 +43,16 @@ class DataModel:
         )
         raise AttributeError(msg)
 
-    def _xarrays_from_inputs(self, datalist: Sequence[GenericDatasource]) -> None:
+    def _construct_input_dataset(
+        self,
+        datalist: Sequence[GenericDatasource],
+    ) -> tuple[xarray.Coordinates, np.timedelta64]:
         """
         Parse the list of datasources.
 
         Check whether the datasources form a compatible combination.
         Create an xarray with the combined input information.
-        Initialize the output xarray.
+        Assign the xarray dataset to self.input.
         """
         # Determine sizes and values of combined dimensions.
         obs_list: list[GenericDatasource] = []
@@ -71,12 +79,22 @@ class DataModel:
             simstart_list += simstart_values
 
         coords = xarray.Coordinates()
+        # TODO(AU): Allow additional dimensions and coordinates, beyond the fixed set # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/10
+        #   See also the note related to this in _check_source_dims_and_coords().
+        #   The xarray.merge() has certain input flags that can be set, can we use those to trigger
+        #   errors on merging empty datasets with a subselection of the dimensions / coordinates, to
+        #   then provide as-specific-as-possible error messages to the user? Can do something, e.g.
+        #   merge will indeed give error when e.g. loc1 and loc2 have switched lat/lon values, but
+        #   it will be cryptic for the end user what the problem is. Therefore e.g. the locations
+        #   merge here has a try-except to provide additional error information.
 
         # Add location coordinates to coords
         try:
             locations = xarray.merge(locations_list)
         except Exception as incompat:
-            # STILL NEEDS: list of ids, lat, lon, ordered by id, to be able to find the problem
+            # TODO(AU): User-readable list of to be able to find the problem # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/13
             msg = "Incompatible locations in combination of datasources"
             raise AttributeError(msg) from incompat
         coords = coords.assign(locations.coords)
@@ -90,20 +108,10 @@ class DataModel:
         )
         coords = coords.assign(time_coord)
 
-        # SHOULD HERE CHECK If leadtimes defined, check that they are multiples of time_step
-
-        # What if dimensions without a coordinate are used, how to know that two datasets mean
-        # the same thing with the dimension, if there are no coordinates at all that use the
-        # dimension?
-        # The xarray.merge() has certain input flags that can be set, can we use those to trigger
-        # errors on merging empty datasets with a subselection of the dimensions / coordinates, to
-        # then provide as-specific-as-possible error messages to the user? -> Can do something, e.g.
-        # merge will indeed give error when e.g. loc1 and loc2 have switched lat/lon values, but it
-        # will be cryptic for the end user what the problem is.
-
-        # When we allow datasets with leadtime already taken into account, cannot mix with simstart
-        #  based datasets? In that case, need to parse the simstart datasets approximately HERE
-        #  into leadtime datasets.
+        # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/11
+        #   See issue for full description.
+        #   Here, the leadtime coordinate needs to be added to the coords.
 
         # Add the other coordinates to get the full set
         ensemble_list = list(set(ensemble_list))
@@ -115,8 +123,8 @@ class DataModel:
         coords = coords.assign(additional_coords)
 
         self.input = xarray.Dataset(coords=coords)
-        # THERE REALLY HAS NOT BEEN ENOUGH CHECKING YET, e.g. on variable names being unique
-        # And, what if different sims have different number of ensembles?
+        # TODO(AU): Add more checks on the combination before merge() # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/14
         obs_sets = [obs.xarray for obs in obs_list]
         sim_sets = [sim.xarray for sim in sim_list]
         merge_set = [self.input, *obs_sets, *sim_sets]
@@ -124,18 +132,23 @@ class DataModel:
         # Register the timestep as an attribute, for easy access
         self.input.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
 
-        # Add extra output dimensions / coordinates here, e.g. leadtime
-        # Do make sure to check that that does not affect the self.input
-        # On leadtime: do we even want to allow different leadtimes for different calculations?
-        #   Because, that would make the leadtime dimension very irregular, and introduce a lot of
-        #   missing values, when parameters use different lead times, but the same leadtime coord.
-        #   Could alternatively have a calculation-specific leadtime dimension, and only when the
-        #   calculation uses different leadtimes than the general leadtimes?
-        #   Update: calc specific leadtimes need to be a subset of the general leadtimes
-        # Set units attribute on leadtime, and/or use timedelta64 for the leadtime coordinate?
-        #   Depending on answer, also need to update simobspairs use of leadtime.
+        # Return the constructed coords, without any changes that the xarray.merge() might have
+        #  caused to the self.input coordinates
+        return coords, time_step
+
+    def _initialize_output_dataset(
+        self,
+        coords: xarray.Coordinates,
+        time_step: np.timedelta64,
+    ) -> None:
+        """Initialize the output dataset with coordinates and attributes."""
+        # TODO(AU): Add leadtime dimension and coordinate during initialization # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/15
 
         self._output = xarray.Dataset(coords=coords)
+        # TODO(AU): Refactor the _output.attrs update calls here # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/17
+
         # Register the timestep as an attribute, for easy access
         self._output.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
         # Register how this output was created
@@ -178,10 +191,24 @@ class DataModel:
             ],
         )
         # sim ds are allowed to have these dimensions
-        # DO THEY need to have simstart, or can do without? Will depend on whether leadtime already
-        #   taken into account in the ds? So need either simstart or leadtime?
+        # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/11
+        #   See issue for full description.
+        #   Here, need to have simstart, or can do without? Will depend on whether leadtime already
+        #   taken into account in the ds? So need either simstart or leadtime? Can have both?
         sim_dims = [DataModelDims.ensemble, DataModelDims.simstart, *obs_dims]
         sim_coords = [DataModelCoords.ensemble.name, DataModelCoords.simstart.name, *obs_coords]
+
+        # TODO(AU): Allow additional dimensions and coordinates, beyond the fixed set # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/10
+        #   In addition to the known dimensions and coordinates, data might be provided that has
+        #   for instance a temperature profile over a set of heights/depths. Should every possible
+        #   dimension/coordinate become a hardcoded option, or can we allow generic extras? What
+        #   should then be the demands on those extra dimensions/coordinates. And, what if
+        #   dimensions without a coordinate are used, how to know that two datasets mean the same
+        #   thing with the dimension, if there are no coordinates at all that use the dimension?
+        #   Will require adaptation both here, and additional checks on the combination of the
+        #   datasets.
 
         if ds.simobstype == SimObsType.obs:
             if frozenset(ds.xarray.sizes) != obs_dims:
@@ -248,16 +275,19 @@ class DataModel:
         #  X.tolist() would convert to python type
 
         if DataModelCoords.ensemble.name in ds.xarray.coords:
-            # SHOULD CHECK that ensemble_members are indeed int
+            # TODO(AU): Add more checks on the the datasources before merge() # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/14
+            # Here, check that ensemble_members are indeed int. Or already
+            #  in _check_source_dims_and_coords?
             ens: list[int] = list(ds.xarray[DataModelCoords.ensemble.name].data)  # type: ignore[misc]
         else:
             ens = []
 
         if DataModelCoords.simstart.name in ds.xarray.coords:
-            # SHOULD CHECK that simstart are indeed np.datetime64
-            # SHOULD CHECK that simstart is part of the time coord values (actually, just that it is
-            #  at a valid timediff, does not need to be part of the time coord values)
-            #  Because simstart+leadtime needs to be a potentially valid time coord value
+            # TODO(AU): Add more checks on the the datasources before merge() # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/14
+            # Here, check that simstart are indeed np.datetime64. Or already
+            #  in _check_source_dims_and_coords?
             simstart: list[np.datetime64] = list(ds.xarray[DataModelCoords.simstart.name].data)  # type: ignore[misc]
         else:
             simstart = []
@@ -287,6 +317,7 @@ class DataModel:
                 #   Use smallest timestep and fill in intermediate missing steps?
                 #   Or use largest timestep, and resample the others?
                 #   Or require user to specify timestep, and how to handle?
+                # Note that this method is used twice, check that both uses have same requirements
                 msg = (
                     "Time dimensions of the input data sources do not all have"
                     " the same timestep."
@@ -316,10 +347,17 @@ class DataModel:
 
     def add_to_output(self, new_output: xarray.Dataset) -> None:
         """Add the Dataset, with the result of a specific verification, to the datamodel output."""
-        # check that the to-be-added output does not overwrite any existing variables
-        # OR, allow appending to a certain dimension?
-        # OR, allow overwriting if only NaNs are overwritten (i.e. the var was created with only
-        #  partial data)?
+        # Perform various checks on the combination
+        # Merge together if the checks pass
+
+        # Check that the to-be-added output does not overwrite any existing variables
+        #
+        # TODO(AU): Output data content requirements are not complete # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/26
+        #   Here, check that the to-be-added output does not overwrite any existing variables
+        #   OR, allow appending to a certain dimension?
+        #   OR, allow overwriting if only NaNs are overwritten (i.e. the var was created with only
+        #   partial data)?
         a = [str(x) for x in new_output.data_vars]
         b = [str(x) for x in self.output.data_vars]
         match = any(var in b for var in a)
@@ -330,12 +368,24 @@ class DataModel:
             )
             raise RuntimeError(msg)
 
-        # check that dimensions and coordinates match
-        # OR, allow extending of dimensions
+        # Check that dimensions and coordinates match (except time dimension)
+        #
+        # TODO(AU): Check dims and coords match when combining calculation outputs # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/27
+        #   First, implement strictest check, entirely the same. Follow up with next TODO item.
+        #
+        # TODO(AU): Output data content requirements are not complete # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/26
+        #   Here, check that dimensions and coordinates match
+        #   OR, allow extending of dimensions
 
-        # register the start, end and timestep of the time dimension
+        # Check time dimension and coordinate
+        #
+        # TODO(AU): Output data content requirements are not complete # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/26
+        #   Here, register the start, end and timestep of the time dimension
         #   xarray.merge will not complain about adding intermediate times, but we want to have
-        #   a fixed timestep
+        #   a fixed timestep. OR, allow non-monotonic timeseries?
         try:
             self._output[DataModelCoords.time.name].sel(
                 {DataModelCoords.time.name: new_output[DataModelCoords.time.name].data},  # type: ignore[misc] # data is Any, we assume np.datetime64 array
@@ -376,7 +426,10 @@ class DataModel:
             )
             self._output = self._output.merge(time_coord)
 
-        # Ok to add
-        # No conflicts between the to-be-added output and earlier created outputs
-        # Do we indeed want to use merge here?
+        # Final merge
+        #   No conflicts between the to-be-added output and earlier created outputs
+        #
+        # TODO(AU): Output data content requirements are not complete # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/26
+        #   Do we indeed want to use xarray.merge, without any qualifiers?
         self._output = self._output.merge(new_output)

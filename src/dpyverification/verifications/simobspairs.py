@@ -17,10 +17,13 @@ def simobspairs(
     if calcconfig.calculationtype != CalculationTypeEnum.simobspairs:
         msg = "Input calcconfig does not have datasourcetype simobspairs"
         raise TypeError(msg)
-    # This should be done in config object creation, so can use calcconfig.leadtimes
-    # unconditionally here.
+    # TODO(AU): Adapt config creation to be able to pass general items to other parts # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/21
+    #   Here, should be able to use calcconfig.leadtimes unconditionally
     if calcconfig.leadtimes:
-        # Check that only subset of general leadtimes used
+        # TODO(AU): Check that specific leadtimes are subset of general leadtimes # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/16
+        #   Here, this if-elif should then no longer be needed.
         leadtimes = calcconfig.leadtimes.timedelta64
     elif fullconfig.general.leadtimes:
         leadtimes = fullconfig.general.leadtimes.timedelta64
@@ -28,10 +31,15 @@ def simobspairs(
         leadtimes = [timedelta64(0)]
 
     leadsets = []
-    # FROM HERE: make this a function? Have data.input as argument, instead of full data?
+    # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/11
+    #   See issue for full description.
+    #   Here, adapt to use intermediate dataset as source.
     for leadtime in leadtimes:
+        # TODO(AU): Add unit test on simobspair creation # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/33
+        #   Here, make this a function? Have data.input as argument, instead of full data?
         leadset = data.input.coords.to_dataset()
-        # need to document that leadtime is expected to be in minutes
         newtime: list[datetime64] = list(
             data.input[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time.name].data will be a 1D array of datetime64
         )
@@ -46,11 +54,15 @@ def simobspairs(
             outnamesim = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.sim}"
             outnameobs = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.obs}"
 
-            # HERE, wait for adaptation of example input files, when smaller, can use large leadtime
-            #  to be beyond end. To test what if any newtime values are not part of the input time
-            #  dimension? -> Will give KeyError. What do we want to do in that case? Skip leadtime
-            #  entirely? Or do create, but fully empty? Truncate newtime at min and max of time can
-            #  be a first step, to only get valid time values. But what if newtime is then empty?
+            # TODO(AU): Add unit test on simobspair creation # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/33
+            #   Have a unit test with leadtimes that are incompatible with the available data.
+            #   Additional thoughts on that, from earlier:
+            #   Wait for adaptation of example input files, when smaller, can use large leadtime
+            #   to be beyond end. To test what if any newtime values are not part of the input time
+            #   dimension? -> Will give KeyError. What do we want to do in that case? Skip leadtime
+            #   entirely? Or do create, but fully empty? Truncate newtime at min and max of time can
+            #   be a first step, to only get valid time values. But what if newtime is then empty?
 
             # Parse the obs values
             select_at = {

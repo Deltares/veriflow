@@ -51,8 +51,13 @@ def test_schema_jsonable(tmp_path: Path) -> None:
 
     assert tmpfile.exists()
 
-    # When adding documentation, can add the json schema in the doc. Then, also compare the version
-    #  in the documentation with the current version as per this test.
+    # TODO(AU): Additional tests on the configuration schema # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/37
+    #   When adding documentation, can add the json schema in the doc. Then, also compare the
+    #   version in the documentation with the current version as per this test.
 
 
-# Do we want to test that all schema fields (recursive, and even private ones?) have a description?
+# TODO(AU): Additional tests on the configuration schema # noqa: FIX002
+#   https://github.com/Deltares-research/DPyVerification/issues/37
+#   Do we want to test that all schema fields (recursive, and even private ones?) have a
+#   description?

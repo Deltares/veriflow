@@ -135,8 +135,9 @@ class FewsNetcdfFile(GenericDatasource):
         global_attrs = {
             "Conventions": "CF-1.6",
         }
+        # TODO(AU): What global attributes to use when writing a (fews) netcdf file? # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/30
         if "title" not in dataset.attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
-            # Create title at datamodel init, to include obs source info?
             global_attrs["title"] = "Verification results from DPyVerification"
         if "institution" not in dataset.attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
             if dsconfig.institution:
@@ -151,12 +152,13 @@ class FewsNetcdfFile(GenericDatasource):
     @staticmethod
     def add_coord_attrs(dataset: xr.Dataset) -> None:
         """Add required coordinate attributes if missing."""
-        # Where to get the default mappings for coordinate names?
+        # TODO(AU): Variable name mappings (including coordinate variables) # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/31
         for coord in dataset.coords:
             coord_attrs: dict[str, Hashable] = {}
             if coord == "leadtime":
-                # Temp, leadtime should be added in datamodel init already,
-                #   and become a standard coordinate
+                # TODO(AU): Add leadtime coordinate during initialization # noqa: FIX002
+                #   https://github.com/Deltares-research/DPyVerification/issues/15
                 coord_attrs["standard_name"] = "forecast_period"
             elif not any(k in dataset.coords[coord].attrs for k in ("standard_name", "long_name")):  # type: ignore[misc] # attrs is a dict[Any,Any]
                 coord_attrs["long_name"] = coord
@@ -170,5 +172,5 @@ class FewsNetcdfFile(GenericDatasource):
             if not any(k in dataset.variables[var].attrs for k in ("standard_name", "long_name")):  # type: ignore[misc] # attrs is a dict[Any,Any]
                 var_attrs["long_name"] = var
             dataset.variables[var].attrs.update(var_attrs)  # type: ignore[misc] # attrs is a dict[Any,Any]
-            # What about standard_name, for instance water_volume_transport_in_river_channel
-            #  for Q variables? How to determine, where to get from?
+            # TODO(AU): Variable name mappings (including coordinate variables) # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/31

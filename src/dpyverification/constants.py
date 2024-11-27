@@ -81,17 +81,21 @@ class DataModelCoords:
         # so use tuples of tuples (inner tuples length two).
         attributes: tuple[tuple[str, str], ...]
 
-    # Define unitsattribute here, or when putting in the values? How to make the values match the
-    #  units, for the time-like coordinates mainly?
+    # TODO(AU): Add units attribute on time-like variables # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/34
+    #   Define units attribute here, or when putting in the values? How to make the values match the
+    #   units, for the time-like coordinates mainly?
     time = CoordinateProperties(
         DataModelDims.time,
         (("standard_name", "time"), ("long_name", "time"), ("axis", "T")),
     )
     location = CoordinateProperties(
         DataModelDims.location,
-        # Having cf_role: timeseries_id on this coordinate, and featureType: timeSeries on the full
-        #  dataset, was copied from example fews netcdf files. However, it appears to not be fully
-        #  in line with how these are supposed to be used, according to CF 1.6?
+        # TODO(AU): Check location coordinate attributes and CF compliance # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/35
+        #   Having cf_role: timeseries_id on this coordinate, and featureType: timeSeries on the
+        #   full dataset, was copied from example fews netcdf files. However, it appears to not be
+        #   fully in line with how these are supposed to be used, according to CF 1.6?
         (("long_name", "station identification code"), ("cf_role", "timeseries_id")),
     )
     lat = CoordinateProperties(
@@ -136,7 +140,8 @@ class DataModelAttributes:
     have a single list with the names of known attributes.
     """
 
-    # Rework to be somewhat similar to DataModelCoords, with both names and (default) values?
+    # TODO(AU): Make similar to DataModelCoords, with both name and (default) value # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/17
     source = "source"
     timestep = "timestep"
     featuretype = "featureType"
@@ -146,9 +151,9 @@ def _set_version_info() -> tuple[str, str]:
     version = importlib_metadata.version("dpyverification")
     version_extra = ""
 
-    # It would be preferable to use available tools for our versioning, e.g.
-    # https://github.com/mtkennerly/dunamai and / or https://github.com/mtkennerly/poetry-dynamic-versioning
-    # so we also do not rely on (updating the) hardcoded version in the pyproject.toml
+    # TODO(AU): Version numbering of our package # noqa: FIX002
+    #   https://github.com/Deltares-research/DPyVerification/issues/36
+    #   See issue link for details
     this_dir = pathlib.Path(__file__).parent
     command = ["git", "rev-parse", "HEAD"]
     completed = subprocess.run(command, cwd=this_dir, capture_output=True, check=False, text=True)  # noqa: S603 # No S603 since we are pretty certain the input is not dangerous

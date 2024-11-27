@@ -9,8 +9,9 @@ on:
   pull_request:
 
 jobs: 
-  # Consider adding lint as a separate job (ruff and mypy)
-  #   The linters are also part of the pytest tests, so local users
+  # TODO: Make linting into a separate job (ruff and mypy)
+  #   https://github.com/Deltares-research/DPyVerification/issues/7
+  #   The linters are part of the pytest tests, so local users
   #   only have to run 'poetry run pytest' to also check linting.
   #   For faster CI, and more fine-grained error info, it would be
   #   advantageous to have a separate lint job, and exclude the
@@ -40,7 +41,9 @@ jobs:
             python-version: "3.12"
     steps:
       - uses: actions/checkout@v4
-      # Might want to cache the pipx-poetry as well, to speed up CI runs
+      # TODO: Cache the pipx-poetry install
+      #   https://github.com/Deltares-research/DPyVerification/issues/7
+      #   Might want to cache the pipx-poetry as well, to speed up CI runs
       #   Some hints are already given at https://github.com/pypa/pipx/discussions/1051
       - name: Install poetry
         run: pipx install poetry
@@ -48,19 +51,23 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'poetry'
-      - run: poetry install
-      # Missing coverage and junit results for now
+      - run: poetry install      
+      # TODO: Add coverage reporting
+      #   https://github.com/Deltares-research/DPyVerification/issues/7
+      #   Missing coverage results in the CI info
       - run: poetry run pytest --junit-xml=test-results-${{ matrix.os }}-${{ matrix.python-version }}.xml
-      # Upload the test results, to be parsed by second workflow
-      # Two workflows, in order to support PRs from forks, as per
-      # explanation at https://github.com/dorny/test-reporter
-      - uses: actions/upload-artifact@v4  # upload test results
-        if: success() || failure()        # run this step even if previous step failed
+      - uses: actions/upload-artifact@v4
+        # Upload the test results, to be parsed by second workflow
+        # Two workflows, in order to support PRs from forks, as per
+        # explanation at https://github.com/dorny/test-reporter
+        if: success() || failure() # run this step even if previous step failed
         with:
           name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
           path: test-results*.xml
-  # Testing the documentation generation can be a job that
-  #   is separate from the pytest job
+  # TODO: Add test for documentation generation
+  #   https://github.com/Deltares-research/DPyVerification/issues/7
+  #   Testing the documentation generation can be a job that
+  #   is separate from the pytest job.
   #   Doc build testing probably only needs to run for one python version and
   #   one os, assuming release and publish will be a separate workflow
   # doc:

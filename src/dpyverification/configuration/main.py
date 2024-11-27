@@ -26,7 +26,9 @@ class Config:
             # parse the runinfo into a yaml
             yamlcontent = {
                 "fileversion": "0.0.1",
-            }  # NOT IMPLEMENTED YET, function to convert runinfo xml
+            }
+            # TODO(AU): Implement parsing of a runinfo xml file to valid config dict # noqa: FIX002
+            #   https://github.com/Deltares-research/DPyVerification/issues/8
         elif configtype is ConfigTypes.YAML:
             with configfile.open() as cf:
                 yamlcontent = yaml.safe_load(cf)
@@ -35,6 +37,10 @@ class Config:
 
         # check the yaml and create python objects
         parsed_content = ConfigSchema(**yamlcontent)  # type: ignore[arg-type] # The derived type based on the hardcoded dict is not correct, but that is expected for now
+
+        # TODO(AU): Check that specific leadtimes are subset of general leadtimes # noqa: FIX002
+        #   https://github.com/Deltares-research/DPyVerification/issues/16
+        #   Here, make this check part of the to-be-coded configuration validation
 
         self.filename = configfile
         self.configtype = configtype
