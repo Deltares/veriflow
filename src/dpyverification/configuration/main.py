@@ -1,13 +1,20 @@
 """Classes to generate a valid configuration object from the specification in a file."""
 
 import pathlib
-from enum import StrEnum
+from enum import StrEnum, unique
 
 import yaml
 
-from .schema import ConfigSchema, FewsWebserviceInput, GeneralInfo, SimObsPairs
+from .schema import (
+    ConfigSchema,
+    FewsWebserviceInput,
+    FewsWebserviceInputSim,
+    GeneralInfo,
+    SimObsPairs,
+)
 
 
+@unique
 class ConfigTypes(StrEnum):
     """The types of configuration files that are supported."""
 
@@ -58,8 +65,9 @@ class Config:
         #  top-level attribute?
 
         for datasource in self.content.datasources:
-            if isinstance(datasource, FewsWebserviceInput):
+            if isinstance(datasource, FewsWebserviceInputSim):
                 self._propagate_leadtimes(datasource, self.content.general, "FewsWebserviceInput")
+            if isinstance(datasource, FewsWebserviceInput):
                 self._propagate_verificationperiod(
                     datasource,
                     self.content.general,
@@ -72,7 +80,7 @@ class Config:
 
     @staticmethod
     def _propagate_leadtimes(
-        specific: FewsWebserviceInput | SimObsPairs,
+        specific: FewsWebserviceInputSim | SimObsPairs,
         general: GeneralInfo,
         name: str,
     ) -> None:

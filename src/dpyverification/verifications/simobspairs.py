@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import xarray
 
-from dpyverification.configuration import Calculation
-from dpyverification.constants import CalculationTypeEnum, DataModelCoords, DataModelDims
+from dpyverification.configuration import Calculation, SimObsPairs
+from dpyverification.constants import CalculationType, DataModelCoords, DataModelDims
 from dpyverification.datamodel import DataModel
 
 if TYPE_CHECKING:
@@ -17,8 +17,8 @@ def simobspairs(
     data: DataModel,
 ) -> xarray.Dataset:
     """Create pairs of obs and sim values, for the given leadtimes (default leadtime 0)."""
-    if calcconfig.calculationtype != CalculationTypeEnum.simobspairs:
-        msg = "Input calcconfig does not have datasourcetype simobspairs"
+    if not isinstance(calcconfig, SimObsPairs):
+        msg = "Input calcconfig does not have calculationtype SimObsPairs"
         raise TypeError(msg)
     if not calcconfig.leadtimes:
         # When called from pipeline, this should not be possible. However, do need to check in case
@@ -48,8 +48,8 @@ def simobspairs(
             # Where
             # - varnamegeneral is assumed equal to obsvar name
             # - calctypename is taken to be equal to enum string value
-            outnamesim = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.sim}"
-            outnameobs = f"{pair.obs}_{CalculationTypeEnum.simobspairs}_{pair.obs}"
+            outnamesim = f"{pair.obs}_{CalculationType.SIMOBSPAIRS}_{pair.sim}"
+            outnameobs = f"{pair.obs}_{CalculationType.SIMOBSPAIRS}_{pair.obs}"
 
             # TODO(AU): Add unit test on simobspair creation # noqa: FIX002
             #   https://github.com/Deltares-research/DPyVerification/issues/33

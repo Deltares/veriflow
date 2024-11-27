@@ -64,7 +64,7 @@ class DataModel:
         ensemble_list: list[int] = []
         simstart_list: list[np.datetime64] = []
         for ds in datalist:
-            obs_list.append(ds) if ds.simobstype == SimObsType.obs else sim_list.append(ds)
+            obs_list.append(ds) if ds.simobstype == SimObsType.OBS else sim_list.append(ds)
 
             self._check_source_dims_and_coords(
                 ds,
@@ -210,7 +210,7 @@ class DataModel:
         #   Will require adaptation both here, and additional checks on the combination of the
         #   datasets.
 
-        if ds.simobstype == SimObsType.obs:
+        if ds.simobstype == SimObsType.OBS:
             if frozenset(ds.xarray.sizes) != obs_dims:
                 msg = "For Observations data, the exact required dimensions are: " + str(
                     obs_dims,

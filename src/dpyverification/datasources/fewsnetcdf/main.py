@@ -5,12 +5,11 @@ from typing import TYPE_CHECKING, Self
 
 import xarray as xr
 
-from dpyverification.configuration import DataSource, FewsNetcdfOutput, Output
+from dpyverification.configuration import DataSource, FewsNetcdfOutput, FileInputFewsnetcdf, Output
 from dpyverification.constants import (
     DataModelAttributes,
     DataModelCoords,
     DataModelDims,
-    DataSourceTypeEnum,
     SimObsType,
 )
 from dpyverification.datasources.genericdatasource import GenericDatasource
@@ -58,7 +57,7 @@ class FewsNetcdfFile(GenericDatasource):
         # Assign to _, since the model will throw an error when not compliant
         _ = FewsNetcdfSchema(**schema_like)  # type: ignore[misc]
 
-        if kind == SimObsType.obs and "ensemble_member" in ds.coords:
+        if kind == SimObsType.OBS and "ensemble_member" in ds.coords:
             # Can this happen? What to do? Squeeze it out like in pixml file?
             raise NotImplementedError
 
@@ -72,10 +71,10 @@ class FewsNetcdfFile(GenericDatasource):
     @classmethod
     def get_data(cls, dsconfig: DataSource) -> list[Self]:
         """Retrieve fewsnetcdf content as an xarray DataArray."""
-        if dsconfig.datasourcetype != DataSourceTypeEnum.fewsnetcdf:
+        if not isinstance(dsconfig, FileInputFewsnetcdf):
             msg = "Input dsconfig does not have datasourcetype fewsnetcdf"
             raise TypeError(msg)
-        if dsconfig.simobstype == SimObsType.combined:
+        if dsconfig.simobstype == SimObsType.COMBINED:
             msg = "Cannot yet handle combined simobs data"
             raise NotImplementedError(msg)
 

@@ -2,4 +2,13 @@
 
 # The public interface
 from .main import Config, ConfigTypes
-from .schema import Calculation, ConfigSchema, DataSource, FewsNetcdfOutput, Output
+from .schema import (
+    Calculation,
+    ConfigSchema,
+    DataSource,
+    FewsNetcdfOutput,
+    FileInputFewsnetcdf,
+    FileInputPixml,
+    Output,
+    SimObsPairs,
+)

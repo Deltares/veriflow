@@ -1,13 +1,21 @@
-"""The schema definition for the configuration yaml file.
+"""The definition of the configuration settings.
+
+This definition is used both as the schema for the configuration yaml file, and as the content of
+the dpyverification configuration object.
 
 To generate a yaml / json file with the json representation of this schema:
-    with FILEPATH.open() as myfile:
+    import pathlib
+    import yaml
+    from dpyverification.configuration import ConfigSchema
+    FILEPATH = pathlib.Path("YOUR_PATH_HERE")
+    with FILEPATH.open("w") as myfile:
         yaml.dump(ConfigSchema.model_json_schema(), myfile)
 
-To generate a pydantic schema from a yaml/json file, see datamodel_code_generator,
-for example from https://docs.pydantic.dev/latest/integrations/datamodel_code_generator/
-Note that this can generate a pydantic model that is not up-to-date with the latest
-pydantic / python, and might need some modifications.
+Sidenote: It is also possible to go the other way around and generate a pydantic schema from a
+yaml/json file, see datamodel_code_generator, for example from
+https://docs.pydantic.dev/latest/integrations/datamodel_code_generator/ . Note that this can
+generate a pydantic model that is not up-to-date with the latest pydantic / python, and might
+need some modifications.
 """
 
 # TODO(AU): Add pydantic Field with description, and maybe title, to all attributes. # noqa: FIX002
@@ -25,13 +33,13 @@ from typing import Annotated, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field
 
-from dpyverification.constants import CalculationTypeEnum, DataSourceTypeEnum, SimObsType, TimeUnits
+from dpyverification.constants import CalculationType, DataSourceType, SimObsType, TimeUnits
 
 
 class DateTime(BaseModel):
-    format: str | None = "%Y-%m-%dT%H:%M:%S%z"
+    format: str = "%Y-%m-%dT%H:%M:%S%z"
     value: str
 
     @property
@@ -70,35 +78,69 @@ class TimePeriod(BaseModel):
 
 
 class FewsWebservice(BaseModel):
-    datasourcetype: Literal[DataSourceTypeEnum.fewswebservice]
+    datasourcetype: Literal[DataSourceType.FEWSWEBSERVICE]
     url: str
 
 
 class FewsWebserviceInput(FewsWebservice):
-    simobstype: Literal[SimObsType.obs, SimObsType.sim]
-    location_ids: list[str]
-    parameter_ids: list[str]
-    module_instance_ids: list[str]
-    qualifier_ids: list[str]
-    document_format: Literal["PI_XML"]
-    document_version: Literal["1.32"]  # What version we support
-    leadtimes: LeadTimes | None = Field(
-        None,
-        description="Value from General leadtimes used if not set.",
-    )
+    location_ids: Annotated[list[str], Field(min_length=1)]
+    parameter_ids: Annotated[list[str], Field(min_length=1)]
+    module_instance_ids: Annotated[list[str], Field(min_length=1)]
+    qualifier_ids: list[str] = []  # Note that no min_length, so empty list is ok.
     verificationperiod: TimePeriod | None = Field(
         None,
         description="Value from General verificationperiod used if not set.",
     )
+    _document_format: Annotated[
+        Literal["PI_XML"],
+        Field(
+            description=(
+                "A private attribute with a default value:"
+                " 1. A literal with a default value, as users are not expected to set it."
+                " 2. Private, since the code only supports this one option for now, but it is"
+                " likely that other values may be needed in the future, depending on what FEWS"
+                " system this code interacts with. Then this value does need to be configurable,"
+                " therefore do have it as a configuration setting already."
+            ),
+        ),
+    ] = "PI_XML"
+    _document_version: Annotated[
+        Literal["1.32"],
+        Field(
+            description=(
+                "A private attribute with a default value:"
+                " 1. A literal with a default value, as users are not expected to set it."
+                " 2. Private, since the code only supports this one option for now, but it is"
+                " likely that other values may be needed in the future, depending on what FEWS"
+                " system this code interacts with. Then this value does need to be configurable,"
+                " therefore do have it as a configuration setting already."
+            ),
+        ),
+    ] = "1.32"
 
-    @field_validator("leadtimes")
-    @classmethod
-    def check_field_leadtimes(cls, v: LeadTimes | None, info: ValidationInfo) -> LeadTimes | None:
-        """Check if leadtimes defined, when simobstype is sim."""
-        if info.data["simobstype"] == SimObsType.sim and v is None:  # type: ignore[misc]
-            msg = "Lead times are required when simobstype is SimObsType.sim."
-            raise ValueError(msg)
-        return v
+
+class FewsWebserviceInputObs(FewsWebserviceInput):
+    simobstype: Literal[SimObsType.OBS]
+
+
+class FewsWebserviceInputSim(FewsWebserviceInput):
+    simobstype: Literal[SimObsType.SIM]
+    leadtimes: Annotated[
+        LeadTimes | None,
+        Field(
+            description="Value from General leadtimes used if not set.",
+        ),
+    ] = None
+    forecastcount: Annotated[
+        int,
+        Field(
+            description=(
+                "Number of forecast runs to retrieve."
+                " When value is 0 (default), ALL matching forecast runs will be used."
+            ),
+        ),
+    ] = 0
+    ensemble_id: str | None = None
 
 
 class FewsWebserviceOutput(FewsWebservice):
@@ -111,12 +153,19 @@ class LocalFile(BaseModel):
 
 
 class FileInput(LocalFile):
-    datasourcetype: Literal[DataSourceTypeEnum.pixml, DataSourceTypeEnum.fewsnetcdf]
     simobstype: SimObsType
 
 
+class FileInputPixml(FileInput):
+    datasourcetype: Literal[DataSourceType.PIXML]
+
+
+class FileInputFewsnetcdf(FileInput):
+    datasourcetype: Literal[DataSourceType.FEWSNETCDF]
+
+
 class FewsNetcdfOutput(LocalFile):
-    datasourcetype: Literal[DataSourceTypeEnum.fewsnetcdf]
+    datasourcetype: Literal[DataSourceType.FEWSNETCDF]
     title: Annotated[
         str | None,
         Field(
@@ -133,7 +182,7 @@ class FewsNetcdfOutput(LocalFile):
 
 
 DataSource: TypeAlias = (
-    FewsWebserviceInput | FileInput
+    FewsWebserviceInputSim | FewsWebserviceInputObs | FileInputPixml | FileInputFewsnetcdf
 )  # A Type Alias for the combination of data source schema classes
 
 Output: TypeAlias = (
@@ -147,14 +196,19 @@ class SimObsVariables(BaseModel):
 
 
 class PinScore(BaseModel):
-    calculationtype: Literal[CalculationTypeEnum.pinscore]
+    calculationtype: Literal[CalculationType.PINSCORE]
 
 
 class SimObsPairs(BaseModel):
-    calculationtype: Literal[CalculationTypeEnum.simobspairs]
+    calculationtype: Literal[CalculationType.SIMOBSPAIRS]
     # One combination of list-of-leadtimes and list-of-variablepairs, use multiple SimObsPairs
     # to define more combinations
-    leadtimes: LeadTimes | None = None  # Default from GeneralInfo
+    leadtimes: Annotated[
+        LeadTimes | None,
+        Field(
+            description="Value from General leadtimes used if not set.",
+        ),
+    ] = None
     variablepairs: list[SimObsVariables]
 
 
@@ -164,9 +218,8 @@ Calculation: TypeAlias = (
 
 
 class GeneralInfo(BaseModel):
-    # Is this general info, or might it be different for different calculations?
     verificationperiod: TimePeriod
-    leadtimes: LeadTimes | None = None
+    leadtimes: LeadTimes = LeadTimes(values=[0], unit=TimeUnits("h"))
 
 
 class ConfigSchema(BaseModel):
