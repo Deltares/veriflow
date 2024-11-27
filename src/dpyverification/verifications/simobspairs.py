@@ -21,21 +21,19 @@ def simobspairs(
     # unconditionally here.
     if calcconfig.leadtimes:
         # Check that only subset of general leadtimes used
-        leadtimes = calcconfig.leadtimes
-        leadtimesunit = str(calcconfig.leadtimesunit)
+        leadtimes = calcconfig.leadtimes.timedelta64
     elif fullconfig.general.leadtimes:
-        leadtimes = fullconfig.general.leadtimes
-        leadtimesunit = str(fullconfig.general.leadtimesunit)
+        leadtimes = fullconfig.general.leadtimes.timedelta64
     else:
-        leadtimes = [0]
-        leadtimesunit = "m"
+        leadtimes = [timedelta64(0)]
+
     leadsets = []
     # FROM HERE: make this a function? Have data.input as argument, instead of full data?
     for leadtime in leadtimes:
         leadset = data.input.coords.to_dataset()
         # need to document that leadtime is expected to be in minutes
         newtime: list[datetime64] = list(
-            data.input[DataModelCoords.simstart.name].data + timedelta64(leadtime, leadtimesunit),  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time.name].data will be a 1D array of datetime64
+            data.input[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time.name].data will be a 1D array of datetime64
         )
         new_coords = {DataModelCoords.time.name: newtime}
         leadset = leadset.assign_coords(new_coords)

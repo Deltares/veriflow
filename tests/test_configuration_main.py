@@ -20,14 +20,13 @@ def test_main_yaml_happy() -> None:
         "directory": "iets",
         "filename": "anders",
     }
-    assert config.general.model_dump() == {  # type: ignore[misc] # model_dump can have Any
-        "leadtimes": [240, 480, 1440],
-        "leadtimesunit": "m",
+    assert config.general.verificationperiod.model_dump() == {  # type: ignore[misc] # model_dump can have Any
+        "start": {"format": "%Y-%m-%dT%H:%M:%S%z", "value": "2000-01-01T00:00:00Z"},
+        "end": {"format": "%Y-%m-%dT%H:%M:%S%z", "value": "2001-01-01T00:00:00Z"},
     }
     assert config.calculations[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
         "calculationtype": "simobspair",
         "leadtimes": None,
-        "leadtimesunit": "m",
         "variablepairs": [{"obs": "Q.m", "sim": "Q.fs"}],
     }
     assert config.output[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any

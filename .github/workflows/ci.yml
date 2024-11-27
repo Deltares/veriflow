@@ -31,6 +31,13 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
+        # There is suddenly a problem with netcdf3 files on windows with 3.12, as per the commit
+        # before the one that introduces this exclude. It shows in the CI on Github, and on JBs
+        # computer, but not on AUs computer. So, TODO: Re-enable windows+python3.12 testing
+        #   See https://github.com/Deltares-research/DPyVerification/issues/28
+        exclude:
+          - os: windows-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v4
       # Might want to cache the pipx-poetry as well, to speed up CI runs
