@@ -11,5 +11,6 @@ from .schema import (
     FileInputPixml,
     GeneralInfo,
     Output,
+    RankHistogram,
     SimObsPairs,
 )
