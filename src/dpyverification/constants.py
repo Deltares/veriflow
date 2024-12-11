@@ -52,7 +52,7 @@ class TimeUnits(StrEnum):
     SECOND = "s"
 
 
-class DataModelDims:
+class DataModelDims(StrEnum):
     """List of dimension names.
 
     To avoid hardcoded strings in multiple places,
