@@ -102,7 +102,10 @@ class DataModelCoords:
         #   Having cf_role: timeseries_id on this coordinate, and featureType: timeSeries on the
         #   full dataset, was copied from example fews netcdf files. However, it appears to not be
         #   fully in line with how these are supposed to be used, according to CF 1.6?
-        (("long_name", "station identification code"), ("cf_role", "timeseries_id")),
+        (
+            ("long_name", "station identification code"),
+            ("cf_role", "timeseries_id"),
+        ),
     )
     lat = CoordinateProperties(
         "lat",
