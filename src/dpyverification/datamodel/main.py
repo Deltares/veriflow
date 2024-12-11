@@ -34,7 +34,7 @@ class DataModel:
         #   https://github.com/Deltares-research/DPyVerification/issues/11
         #   See issue for full description.
         #   Here, create the 'intermediate' Dataset
-        self._create_intermediate_dataset(coords, generalconfig)
+        self._create_intermediate_dataset(coords, time_step, generalconfig)
         self._initialize_output_dataset(coords, time_step)
 
     @property
@@ -119,6 +119,7 @@ class DataModel:
         #   https://github.com/Deltares-research/DPyVerification/issues/11
         #   See issue for full description.
         #   Here, the leadtime coordinate needs to be added to the coords.
+        #   And, the simstart coordinate needs to be completed
 
         # Add the other coordinates to get the full set
         ensemble_list = list(set(ensemble_list))
@@ -146,6 +147,7 @@ class DataModel:
     def _create_intermediate_dataset(
         self,
         coords: xarray.Coordinates,
+        time_step: np.timedelta64,
         generalconfig: GeneralInfo,
     ) -> None:
         if not generalconfig.leadtimes:
@@ -155,18 +157,50 @@ class DataModel:
             raise ValueError(msg)
         leadtimes = generalconfig.leadtimes.timedelta64
 
-        additional_coords = {
+        # Construct time coordinate for intermediate dataset based on simstart and leadtime values
+        simstarts = coords[DataModelCoords.simstart.name].data  # type: ignore[misc]  # Yes, data is a Any array, we assume it is compatible with np.min and np.max
+        time_start: np.datetime64 = np.min(simstarts) + np.min(leadtimes)  # type: ignore[misc] # Yes, simstarts is a Any array, we assume it is compatible with np.min and np.max
+        time_end: np.datetime64 = np.max(simstarts) + np.max(leadtimes)  # type: ignore[misc] # Yes, simstarts is a Any array, we assume it is compatible with np.min and np.max
+        time_values = np.arange(
+            time_start,
+            time_end + time_step,
+            time_step,
+            dtype=np.datetime64,
+        )
+
+        # Check there are no additional coordinate variables that use the time dimension, and would
+        #   need to be adapted, e.g. additional coordinates inherited from the datasources
+        for coordname in coords:
+            if (
+                DataModelCoords.time.name != coordname  # Except for time coordinate itself
+                and DataModelDims.time
+                in coords[coordname].dims  # No other coordinate should have the time dimension
+            ):
+                msg = (
+                    f"Coordinate {coordname} uses the {DataModelDims.time} dimension, creating"
+                    " an intermediate dataset in this situation is not implemented yet."
+                )
+                raise NotImplementedError(msg)
+
+        update_coords = {
             DataModelCoords.leadtime.name: leadtimes,
+            DataModelCoords.time.name: time_values,
         }
-        coords = coords.assign(additional_coords)
+        coords = coords.assign(update_coords)
         self.intermediate = xarray.Dataset(coords=coords)
 
-        """
-        leadsets = []
+        # For data variables with a simstart dimension, extract only specific values
+        # For data variables with neither a simstart nor a leadtime dimension, extract values at intermediate dataset time locations
+        # For data variables with a leadtime dimension, extract values at intermediate dataset time locations (?)
         # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/11
         #   See issue for full description.
-        #   Here, adapt to use intermediate dataset as source.
+        #   Here, for variables with a leadtime dimension, extract values at intermediate dataset time locations (?)
+        for variable in self.input.data_vars:
+            pass  # TODO
+
+        """
+        leadsets = []
         for leadtime in leadtimes:
             # TODO(AU): Add unit test on simobspair creation # noqa: FIX002
             #   https://github.com/Deltares-research/DPyVerification/issues/33
@@ -293,7 +327,11 @@ class DataModel:
         #   Here, need to have simstart, or can do without? Will depend on whether leadtime already
         #   taken into account in the ds? So need either simstart or leadtime? Can have both?
         sim_dims = [DataModelDims.ensemble, DataModelDims.simstart, *obs_dims]
-        sim_coords = [DataModelCoords.ensemble.name, DataModelCoords.simstart.name, *obs_coords]
+        sim_coords = [
+            DataModelCoords.ensemble.name,
+            DataModelCoords.simstart.name,
+            *obs_coords,
+        ]
 
         # TODO(AU): Allow additional dimensions and coordinates, beyond the fixed set # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/10
