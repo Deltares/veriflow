@@ -35,7 +35,13 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from dpyverification.constants import CalculationType, DataSourceType, SimObsType, TimeUnits
+from dpyverification.constants import (
+    CalculationType,
+    DataModelDims,
+    DataSourceType,
+    SimObsType,
+    TimeUnits,
+)
 
 
 class DateTime(BaseModel):
@@ -212,8 +218,21 @@ class SimObsPairs(BaseModel):
     variablepairs: list[SimObsVariables]
 
 
+class RankHistogram(BaseModel):
+    calculationtype: Literal[CalculationType.RANKHISTOGRAM]
+    dimensions: Annotated[
+        list[DataModelDims] | None,
+        Field(
+            description="""Dimension(s) over which to compute the histogram
+            of ranks. Defaults to all dimensions.""",
+        ),
+    ] = None
+
+
 Calculation: TypeAlias = (
-    SimObsPairs | PinScore  # A Type Alias for the combination of calculation schema classes
+    SimObsPairs
+    | PinScore
+    | RankHistogram  # A Type Alias for the combination of calculation schema classes
 )
 
 
