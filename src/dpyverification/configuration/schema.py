@@ -229,10 +229,30 @@ class RankHistogram(BaseModel):
     ] = None
 
 
+class CRPSForEnsemble(BaseModel):
+    calculationtype: Literal[CalculationType.CRPSForEnsemble]
+    method: Annotated[
+        Literal["ecdf", "fair"],
+        Field(
+            description="""Defaults to ecdf. See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble""",
+            default="ecdf",
+        ),
+    ]
+    reduce_dims: Annotated[
+        list[DataModelDims] | None,
+        Field(
+            description="""Dimension(s) over which to compute the histogram
+            of ranks. Defaults to all dimensions.""",
+            default=None,
+        ),
+    ] = None
+
+
 Calculation: TypeAlias = (
     SimObsPairs
     | PinScore
-    | RankHistogram  # A Type Alias for the combination of calculation schema classes
+    | RankHistogram
+    | CRPSForEnsemble  # A Type Alias for the combination of calculation schema classes
 )
 
 

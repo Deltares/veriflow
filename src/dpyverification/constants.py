@@ -37,6 +37,7 @@ class CalculationType(StrEnum):
     SIMOBSPAIRS = "simobspair"
     PINSCORE = "pinscore"
     RANKHISTOGRAM = "rankhistogram"
+    CRPSForEnsemble = "crps_for_ensemble"
 
 
 @unique
