@@ -220,6 +220,12 @@ class SimObsPairs(BaseModel):
 
 class RankHistogram(BaseModel):
     calculationtype: Literal[CalculationType.RANKHISTOGRAM]
+    simobsvariables: Annotated[
+        SimObsVariables,
+        Field(
+            description="""The names of the sim and obs variables.""",
+        ),
+    ]
     reduce_dims: Annotated[
         list[DataModelDims] | None,
         Field(
@@ -231,6 +237,12 @@ class RankHistogram(BaseModel):
 
 class CRPSForEnsemble(BaseModel):
     calculationtype: Literal[CalculationType.CRPSForEnsemble]
+    simobsvariables: Annotated[
+        SimObsVariables,
+        Field(
+            description="""The names of the sim and obs variables.""",
+        ),
+    ]
     method: Annotated[
         Literal["ecdf", "fair"],
         Field(

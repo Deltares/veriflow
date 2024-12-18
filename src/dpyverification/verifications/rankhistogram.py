@@ -19,13 +19,11 @@ def rankhistogram(
         msg = "Input calcconfig does not have calculationtype RankHistogram"
         raise TypeError(msg)
 
-    # For now, temporary hardcoded solution to
-    # select obs and sim from simobs dataset. It
-    # is assumed here that the simobspairs calculation
-    # is run before rankhistogram. Once the intermediate
-    # datamodel is implemented, this should be updated.
-    obs = data.output["Q.m_simobspair_Q.m"]
-    sim = data.output["Q.m_simobspair_Q.fs"]
+    # Select sim and obs.
+    obs = data.intermediate[calcconfig.simobsvariables.obs]
+    sim = data.intermediate[calcconfig.simobsvariables.sim]
+
+    # Compute
     _result: xr.DataArray | xr.Dataset = _rank_histogram(
         observations=obs,
         forecasts=sim,
