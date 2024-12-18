@@ -1,7 +1,7 @@
 """Compute the histogram of ranks over the specified dimensions."""
 
 import xarray as xr
-from xskillscore import rank_histogram  # type: ignore[import-untyped]
+from xskillscore import rank_histogram as _rank_histogram  # type: ignore[import-untyped]
 
 from dpyverification.configuration import Calculation, RankHistogram
 from dpyverification.constants import (
@@ -26,11 +26,10 @@ def rankhistogram(
     # datamodel is implemented, this should be updated.
     obs = data.output["Q.m_simobspair_Q.m"]
     sim = data.output["Q.m_simobspair_Q.fs"]
-    dims = calcconfig.dimensions  # Set as config
-    _result: xr.DataArray | xr.Dataset = rank_histogram(
+    _result: xr.DataArray | xr.Dataset = _rank_histogram(
         observations=obs,
         forecasts=sim,
-        dim=dims,
+        dim=calcconfig.reduce_dims,
         member_dim=DataModelDims.ensemble,
     )
 

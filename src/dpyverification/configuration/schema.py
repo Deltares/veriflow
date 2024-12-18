@@ -220,7 +220,7 @@ class SimObsPairs(BaseModel):
 
 class RankHistogram(BaseModel):
     calculationtype: Literal[CalculationType.RANKHISTOGRAM]
-    dimensions: Annotated[
+    reduce_dims: Annotated[
         list[DataModelDims] | None,
         Field(
             description="""Dimension(s) over which to compute the histogram
