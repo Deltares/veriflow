@@ -13,7 +13,7 @@ from dpyverification.constants import CalculationType, DataSourceType
 from dpyverification.datamodel import DataModel
 from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
 from dpyverification.datasources.pixml import PiXmlFile
-from dpyverification.verifications import rankhistogram, simobspairs
+from dpyverification.verifications import crps_for_ensemble, rankhistogram, simobspairs
 
 
 def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None:
@@ -42,15 +42,19 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
                 simobspairs.simobspairs(calculation, datamodel),
             )
         elif calculation.calculationtype == CalculationType.RANKHISTOGRAM:
-            """
-            datamodel.add_to_output(
+            """datamodel.add_to_output(
                 rankhistogram.rankhistogram(calculation, datamodel),
-            )
-            """
+            )"""
             _ = rankhistogram
             msg = "Writing rankhistogram to output is not yet supported."
             raise NotImplementedError(msg)
-
+        elif calculation.calculationtype == CalculationType.CRPSForEnsemble:
+            """ datamodel.add_to_output(
+                crps_for_ensemble.crps_for_ensemble(calculation, datamodel),
+            ) """
+            _ = crps_for_ensemble
+            msg = "Writing crps_for_ensemble to output is not yet supported."
+            raise NotImplementedError(msg)
         else:
             # If an unknown calculation is used, error
             raise NotImplementedError

@@ -5,6 +5,7 @@ from .main import Config, ConfigTypes
 from .schema import (
     Calculation,
     ConfigSchema,
+    CRPSForEnsemble,
     DataSource,
     FewsNetcdfOutput,
     FileInputFewsnetcdf,
