@@ -23,15 +23,15 @@ def crps_for_ensemble(
         raise TypeError(msg)
 
     # Select sim and obs.
-    obs: xr.DataArray = data.intermediate[calcconfig.simobsvariables.obs]
-    sim: xr.DataArray = data.intermediate[calcconfig.simobsvariables.sim]
+    obs: xr.DataArray = data.intermediate[calcconfig.variablepair.obs]
+    sim: xr.DataArray = data.intermediate[calcconfig.variablepair.sim]
 
     # Compute
     _result: xr.Dataset | xr.DataArray = _crps_for_ensemble(
         fcst=sim,
         obs=obs,
         ensemble_member_dim=DataModelDims.ensemble,
-        reduce_dims=calcconfig.reduce_dims,
+        preserve_dims=calcconfig.preserve_dims,
     )
 
     if not isinstance(_result, xr.DataArray):  # type: ignore[misc]

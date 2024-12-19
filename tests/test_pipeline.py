@@ -58,9 +58,9 @@ def test_execute_pipeline_happy_yaml_rank_histogram(tmp_path: Path) -> None:
     testconf["datasources"][2]["filename"] = TESTS_FORECASTS_2_FILE.name
     testconf["calculations"][0].pop("variablepairs")
     testconf["calculations"][0]["calculationtype"] = "rankhistogram"
-    testconf["calculations"][0]["simobsvariables"] = {"sim": "Q.fs", "obs": "Q.m"}  # type: ignore[assignment]
+    testconf["calculations"][0]["variablepair"] = {"sim": "Q.fs", "obs": "Q.m"}  # type: ignore[assignment]
     testconf["calculations"][0]["calculationtype"] = "crps_for_ensemble"
-    testconf["calculations"][0]["reduce_dims"] = ["time", "leadtime"]  # type: ignore[assignment]
+    testconf["calculations"][0]["reduce_dims"] = ["stations"]  # type: ignore[assignment]
     testconf["output"][0]["directory"] = str(tmpout.parent)
     testconf["output"][0]["filename"] = tmpout.name
     tmp_conf_file = tmp_path / "tempconf.yaml"
@@ -88,9 +88,9 @@ def test_execute_pipeline_happy_yaml_crps_for_ensemble(tmp_path: Path) -> None:
     testconf["datasources"].append(copy.deepcopy(testconf["datasources"][1]))
     testconf["datasources"][2]["filename"] = TESTS_FORECASTS_2_FILE.name
     testconf["calculations"][0].pop("variablepairs")
-    testconf["calculations"][0]["simobsvariables"] = {"sim": "Q.fs", "obs": "Q.m"}  # type: ignore[assignment]
+    testconf["calculations"][0]["variablepair"] = {"sim": "Q.fs", "obs": "Q.m"}  # type: ignore[assignment]
     testconf["calculations"][0]["calculationtype"] = "crps_for_ensemble"
-    testconf["calculations"][0]["reduce_dims"] = ["time", "leadtime"]  # type: ignore[assignment]
+    testconf["calculations"][0]["preserve_dims"] = ["time", "leadtime"]  # type: ignore[assignment]
     testconf["output"][0]["directory"] = str(tmpout.parent)
     testconf["output"][0]["filename"] = tmpout.name
     tmp_conf_file = tmp_path / "tempconf.yaml"

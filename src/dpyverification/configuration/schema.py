@@ -33,7 +33,7 @@ from typing import Annotated, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
 
 from dpyverification.constants import (
     CalculationType,
@@ -220,10 +220,10 @@ class SimObsPairs(BaseModel):
 
 class RankHistogram(BaseModel):
     calculationtype: Literal[CalculationType.RANKHISTOGRAM]
-    simobsvariables: Annotated[
+    variablepair: Annotated[
         SimObsVariables,
         Field(
-            description="""The names of the sim and obs variables.""",
+            description="""Variable pair to use for the computation.""",
         ),
     ]
     reduce_dims: Annotated[
@@ -236,11 +236,19 @@ class RankHistogram(BaseModel):
 
 
 class CRPSForEnsemble(BaseModel):
+    @staticmethod
+    def preserve_dim_is_not_ensemble(value: DataModelDims) -> DataModelDims:
+        """Check dim is not ensemble dim."""
+        if value == DataModelDims.ensemble:
+            msg = "Cannot preserve ensemble dimension."
+            raise ValueError(msg)
+        return value
+
     calculationtype: Literal[CalculationType.CRPSForEnsemble]
-    simobsvariables: Annotated[
+    variablepair: Annotated[
         SimObsVariables,
         Field(
-            description="""The names of the sim and obs variables.""",
+            description="""Variable pair to use for the computation.""",
         ),
     ]
     method: Annotated[
@@ -250,11 +258,11 @@ class CRPSForEnsemble(BaseModel):
             default="ecdf",
         ),
     ]
-    reduce_dims: Annotated[
+    preserve_dims: Annotated[
         list[DataModelDims] | None,
+        AfterValidator(preserve_dim_is_not_ensemble),
         Field(
-            description="""Dimension(s) over which to compute the histogram
-            of ranks. Defaults to all dimensions.""",
+            description="""List of dimension(s) to preserve in the output. Defaults to None.""",
             default=None,
         ),
     ] = None
