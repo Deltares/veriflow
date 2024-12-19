@@ -49,12 +49,9 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
             msg = "Writing rankhistogram to output is not yet supported."
             raise NotImplementedError(msg)
         elif calculation.calculationtype == CalculationType.CRPSForEnsemble:
-            """ datamodel.add_to_output(
+            datamodel.add_to_output(
                 crps_for_ensemble.crps_for_ensemble(calculation, datamodel),
-            ) """
-            _ = crps_for_ensemble
-            msg = "Writing crps_for_ensemble to output is not yet supported."
-            raise NotImplementedError(msg)
+            )
         else:
             # If an unknown calculation is used, error
             raise NotImplementedError
