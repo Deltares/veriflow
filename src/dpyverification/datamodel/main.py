@@ -458,20 +458,30 @@ class DataModel:
             time_coord = xarray.Coordinates(coord_dict)
         return time_coord, time_step
 
-    def add_to_output(self, new_output: xarray.Dataset) -> None:
-        """Add the Dataset, with the result of a specific verification, to the datamodel output."""
+    def add_to_output(self, new_output: xarray.Dataset | xarray.DataArray) -> None:
+        """Add the result of a specific verification to the datamodel output."""
         # Perform various checks on the combination
         # Merge together if the checks pass
 
-        # Check that the to-be-added output does not overwrite any existing variables
-        #
         # TODO(AU): Output data content requirements are not complete # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/26
         #   Here, check that the to-be-added output does not overwrite any existing variables
         #   OR, allow appending to a certain dimension?
         #   OR, allow overwriting if only NaNs are overwritten (i.e. the var was created with only
         #   partial data)?
-        a = [str(x) for x in new_output.data_vars]
+        if not isinstance(new_output, xarray.Dataset | xarray.DataArray):  # type: ignore[misc]
+            msg = "Expected type xr.DataArray or xr.Dataset, got type(new_output)"  # type: ignore[unreachable] # mypy assumes the right type is always provided, but additional check is needed.
+            raise TypeError(msg)
+
+        # Check that the to-be-added output does not overwrite any existing variables
+        if isinstance(new_output, xarray.DataArray):  # type: ignore[misc]
+            # Check if DataArray has a name
+            if new_output.name is None:
+                msg = "DataArray has no name"
+                raise ValueError(msg)
+            a = [str(new_output.name)]
+        else:
+            a = [str(x) for x in new_output.data_vars]
         b = [str(x) for x in self.output.data_vars]
         match = any(var in b for var in a)
         if match:
