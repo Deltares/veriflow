@@ -67,8 +67,9 @@ def test_execute_pipeline_happy_yaml_rank_histogram(tmp_path: Path) -> None:
     with tmp_conf_file.open(mode="w") as tf:
         yaml.dump(testconf, tf)
 
-    with pytest.raises(NotImplementedError):
-        pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
+    pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
+
+    assert tmpout.exists()
 
 
 def test_execute_pipeline_happy_yaml_crps_for_ensemble(tmp_path: Path) -> None:
@@ -96,8 +97,9 @@ def test_execute_pipeline_happy_yaml_crps_for_ensemble(tmp_path: Path) -> None:
     with tmp_conf_file.open(mode="w") as tf:
         yaml.dump(testconf, tf)
 
-    with pytest.raises(NotImplementedError):
-        pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
+    pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
+
+    assert tmpout.exists()
 
 
 def test_execute_pipeline_happy_runinfo() -> None:

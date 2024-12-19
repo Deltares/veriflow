@@ -16,30 +16,34 @@ from dpyverification.datamodel import DataModel
 def crps_for_ensemble(
     calcconfig: Calculation,
     data: DataModel,
-) -> xr.Dataset:
+) -> xr.DataArray:
     """Compute the CRPS for an ensemble of forecasts and observations."""
     if not isinstance(calcconfig, CRPSForEnsemble):
         msg = "Input calcconfig does not have calculationtype CRPSForEnsemble"
         raise TypeError(msg)
 
     # Select sim and obs.
-    obs = data.intermediate[calcconfig.simobsvariables.obs]
-    sim = data.intermediate[calcconfig.simobsvariables.sim]
+    obs: xr.DataArray = data.intermediate[calcconfig.simobsvariables.obs]
+    sim: xr.DataArray = data.intermediate[calcconfig.simobsvariables.sim]
 
     # Compute
-    _result: xr.DataArray | xr.Dataset = _crps_for_ensemble(
+    _result: xr.Dataset | xr.DataArray = _crps_for_ensemble(
         fcst=sim,
         obs=obs,
         ensemble_member_dim=DataModelDims.ensemble,
         reduce_dims=calcconfig.reduce_dims,
     )
 
-    # Set variable name
+    if not isinstance(_result, xr.DataArray):  # type: ignore[misc]
+        msg = f"Expected xr.DataArray, got {type(_result)}"
+        raise NotImplementedError(msg)
+
+    # Set variable name on xr.DataArray
     _result.name = CalculationType.CRPSForEnsemble
 
-    # Covert to xr.Dataset if type xr.DataArray.
-    # since it is required by the add_to_output
-    # method in the pipiline.
-    if hasattr(_result, "to_dataset"):
-        result: xr.Dataset = _result.to_dataset()
-    return result
+    # Set attrs on xr.DataArray
+    # For now, store config as dict
+    # General config could be stored as xr.Dataset attrs
+    _result.attrs = {str(k): str(v) for k, v in calcconfig.__dict__.items()}  # type: ignore[misc]
+
+    return _result
