@@ -9,6 +9,7 @@ from .schema import (
     FewsNetcdfOutput,
     FileInputFewsnetcdf,
     FileInputPixml,
+    GeneralInfo,
     Output,
     SimObsPairs,
 )

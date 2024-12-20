@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import numpy as np
 import xarray
 
+from dpyverification.configuration import GeneralInfo
 from dpyverification.constants import (
     NAME,
     VERSION_FULL,
@@ -22,12 +23,17 @@ class DataModel:
     input: xarray.Dataset
     # output is a @property with an explicit setter
 
-    def __init__(self, datalist: Sequence[GenericDatasource]) -> None:
-        coords, time_step = self._construct_input_dataset(datalist)
-        # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
-        #   https://github.com/Deltares-research/DPyVerification/issues/11
-        #   See issue for full description.
-        #   Here, create the 'intermediate' Dataset
+    def __init__(
+        self,
+        datalist: Sequence[GenericDatasource],
+        generalconfig: GeneralInfo,
+    ) -> None:
+        if not generalconfig.leadtimes:
+            # When called from pipeline, this should not be possible. However, do need to check in
+            # case this function is called from a custom implementation.
+            msg = "No leadtimes specified in General configuration"
+            raise ValueError(msg)
+        coords, time_step = self._construct_input_dataset(datalist, generalconfig)
         self._initialize_output_dataset(coords, time_step)
 
     @property
@@ -46,6 +52,7 @@ class DataModel:
     def _construct_input_dataset(
         self,
         datalist: Sequence[GenericDatasource],
+        generalconfig: GeneralInfo,
     ) -> tuple[xarray.Coordinates, np.timedelta64]:
         """
         Parse the list of datasources.
@@ -111,12 +118,17 @@ class DataModel:
         # TODO(AU): Allow input datasets with leadtime already taken into account # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/11
         #   See issue for full description.
-        #   Here, the leadtime coordinate needs to be added to the coords.
+        #   Here, check that leadtime values in input datasets are subset of generalconfig.leadtimes
+        #   And, the simstart coordinate needs to be completed with simstarts derived from
+        #   the time + leadtime dimensions -> Actually, the simstart_values of  _parse_source()
+        #   should be ok for that, just need to be calculated inside that method.
 
         # Add the other coordinates to get the full set
+        leadtimes = generalconfig.leadtimes.timedelta64
         ensemble_list = list(set(ensemble_list))
         simstart_list = list(set(simstart_list))
         additional_coords = {
+            DataModelCoords.leadtime.name: leadtimes,
             DataModelCoords.ensemble.name: ensemble_list,
             DataModelCoords.simstart.name: simstart_list,
         }
@@ -197,7 +209,11 @@ class DataModel:
         #   Here, need to have simstart, or can do without? Will depend on whether leadtime already
         #   taken into account in the ds? So need either simstart or leadtime? Can have both?
         sim_dims = [DataModelDims.ensemble, DataModelDims.simstart, *obs_dims]
-        sim_coords = [DataModelCoords.ensemble.name, DataModelCoords.simstart.name, *obs_coords]
+        sim_coords = [
+            DataModelCoords.ensemble.name,
+            DataModelCoords.simstart.name,
+            *obs_coords,
+        ]
 
         # TODO(AU): Allow additional dimensions and coordinates, beyond the fixed set # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/10
