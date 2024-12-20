@@ -34,9 +34,9 @@ class DataModel:
             # case this function is called from a custom implementation.
             msg = "No leadtimes specified in General configuration"
             raise ValueError(msg)
-        coords, time_step = self._construct_input_dataset(datalist, generalconfig)
-        self._create_intermediate_dataset(coords, time_step)
-        self._initialize_output_dataset(coords, time_step)
+        self.input, coords, time_step = self._construct_input_dataset(datalist, generalconfig)
+        self.intermediate = self._create_intermediate_dataset(self.input, coords, time_step)
+        self._output = self._initialize_output_dataset(coords, time_step)
 
     @property
     def output(self) -> xarray.Dataset:
@@ -51,11 +51,11 @@ class DataModel:
         )
         raise AttributeError(msg)
 
+    @staticmethod
     def _construct_input_dataset(
-        self,
         datalist: Sequence[GenericDatasource],
         generalconfig: GeneralInfo,
-    ) -> tuple[xarray.Coordinates, np.timedelta64]:
+    ) -> tuple[xarray.Dataset, xarray.Coordinates, np.timedelta64]:
         """
         Parse the list of datasources.
 
@@ -75,10 +75,12 @@ class DataModel:
         for ds in datalist:
             obs_list.append(ds) if ds.simobstype == SimObsType.OBS else sim_list.append(ds)
 
-            self._check_source_dims_and_coords(
+            DataModel._check_source_dims_and_coords(
                 ds,
             )  # Method will raise an error when there is a problem
-            step, start, end, location, ensemble_numbers, simstart_values = self._parse_source(ds)
+            step, start, end, location, ensemble_numbers, simstart_values = DataModel._parse_source(
+                ds,
+            )
 
             time_steps.append(step)
             time_starts.append(start)
@@ -109,7 +111,7 @@ class DataModel:
         coords = coords.assign(locations.coords)
 
         # Add time coordinate to coords
-        time_coord, time_step = self._create_time_coord(
+        time_coord, time_step = DataModel._create_time_coord(
             time_starts,
             time_ends,
             time_steps,
@@ -136,25 +138,26 @@ class DataModel:
         }
         coords = coords.assign(additional_coords)
 
-        self.input = xarray.Dataset(coords=coords)
+        inputdataset = xarray.Dataset(coords=coords)
         # TODO(AU): Add more checks on the combination before merge() # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/14
         obs_sets = [obs.xarray for obs in obs_list]
         sim_sets = [sim.xarray for sim in sim_list]
-        merge_set = [self.input, *obs_sets, *sim_sets]
-        self.input = xarray.merge(merge_set)
+        merge_set = [inputdataset, *obs_sets, *sim_sets]
+        inputdataset = xarray.merge(merge_set)
         # Register the timestep as an attribute, for easy access
-        self.input.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        inputdataset.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
 
         # Return the constructed coords, without any changes that the xarray.merge() might have
         #  caused to the self.input coordinates
-        return coords, time_step
+        return inputdataset, coords, time_step
 
+    @staticmethod
     def _create_intermediate_dataset(
-        self,
+        inputdataset: xarray.Dataset,
         coords: xarray.Coordinates,
         time_step: np.timedelta64,
-    ) -> None:
+    ) -> xarray.Dataset:
         # Construct time coordinate for intermediate dataset based on simstart and leadtime values
         leadtimes = coords[DataModelCoords.leadtime.name].data  # type: ignore[misc]  # Yes, data is a Any array, we assume it is compatible with np.min and np.max
         simstarts = coords[DataModelCoords.simstart.name].data  # type: ignore[misc]  # Yes, data is a Any array, we assume it is compatible with np.min and np.max
@@ -185,7 +188,7 @@ class DataModel:
             DataModelCoords.time.name: time_values,
         }
         coords = coords.assign(update_coords)
-        self.intermediate = xarray.Dataset(coords=coords)
+        intermediatedataset = xarray.Dataset(coords=coords)
 
         # For data variables with a simstart dimension, extract only specific values
         # For data variables with neither a simstart nor a leadtime dimension, extract values at
@@ -197,8 +200,8 @@ class DataModel:
         #   See issue for full description.
         #   Here, for variables with a leadtime dimension, extract values at intermediate dataset
         #     time locations (?)
-        for varname in self.input.data_vars:
-            datavar = self.input.data_vars[varname]
+        for varname in inputdataset.data_vars:
+            datavar = inputdataset.data_vars[varname]
             if DataModelDims.simstart in datavar.dims:
                 leadtime: np.timedelta64
                 for index, leadtime in enumerate(leadtimes):  # type: ignore[misc]  # Yes, leadtimes is a Any array, we assume it is a compatible with np.min and np.max
@@ -210,20 +213,20 @@ class DataModel:
                     #   including what resulting dimension / coordinates the values map to.
                     select_at = {
                         DataModelCoords.time.name: list(
-                            self.input[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc]
+                            inputdataset[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc]
                         ),
                         DataModelCoords.simstart.name: xarray.DataArray(
-                            self.input[DataModelCoords.simstart.name].data,  # type: ignore[misc]
+                            inputdataset[DataModelCoords.simstart.name].data,  # type: ignore[misc]
                             dims=DataModelDims.time,
                         ),
                     }
                     if not index:
-                        self.intermediate[varname] = datavar.sel(select_at).expand_dims(
+                        intermediatedataset[varname] = datavar.sel(select_at).expand_dims(
                             dim={"leadtime": [leadtime]},
                             axis=len(datavar.dims) - 1,
                         )
                     else:
-                        self.intermediate[varname] = self.intermediate[varname].combine_first(
+                        intermediatedataset[varname] = intermediatedataset[varname].combine_first(
                             datavar.sel(select_at).expand_dims(
                                 dim={"leadtime": [leadtime]},
                                 axis=len(datavar.dims) - 1,
@@ -243,44 +246,48 @@ class DataModel:
                 select_at = {
                     DataModelCoords.time.name: time_values,
                 }
-                self.intermediate[varname] = datavar.sel(select_at)
+                intermediatedataset[varname] = datavar.sel(select_at)
 
+        return intermediatedataset
+
+    @staticmethod
     def _initialize_output_dataset(
-        self,
         coords: xarray.Coordinates,
         time_step: np.timedelta64,
-    ) -> None:
+    ) -> xarray.Dataset:
         """Initialize the output dataset with coordinates and attributes."""
         # TODO(AU): Add leadtime dimension and coordinate during initialization # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/15
 
-        self._output = xarray.Dataset(coords=coords)
+        outputdataset = xarray.Dataset(coords=coords)
         # TODO(AU): Refactor the _output.attrs update calls here # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/17
 
         # Register the timestep as an attribute, for easy access
-        self._output.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset.attrs.update({DataModelAttributes.timestep: time_step})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
         # Register how this output was created
         source_str = NAME + " version " + VERSION_FULL
-        self._output.attrs.update({DataModelAttributes.source: source_str})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
-        self._output.attrs.update({DataModelAttributes.featuretype: "timeSeries"})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset.attrs.update({DataModelAttributes.source: source_str})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset.attrs.update({DataModelAttributes.featuretype: "timeSeries"})  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
         # Make sure the location_id variable (a string array in python) is encoded as NC_CHAR in
         #   netcdf export, to be CF compliant
         to_char = {"dtype": "S1"}
-        self._output[DataModelCoords.location.name].encoding.update(to_char)  # type: ignore[misc]  # Yes, encoding is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.location.name].encoding.update(to_char)  # type: ignore[misc]  # Yes, encoding is een any-any dict, however here we only add to it.
         # Update all coordinates with (CF compliancy) attributes
-        self._output[DataModelCoords.time.name].attrs.update(DataModelCoords.time.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
-        self._output[DataModelCoords.location.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.time.name].attrs.update(DataModelCoords.time.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.location.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
             DataModelCoords.location.attributes,
         )
-        self._output[DataModelCoords.lat.name].attrs.update(DataModelCoords.lat.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
-        self._output[DataModelCoords.lon.name].attrs.update(DataModelCoords.lon.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
-        self._output[DataModelCoords.ensemble.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.lat.name].attrs.update(DataModelCoords.lat.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.lon.name].attrs.update(DataModelCoords.lon.attributes)  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.ensemble.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
             DataModelCoords.ensemble.attributes,
         )
-        self._output[DataModelCoords.simstart.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
+        outputdataset[DataModelCoords.simstart.name].attrs.update(  # type: ignore[misc]  # Yes, attrs is een any-any dict, however here we only add to it.
             DataModelCoords.simstart.attributes,
         )
+
+        return outputdataset
 
     @staticmethod
     def _check_source_dims_and_coords(ds: GenericDatasource) -> None:
