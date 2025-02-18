@@ -56,20 +56,20 @@ def test_execute_pipeline_happy_yaml_rank_histogram(tmp_path: Path) -> None:
     testconf["datasources"][1]["filename"] = TESTS_FORECASTS_FILE.name
     testconf["datasources"].append(copy.deepcopy(testconf["datasources"][1]))
     testconf["datasources"][2]["filename"] = TESTS_FORECASTS_2_FILE.name
+
     testconf["calculations"][0].pop("variablepairs")
-    testconf["calculations"][0]["calculationtype"] = "rankhistogram"
     testconf["calculations"][0]["variablepair"] = {"sim": "Q.fs", "obs": "Q.m"}  # type: ignore[assignment]
-    testconf["calculations"][0]["calculationtype"] = "crps_for_ensemble"
-    testconf["calculations"][0]["reduce_dims"] = ["stations"]  # type: ignore[assignment]
+    testconf["calculations"][0]["calculationtype"] = "rankhistogram"
+    testconf["calculations"][0]["reduce_dims"] = ["location_id"]  # type: ignore[assignment]
+
     testconf["output"][0]["directory"] = str(tmpout.parent)
     testconf["output"][0]["filename"] = tmpout.name
     tmp_conf_file = tmp_path / "tempconf.yaml"
     with tmp_conf_file.open(mode="w") as tf:
         yaml.dump(testconf, tf)
 
-    pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
-
-    assert tmpout.exists()
+    with pytest.raises(NotImplementedError):
+        pipeline.execute_pipeline(tmp_conf_file, configtype="yaml")
 
 
 def test_execute_pipeline_happy_yaml_crps_for_ensemble(tmp_path: Path) -> None:

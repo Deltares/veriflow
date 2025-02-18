@@ -104,7 +104,7 @@ class FewsNetcdfFile(GenericDatasource):
         # Renames from DPyVerification datamodel to FewsNetcdf compliance
         renames = {DataModelDims.simstart: "analysis_time"}
         dataset = dataset.rename_dims(renames)
-        renames = {DataModelCoords.simstart.name: "analysis_time"}
+        renames = {DataModelCoords.simstart.name: "analysis_time"}  # type: ignore[dict-item]
         dataset = dataset.rename_vars(renames)
 
         # Remove attributes not usable / desired in the netcdf

@@ -543,12 +543,12 @@ class DataModel:
                     is_compatible = not ((timestart - new_start) % timestep)
                 if not is_compatible:
                     msg = (
-                        f"Timecoordinate values of new output are not compatible: not all values are"
-                        f" at a position start_time {min(self.output[DataModelCoords.time.name].data)}"  # type: ignore[misc] # Due to the numpy arrays
+                        f"Timecoordinate values of new output are not compatible: not all values are"  # noqa: E501
+                        f" at a position start_time {min(self.output[DataModelCoords.time.name].data)}"  # type: ignore[misc] # Due to the numpy arrays  # noqa: E501
                         f" +/- integer multiple of timestep {timestep}"
                     )
                     raise ValueError from mismatch
-                # The times are compatible, however just doing an xarray merge does not guarantee a full
+                # The times are compatible, however just doing an xarray merge does not guarantee a full  # noqa: E501
                 #  monotonic time. Therefore, explicitly create new time coord values
                 time_starts = [timestart, new_start]
                 time_ends: list[np.datetime64] = [

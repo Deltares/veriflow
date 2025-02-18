@@ -20,8 +20,13 @@ def rankhistogram(
         raise TypeError(msg)
 
     # Select sim and obs.
-    obs = data.intermediate[calcconfig.simobsvariables.obs]
-    sim = data.intermediate[calcconfig.simobsvariables.sim]
+    obs = data.intermediate[calcconfig.variablepair.obs]
+    sim = data.intermediate[calcconfig.variablepair.sim]
+
+    # https://github.com/Deltares-research/DPyVerification/issues/63
+    if len(sim[DataModelDims.leadtime]) != 1:
+        msg = "Computation of rank histogram for multiple lead times is not yet supported."
+        raise NotImplementedError(msg)
 
     # Compute
     _result: xr.DataArray | xr.Dataset = _rank_histogram(
