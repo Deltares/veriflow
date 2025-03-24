@@ -223,46 +223,51 @@ class RankHistogram(BaseModel):
     variablepair: Annotated[
         SimObsVariables,
         Field(
-            description="""Variable pair to use for the computation.""",
+            description="Variable pair to use for the computation.",
         ),
     ]
     reduce_dims: Annotated[
         list[DataModelDims] | None,
         Field(
-            description="""Dimension(s) over which to compute the histogram
-            of ranks. Defaults to all dimensions.""",
+            description=(
+                "Dimension(s) over which to compute the histogram"
+                "of ranks. Defaults to all dimensions."
+            ),
         ),
     ] = None
 
 
 class CRPSForEnsemble(BaseModel):
     @staticmethod
-    def preserve_dim_is_not_ensemble(value: DataModelDims) -> DataModelDims:
+    def dim_is_not_ensemble(value: DataModelDims) -> DataModelDims:
         """Check dim is not ensemble dim."""
         if value == DataModelDims.ensemble:
             msg = "Cannot preserve ensemble dimension."
             raise ValueError(msg)
         return value
 
-    calculationtype: Literal[CalculationType.CRPSForEnsemble]
+    calculationtype: Literal[CalculationType.CRPSFORENSEMBLE]
     variablepair: Annotated[
         SimObsVariables,
         Field(
-            description="""Variable pair to use for the computation.""",
+            description="Variable pair to use for the computation.",
         ),
     ]
     method: Annotated[
         Literal["ecdf", "fair"],
         Field(
-            description="""Defaults to ecdf. See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble""",
+            description=(
+                "Defaults to ecdf."
+                "See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble"
+            ),
             default="ecdf",
         ),
     ]
     preserve_dims: Annotated[
         list[DataModelDims] | None,
-        AfterValidator(preserve_dim_is_not_ensemble),
+        AfterValidator(dim_is_not_ensemble),
         Field(
-            description="""List of dimension(s) to preserve in the output. Defaults to None.""",
+            description="List of dimension(s) to preserve in the output. Defaults to None.",
             default=None,
         ),
     ] = None
