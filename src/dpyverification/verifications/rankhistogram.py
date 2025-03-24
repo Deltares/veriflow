@@ -36,6 +36,11 @@ def rankhistogram(
         member_dim=DataModelDims.ensemble,
     )
 
+    # Set attrs on xr.DataArray
+    # For now, store config as dict
+    # General config could be stored as xr.Dataset attrs
+    _result.attrs = {str(k): str(v) for k, v in calcconfig.__dict__.items()}  # type: ignore[misc]
+
     # Covert to xr.Dataset if type xr.DataArray.
     # since it is required by the add_to_output
     # method in the pipiline.
