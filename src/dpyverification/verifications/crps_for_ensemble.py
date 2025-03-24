@@ -39,7 +39,7 @@ def crps_for_ensemble(
         raise NotImplementedError(msg)
 
     # Set variable name on xr.DataArray
-    _result.name = CalculationType.CRPSForEnsemble
+    _result.name = CalculationType.CRPSFORENSEMBLE
 
     # Set attrs on xr.DataArray
     # For now, store config as dict

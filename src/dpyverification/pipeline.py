@@ -45,7 +45,7 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
             datamodel.add_to_output(
                 rankhistogram.rankhistogram(calculation, datamodel),
             )
-        elif calculation.calculationtype == CalculationType.CRPSForEnsemble:
+        elif calculation.calculationtype == CalculationType.CRPSFORENSEMBLE:
             datamodel.add_to_output(
                 crps_for_ensemble.crps_for_ensemble(calculation, datamodel),
             )
