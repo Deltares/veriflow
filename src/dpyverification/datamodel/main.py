@@ -195,55 +195,64 @@ class DataModel:
         #   See issue for full description.
         #   Here, for variables with a leadtime dimension, extract values at intermediate dataset
         #     time locations (?)
-        for varname in inputdataset.data_vars:
-            datavar = inputdataset.data_vars[varname]
-            if DataModelDims.simstart in datavar.dims:
-                leadtime: np.timedelta64
-                for index, leadtime in enumerate(leadtimes):  # type: ignore[misc]  # Yes, leadtimes is a Any array, we assume it is a compatible with np.min and np.max
-                    # Select all values at specific simstart - time combinations
-                    #   For each simstart, since inside loop for specific leadtime, want only values
-                    #   for one specific time.
-                    #   Based on http://xarray.pydata.org/en/stable/indexing.html#more-advanced-indexing,
-                    #   pointwise indexing can be done by creating DataArrays for indexing,
-                    #   including what resulting dimension / coordinates the values map to.
-                    select_at = {
-                        DataModelCoords.time.name: list(
-                            inputdataset[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc]
-                        ),
-                        DataModelCoords.simstart.name: xarray.DataArray(
-                            inputdataset[DataModelCoords.simstart.name].data,  # type: ignore[misc]
-                            dims=DataModelDims.time,
-                        ),
-                    }
-                    is_first_iteration = not index
-                    if is_first_iteration:
-                        intermediatedataset[varname] = datavar.sel(select_at).expand_dims(
-                            dim={"leadtime": [leadtime]},
-                            axis=len(datavar.dims) - 1,
-                        )
-                    else:
-                        intermediatedataset[varname] = intermediatedataset[varname].combine_first(
-                            datavar.sel(select_at).expand_dims(
-                                dim={"leadtime": [leadtime]},
-                                axis=len(datavar.dims) - 1,
-                            ),
-                        )
-            elif DataModelDims.leadtime in datavar.dims:
-                msg = f"Data variables with {DataModelDims.leadtime} dimension not supported yet."
-                raise NotImplementedError(msg)
-            elif DataModelDims.simstart in datavar.dims and DataModelDims.leadtime in datavar.dims:
+
+        def transform_to_intermediate_data_variable(datavar: xarray.DataArray) -> xarray.DataArray:
+            """Transform a variable to intermediate datavariable."""
+            if DataModelDims.simstart in datavar.dims and DataModelDims.leadtime in datavar.dims:
                 msg = (
                     f"Data variables are expected to have at maximum one of the"
                     f" {DataModelDims.leadtime} and {DataModelDims.simstart} dimensions. Use of"
                     f" variables that have both of these dimensions is not supported."
                 )
                 raise ValueError(msg)
-            else:
-                select_at = {
-                    DataModelCoords.time.name: time_values,
-                }
-                intermediatedataset[varname] = datavar.sel(select_at)
+            if (
+                DataModelDims.simstart not in datavar.dims
+                and DataModelDims.leadtime not in datavar.dims
+            ):
+                select_at = {DataModelCoords.time.name: time_values}
+                return datavar.sel(select_at)
+            if DataModelDims.leadtime in datavar.dims:
+                msg = f"Data variables with {DataModelDims.leadtime} dimension not supported yet."
+                raise NotImplementedError(msg)
 
+            leadtime: np.timedelta64
+            for index, leadtime in enumerate(leadtimes):  # type: ignore[misc]  # Yes, leadtimes is a Any array, we assume it is a compatible with np.min and np.max
+                # Select all values at specific simstart - time combinations
+                #   For each simstart, since inside loop for specific leadtime, want only values
+                #   for one specific time.
+                #   Based on http://xarray.pydata.org/en/stable/indexing.html#more-advanced-indexing,
+                #   pointwise indexing can be done by creating DataArrays for indexing,
+                #   including what resulting dimension / coordinates the values map to.
+                select_at = {
+                    DataModelCoords.time.name: list(  # type: ignore[dict-item]
+                        inputdataset[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc]
+                    ),
+                    DataModelCoords.simstart.name: xarray.DataArray(  # type: ignore[dict-item]
+                        inputdataset[DataModelCoords.simstart.name].data,  # type: ignore[misc]
+                        dims=DataModelDims.time,
+                    ),
+                }
+                is_first_iteration = not index
+                if is_first_iteration:
+                    intermediatedataset[datavar.name] = datavar.sel(select_at).expand_dims(
+                        dim={"leadtime": [leadtime]},
+                        axis=len(datavar.dims) - 1,
+                    )
+                else:
+                    intermediatedataset[datavar.name] = intermediatedataset[
+                        datavar.name
+                    ].combine_first(
+                        datavar.sel(select_at).expand_dims(
+                            dim={"leadtime": [leadtime]},
+                            axis=len(datavar.dims) - 1,
+                        ),
+                    )
+            return intermediatedataset[varname]
+
+        for varname in inputdataset.data_vars:
+            intermediatedataset[varname] = transform_to_intermediate_data_variable(
+                inputdataset.data_vars[varname],
+            )
         return intermediatedataset
 
     @staticmethod
