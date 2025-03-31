@@ -219,7 +219,7 @@ Calculation: TypeAlias = (
 
 class GeneralInfo(BaseModel):
     verificationperiod: TimePeriod
-    leadtimes: LeadTimes = LeadTimes(values=[0], unit=TimeUnits("h"))
+    leadtimes: LeadTimes
 
 
 class ConfigSchema(BaseModel):

@@ -29,11 +29,6 @@ class DataModel:
         datalist: Sequence[GenericDatasource],
         generalconfig: GeneralInfo,
     ) -> None:
-        if not generalconfig.leadtimes:
-            # When called from pipeline, this should not be possible. However, do need to check in
-            # case this function is called from a custom implementation.
-            msg = "No leadtimes specified in General configuration"
-            raise ValueError(msg)
         self.input, coords, time_step = self._construct_input_dataset(datalist, generalconfig)
         self.intermediate = self._create_intermediate_dataset(self.input, coords, time_step)
         self._output = self._initialize_output_dataset(coords, time_step)
