@@ -570,4 +570,4 @@ class DataModel:
         # TODO(AU): Output data content requirements are not complete # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/26
         #   Do we indeed want to use xarray.merge, without any qualifiers?
-        self._output = self._output.merge(new_output, combine_attrs="no_conflicts")
+        self._output = self._output.merge(new_output)

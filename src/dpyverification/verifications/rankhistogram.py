@@ -53,18 +53,15 @@ def rankhistogram(
 
         # Set the long_name attribute on the variable
         # Set units to 1 (CF-compliant indication for dimensionless variable)
-        rank_for_leadtime.attrs = {"long_name": name, "units": 1}
+        rank_for_leadtime.attrs = {"long_name": name, "units": 1} | {  # type: ignore[misc]
+            str(k): str(v)  # type: ignore[misc]
+            for k, v in calcconfig.__dict__.items()  # type: ignore[misc]
+        }
 
         # Append to the list
         rankhistograms_per_leadtime.append(rank_for_leadtime)
 
-    # Compute
+    # Compute data variables
     data_vars = {k.name: k for k in rankhistograms_per_leadtime}
-    ranks_for_all_leadtimes = xr.Dataset(data_vars=data_vars)
 
-    # Set attrs on xr.DataArray
-    # For now, store config as dict
-    # General config could be stored as xr.Dataset attrs
-    ranks_for_all_leadtimes.attrs = {str(k): str(v) for k, v in calcconfig.__dict__.items()}  # type: ignore[misc]
-
-    return ranks_for_all_leadtimes
+    return xr.Dataset(data_vars=data_vars)

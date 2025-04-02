@@ -78,7 +78,7 @@ def test_execute_pipeline_happy_yaml_rank_histogram(tmp_path: Path) -> None:
     assert "rank_histogram_leadtime_21600s" in ds.data_vars
 
     # Check the dataset global attribute calculationtype
-    assert ds.attrs["calculationtype"] == "rankhistogram"  # type: ignore[misc]
+    assert ds["rank_histogram_leadtime_10800s"].attrs["calculationtype"] == "rankhistogram"  # type: ignore[misc]
 
 
 def test_execute_pipeline_happy_yaml_crps_for_ensemble(tmp_path: Path) -> None:
