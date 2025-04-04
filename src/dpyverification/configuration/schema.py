@@ -38,6 +38,7 @@ from pydantic import AfterValidator, BaseModel, Field
 from dpyverification.constants import (
     CalculationType,
     DataModelDims,
+    DataSinkType,
     DataSourceType,
     SimObsType,
     TimeUnits,
@@ -150,7 +151,7 @@ class FewsWebserviceInputSim(FewsWebserviceInput):
 
 
 class FewsWebserviceOutput(FewsWebservice):
-    pass
+    datasinktype: Literal[DataSinkType.FEWSNETCDF]
 
 
 class LocalFile(BaseModel):
@@ -171,7 +172,7 @@ class FileInputFewsnetcdf(FileInput):
 
 
 class FewsNetcdfOutput(LocalFile):
-    datasourcetype: Literal[DataSourceType.FEWSNETCDF]
+    datasinktype: Literal[DataSinkType.FEWSNETCDF]
     title: Annotated[
         str | None,
         Field(
@@ -191,7 +192,8 @@ DataSource: TypeAlias = (
     FewsWebserviceInputSim | FewsWebserviceInputObs | FileInputPixml | FileInputFewsnetcdf
 )  # A Type Alias for the combination of data source schema classes
 
-Output: TypeAlias = (
+
+DataSink: TypeAlias = (
     FewsWebserviceOutput | FewsNetcdfOutput
 )  # A Type Alias for the combination of output schema classes
 
@@ -287,8 +289,8 @@ class GeneralInfo(BaseModel):
 
 
 class ConfigSchema(BaseModel):
-    output: Annotated[list[Output], Field(min_length=1)]
-    calculations: Annotated[list[Calculation], Field(min_length=1)]
-    datasources: Annotated[list[DataSource], Field(min_length=1)]
-    general: GeneralInfo
     fileversion: str
+    general: GeneralInfo
+    datasources: Annotated[list[DataSource], Field(min_length=1)]
+    calculations: Annotated[list[Calculation], Field(min_length=1)]
+    datasinks: Annotated[list[DataSink], Field(min_length=1)]

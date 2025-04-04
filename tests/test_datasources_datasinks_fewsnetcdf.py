@@ -7,10 +7,8 @@ import xarray as xr
 import yaml
 from dpyverification.configuration import Config
 from dpyverification.constants import DataModelAttributes, DataModelCoords, DataModelDims
-from dpyverification.datasources.fewsnetcdf import (
-    FewsNetcdfFile,
-    FewsNetcdfSchema,
-)
+from dpyverification.datasinks.fewsnetcdf import FewsNetcdfFileSink, FewsNetcdfOutputSchema
+from dpyverification.datasources.fewsnetcdf import FewsNetcdfFileSource
 
 from tests import TESTS_CONFIGURATION_FILE, TESTS_FEWS_COMPLIANT_FILE
 
@@ -37,7 +35,7 @@ def test_get_data_happy(tmp_path: Path) -> None:
     conf = Config(tmp_conf_file, "yaml")
 
     with pytest.raises(NotImplementedError):
-        _ = FewsNetcdfFile.get_data(conf.content.datasources[0])
+        _ = FewsNetcdfFileSource.get_data(conf.content.datasources[0])
 
     # When no longer not-implemented, assert the contents
     # Also, when implemented, add to TESTS_CONFIGURATION_FILE?
@@ -51,7 +49,7 @@ def test_schema_testfile() -> None:
     ds = xr.open_dataset(TESTS_FEWS_COMPLIANT_FILE)
     schema_like = ds.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
     # This will throw an error when not compliant
-    _ = FewsNetcdfSchema(**schema_like)  # type: ignore[misc] # See above
+    _ = FewsNetcdfOutputSchema(**schema_like)  # type: ignore[misc] # See above
 
 
 def test_write_happy(tmp_path: Path) -> None:
@@ -76,8 +74,8 @@ def test_write_happy(tmp_path: Path) -> None:
     with TESTS_CONFIGURATION_FILE.open() as cf:
         testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
     # Adapt:
-    testconf["output"][0]["directory"] = str(tmpfile.parent)
-    testconf["output"][0]["filename"] = tmpfile.name
+    testconf["datasinks"][0]["directory"] = str(tmpfile.parent)
+    testconf["datasinks"][0]["filename"] = tmpfile.name
     # Create:
     tmp_conf_file = tmp_path / "tempconf.yaml"
     with tmp_conf_file.open(mode="w") as tf:
@@ -87,7 +85,7 @@ def test_write_happy(tmp_path: Path) -> None:
     # rename_dims
     # rename_vars
 
-    FewsNetcdfFile.write_data(conf.content.output[0], ds_datamodel)
+    FewsNetcdfFileSink.write_data(conf.content.datasinks[0], ds_datamodel)
 
     assert tmpfile.exists()
 
@@ -107,8 +105,8 @@ def test_read_write_equal(tmp_path: Path) -> None:
     with TESTS_CONFIGURATION_FILE.open() as cf:
         testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
     # Adapt:
-    testconf["output"][0]["directory"] = str(tmpfile.parent)
-    testconf["output"][0]["filename"] = tmpfile.name
+    testconf["datasinks"][0]["directory"] = str(tmpfile.parent)
+    testconf["datasinks"][0]["filename"] = tmpfile.name
     # Create:
     tmp_conf_file = tmp_path / "tempconf.yaml"
     with tmp_conf_file.open(mode="w") as tf:
@@ -122,7 +120,7 @@ def test_read_write_equal(tmp_path: Path) -> None:
     ds_datamodel = ds_datamodel.rename_vars({"analysis_time": DataModelCoords.simstart.name})  # type: ignore[misc] # attrs is a dict[Any,Any]
     ds_datamodel.attrs[DataModelAttributes.timestep] = 1  # type: ignore[misc] # attrs is a dict[Any,Any]
 
-    FewsNetcdfFile.write_data(conf.content.output[0], ds_datamodel)
+    FewsNetcdfFileSink.write_data(conf.content.datasinks[0], ds_datamodel)
 
     assert tmpfile.exists()
 

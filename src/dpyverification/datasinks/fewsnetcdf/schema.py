@@ -74,7 +74,7 @@ class DataVars(BaseModel):
     attrs: DataVarAttrs
 
 
-class FewsNetcdfFileInputSchema(BaseModel):
+class FewsNetcdfOutputSchema(BaseModel):
     attrs: FileAttrs
     dims: Dims
     coords: Coords

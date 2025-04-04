@@ -4,7 +4,7 @@ from typing import Self
 
 import xarray
 
-from dpyverification.configuration import DataSource, Output
+from dpyverification.configuration import DataSource
 from dpyverification.constants import SimObsType
 
 
@@ -40,17 +40,3 @@ class GenericDatasource:
         Returns a list of datasource objects, one for each sim or obs
         """
         return [cls(dsconfig)]
-
-    @classmethod
-    def write_data(cls, dsconfig: Output, dataset: xarray.Dataset) -> None:
-        """Write the data in the xarray Dataset to the datasource.
-
-        Details of how to write will need to be implemented in subclass.
-        """
-        msg = (
-            "Writing Dataset to file / webservice is dependent on the file type to write to,"
-            " no generic implementation."
-        )
-        _ = dsconfig
-        _ = dataset
-        raise NotImplementedError(msg)

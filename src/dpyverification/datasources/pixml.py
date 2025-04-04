@@ -145,5 +145,3 @@ class PiXmlFile(GenericDatasource):
         pif = cls(dsconfig)
         pif.xarray = cls.pi_xml_to_xarray(filepath, dsconfig.simobstype)
         return [pif]
-
-    # classmethod write_to_file remains explicitly not implemented for pi xml

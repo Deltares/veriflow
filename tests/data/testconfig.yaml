@@ -33,10 +33,10 @@ calculations: [
     ]
   },
 ]
-output: [
+datasinks: [
   {
-    datasourcetype: "fewsnetcdf",
+    datasinktype: "fewsnetcdf",
     directory: "somewhere",
     filename: "something",
-  }
+  },
 ]

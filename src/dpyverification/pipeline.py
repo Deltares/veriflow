@@ -9,9 +9,9 @@ import itertools
 import pathlib
 
 from dpyverification.configuration import Config
-from dpyverification.constants import CalculationType, DataSourceType
+from dpyverification.constants import CalculationType, DataSinkType, DataSourceType
 from dpyverification.datamodel import DataModel
-from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
+from dpyverification.datasinks.fewsnetcdf import FewsNetcdfFileSink
 from dpyverification.datasources.pixml import PiXmlFile
 from dpyverification.verifications import crps_for_ensemble, rankhistogram, simobspairs
 
@@ -53,9 +53,9 @@ def execute_pipeline(configfile: pathlib.Path, configtype: str = "yaml") -> None
             # If an unknown calculation is used, error
             raise NotImplementedError
 
-    for output in config.content.output:
-        if output.datasourcetype == DataSourceType.FEWSNETCDF:
-            FewsNetcdfFile.write_data(output, datamodel.output)
+    for datasink in config.content.datasinks:
+        if datasink.datasinktype == DataSinkType.FEWSNETCDF:
+            FewsNetcdfFileSink.write_data(datasink, datamodel.output)
         else:
             # If an unknown output is specified, error
             raise NotImplementedError

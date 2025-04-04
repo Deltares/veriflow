@@ -6,12 +6,12 @@ from .schema import (
     Calculation,
     ConfigSchema,
     CRPSForEnsemble,
+    DataSink,
     DataSource,
     FewsNetcdfOutput,
     FileInputFewsnetcdf,
     FileInputPixml,
     GeneralInfo,
-    Output,
     RankHistogram,
     SimObsPairs,
 )

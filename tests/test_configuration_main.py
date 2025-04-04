@@ -29,8 +29,8 @@ def test_main_yaml_happy() -> None:
         "leadtimes": {"unit": "h", "values": [3, 6]},
         "variablepairs": [{"obs": "Q.m", "sim": "Q.fs"}],
     }
-    assert config.content.output[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
-        "datasourcetype": "fewsnetcdf",
+    assert config.content.datasinks[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
+        "datasinktype": "fewsnetcdf",
         "directory": "somewhere",
         "filename": "something",
         "institution": "Deltares",

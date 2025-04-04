@@ -14,11 +14,17 @@ import importlib_metadata
 
 @unique
 class DataSourceType(StrEnum):
-    """Enumeration of the supported input and / or output datasource types."""
+    """Enumeration of the supported datasource types."""
 
     PIXML = "pixml"
     FEWSNETCDF = "fewsnetcdf"
     FEWSWEBSERVICE = "fewswebservice"
+
+
+class DataSinkType(StrEnum):
+    """Enumeration of the supported datasink types."""
+
+    FEWSNETCDF = "fewsnetcdf"
 
 
 @unique

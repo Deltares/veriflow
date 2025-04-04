@@ -119,5 +119,3 @@ class FewsWebService(GenericDatasource):
         fws.xarray = PiXmlFile.pi_xml_to_xarray(Path(temp_file_path), dsconfig.simobstype)
 
         return [fws]
-
-    # classmethod write_to_file remains explicitly not implemented for pi xml
