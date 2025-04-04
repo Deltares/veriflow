@@ -31,23 +31,23 @@ def simobspairs(
     #   leadtimes dimension of the intermediate dataset
     leadtimes = calcconfig.leadtimes.timedelta64
     variablepairs = calcconfig.variablepairs
-    intermediatedataset = data.intermediate
+    intermediate_dataset = data.intermediate
 
-    # add checks on inputdataset here?
+    # add checks on input_dataset here?
 
-    return _simobs(intermediatedataset, leadtimes, variablepairs)
+    return _simobs(intermediate_dataset, leadtimes, variablepairs)
 
 
 def _simobs(
-    intermediatedataset: xarray.Dataset,
+    intermediate_dataset: xarray.Dataset,
     leadtimes: list[timedelta64],
     variablepairs: list[SimObsVariables],
 ) -> xarray.Dataset:
     leadsets = []
     for leadtime in leadtimes:
-        leadset = intermediatedataset.coords.to_dataset()
+        leadset = intermediate_dataset.coords.to_dataset()
         selecttime: list[datetime64] = list(
-            intermediatedataset[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time.name].data will be a 1D array of datetime64
+            intermediate_dataset[DataModelCoords.simstart.name].data + leadtime,  # type: ignore[misc] # Quite certain that data.input[DataModelCoords.time.name].data will be a 1D array of datetime64
         )
         for pair in variablepairs:
             # Construct variable names:
@@ -73,23 +73,23 @@ def _simobs(
             select_at = {
                 DataModelCoords.time.name: selecttime,
             }
-            vals = intermediatedataset[pair.obs].sel(select_at)
+            vals = intermediate_dataset[pair.obs].sel(select_at)
             leadset[outnameobs] = vals.expand_dims(
                 dim={"leadtime": [leadtime]},
                 axis=len(vals.dims),
             )
-            if "units" in intermediatedataset[pair.obs].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
+            if "units" in intermediate_dataset[pair.obs].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
                 leadset[outnameobs].attrs.update(  # type: ignore[misc] # attrs is a dict[Any,Any]
-                    {"units": intermediatedataset[pair.obs].attrs["units"]},  # type: ignore[misc] # attrs is a dict[Any,Any]
+                    {"units": intermediate_dataset[pair.obs].attrs["units"]},  # type: ignore[misc] # attrs is a dict[Any,Any]
                 )
 
             # Parse the sim values
             select_at[DataModelCoords.leadtime.name] = [leadtime]
-            vals = intermediatedataset[pair.sim].sel(select_at)
+            vals = intermediate_dataset[pair.sim].sel(select_at)
             leadset[outnamesim] = vals
-            if "units" in intermediatedataset[pair.sim].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
+            if "units" in intermediate_dataset[pair.sim].attrs:  # type: ignore[misc] # attrs is a dict[Any,Any]
                 leadset[outnamesim].attrs.update(  # type: ignore[misc] # attrs is a dict[Any,Any]
-                    {"units": intermediatedataset[pair.sim].attrs["units"]},  # type: ignore[misc] # attrs is a dict[Any,Any]
+                    {"units": intermediate_dataset[pair.sim].attrs["units"]},  # type: ignore[misc] # attrs is a dict[Any,Any]
                 )
         leadsets.append(leadset)
     # merge will expand time to cover all leadtimes

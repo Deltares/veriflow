@@ -33,7 +33,7 @@ def test_create_intermediate_dataset() -> None:
     # Note the order of the dimensions of the variables, and how that compares to the order of the
     #   dimensions of the output variables, when reasoning about where the values in the output
     #   array should be located.
-    inputdataset = xr.Dataset(
+    input_dataset = xr.Dataset(
         data_vars={
             varnames[0]: (
                 DataModelCoords.time.name,
@@ -61,8 +61,8 @@ def test_create_intermediate_dataset() -> None:
     )
 
     output = DataModel._create_intermediate_dataset(
-        inputdataset,
-        inputdataset.coords,
+        input_dataset,
+        input_dataset.coords,
         np.timedelta64(1, "h"),
     )
 

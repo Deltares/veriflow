@@ -35,7 +35,7 @@ def test_simobs_output() -> None:
     # Note the order of the dimensions of the variables, and how that compares to the order of the
     #   dimensions of the output variables, when reasoning about where the values in the output
     #   array should be located.
-    inputdataset = xr.Dataset(
+    input_dataset = xr.Dataset(
         data_vars={
             varnames[0]: (
                 DataModelCoords.time.name,
@@ -62,7 +62,7 @@ def test_simobs_output() -> None:
         },
     )
 
-    output = _simobs(inputdataset, leadtimes, variablepairs)
+    output = _simobs(input_dataset, leadtimes, variablepairs)
 
     # The time dimension of the output is expected to be equal to the input time
     assert np.array_equal(
