@@ -9,10 +9,10 @@ from dpyverification.configuration import FileInputFewsnetcdfConfig
 from dpyverification.constants import SimObsKind
 from dpyverification.datasources.base import BaseDatasource
 
-from .schema import FewsNetcdfFileInputSchema
+from .schema import FewsNetcdfFileInputObsSchema, FewsNetcdfFileInputSimSchema
 
 
-class FewsNetcdfFileSource(BaseDatasource):
+class FewsNetcdfFile(BaseDatasource):
     """For reading data from, and writing data to, a fews netcdf file."""
 
     kind = "fewsnetcdf"
@@ -22,7 +22,48 @@ class FewsNetcdfFileSource(BaseDatasource):
         self.config: FileInputFewsnetcdfConfig = config
 
     @staticmethod
-    def _nc_to_xarray(path: Path, kind: str) -> xr.Dataset:
+    def convert_obs_to_datamodel(ds: xr.Dataset) -> xr.Dataset:
+        """Convert an obs file to match naming conventions of datamodel."""
+        # Renames
+        ds = ds.rename({"stations": "location_id", "station_id": "location_id"})  # type: ignore[misc]
+        # Drop x, y, z
+        return ds.drop_vars(["x", "y", "z", "station_names"])
+
+    @staticmethod
+    def convert_sim_to_datamodel(ds: xr.Dataset) -> xr.Dataset:
+        """Convert an sim file to match naming conventions of datamodel."""
+        # Set analysis_time coordinate for each data variable
+        # this is a bit of a workaround, since the FEWS webservice
+        # does not assign the anlysis_time as a coordinate on the
+        # netcdf.
+        ds = ds.assign_coords(analysis_time=("analysis_time", ds.analysis_time.data))  # type: ignore[misc]
+        for da in ds.data_vars:
+            ds[da] = ds[da].expand_dims(analysis_time=ds["analysis_time"])
+
+        # Renames
+        ds = ds.rename(
+            {
+                "stations": "location_id",
+                "analysis_time": "simulation_starttime",
+                "station_id": "location_id",
+            },  # type: ignore[misc]
+        )
+        # Rename only when ensemble forecast
+        if "realization" in ds:
+            ds = ds.rename({"realization": "ensemble_member"})  # type: ignore[misc]
+        # Drop coords
+        if "x" in ds:
+            ds = ds.drop_vars("x")
+        if "y" in ds:
+            ds = ds.drop_vars("y")
+        if "z" in ds:
+            ds = ds.drop_vars("z")
+        if "station_names" in ds:
+            ds = ds.drop_vars("station_names")
+        return ds
+
+    @staticmethod
+    def nc_to_xarray(path: Path, kind: str) -> xr.Dataset:
         """Read fews netcdf file and return xr.Dataset.
 
         Compatible with both observations and (ensemble) forecasts.
@@ -48,21 +89,18 @@ class FewsNetcdfFileSource(BaseDatasource):
         """
         ds = xr.open_dataset(path)
 
-        # Verify the structure of the dataset against known schema
-        schema_like = ds.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the model
-        # Assign to _, since the model will throw an error when not compliant
-        _ = FewsNetcdfFileInputSchema(**schema_like)  # type: ignore[misc]
+        # Get the dataset as dict, to validate against schema
+        schema_like = ds.to_dict()  # type: ignore[misc]
 
-        if kind == SimObsKind.OBS and "ensemble_member" in ds.coords:
-            # Can this happen? What to do? Squeeze it out like in pixml file?
-            raise NotImplementedError
+        if kind == SimObsKind.OBS:
+            _ = FewsNetcdfFileInputObsSchema(**schema_like)  # type: ignore[misc]
+            return FewsNetcdfFile.convert_obs_to_datamodel(ds)
+        if kind == SimObsKind.SIM:
+            _ = FewsNetcdfFileInputSimSchema(**schema_like)  # type: ignore[misc]
+            return FewsNetcdfFile.convert_sim_to_datamodel(ds)
 
-        raise NotImplementedError
-        # From here on, may need to also adapt how datamodel uses an xarray
-        # DataModel only tested for single parameter inputs for now, not yet multiple
-        # Need to check what coordinates an obs, and a sim, can have, and if that matches the
-        #  DataModel expectations on inputs
-        return ds  # type: ignore[unreachable] # yes, for now this is unreachable, but do want to keep it
+        msg = f"Kind is not valid: {kind}. Expected {SimObsKind.OBS} or {SimObsKind.SIM}"
+        raise NotImplementedError(msg)
 
     def get_data(self) -> Self:
         """Retrieve fewsnetcdf content as an xarray DataArray."""
@@ -71,5 +109,5 @@ class FewsNetcdfFileSource(BaseDatasource):
             raise NotImplementedError(msg)
 
         filepath = Path(self.config.directory) / self.config.filename
-        self.xarray = self._nc_to_xarray(filepath, self.config.simobstype)
+        self.xarray = self.nc_to_xarray(filepath, self.config.simobstype)
         return self
