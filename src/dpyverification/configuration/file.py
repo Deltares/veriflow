@@ -5,12 +5,8 @@ from enum import StrEnum, unique
 
 import yaml
 
-from dpyverification.configuration.base import BaseDatasourceConfig, BaseScoreConfig
-from dpyverification.constants import DataSourceKind, ScoreKind
-
 from .base import (
     Config,
-    GeneralInfoConfig,
 )
 
 
@@ -51,89 +47,13 @@ class ConfigFile:
 
         self.filename = configfile
         self.configtype = configtype
+
+        # Propagate the general config to datasources
+        for datasource in yamlcontent["datasources"]:
+            datasource.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
+
+        # Propagate the general config to scores
+        for score in yamlcontent["scores"]:
+            score.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
+
         self.content = Config(**yamlcontent)  # type: ignore[arg-type] # The derived type based on the hardcoded dict is not correct, but that is expected for now
-        self.validate_and_propagate()
-
-    def validate_and_propagate(self) -> None:
-        """
-        Check and update the various parts of the config to be consistent, compatible and complete.
-
-        - Propagate config settings to adjacent parts (i.e. from General to Datasources)
-        - Propagate config settings to lower parts (i.e. from top-level object to objects in
-          attributes)
-        - Validate that various parts of the config are consistent / compatible with each other
-          (i.e. General leadtimes with Datasource leadtimes)
-
-        """
-        # NOTE: for now, all in one method. When more validation added, have one function per
-        #  top-level attribute?
-
-        for datasource in self.content.datasources:
-            if datasource.kind == DataSourceKind.FEWSWEBSERVICE:
-                self._propagate_leadtimes(datasource, self.content.general, "FewsWebserviceInput")
-                self._propagate_verificationperiod(
-                    datasource,
-                    self.content.general,
-                    "FewsWebserviceInput",
-                )
-
-        for score in self.content.scores:
-            if score.kind == ScoreKind.SIMOBSPAIRS:
-                self._propagate_leadtimes(score, self.content.general, "SimObsPairs")
-
-    @staticmethod
-    def _propagate_leadtimes(
-        specific: BaseDatasourceConfig | BaseScoreConfig,
-        general: GeneralInfoConfig,
-        name: str,
-    ) -> None:
-        if specific.leadtimes and general.leadtimes:
-            missing = [
-                dslead
-                for dslead in specific.leadtimes.timedelta64
-                if dslead not in general.leadtimes.timedelta64
-            ]
-            if any(missing):
-                msg = (
-                    f"The following leadtimes are used in {name}, but are not"
-                    f" present in the general leadtimes: {missing}"
-                )
-                raise ValueError(msg)
-        elif general.leadtimes:
-            specific.leadtimes = general.leadtimes
-        else:
-            msg = (
-                f"A {name} is used, but neither it nor the general section specifies the"
-                f"leadtimes to be used."
-            )
-            raise ValueError(msg)
-
-    @staticmethod
-    def _propagate_verificationperiod(
-        specific: BaseDatasourceConfig,
-        general: GeneralInfoConfig,
-        name: str,
-    ) -> None:
-        if specific.verificationperiod and general.verificationperiod:
-            specific_period = specific.verificationperiod
-            general_period = general.verificationperiod
-            if (
-                specific_period.start.datetime != general_period.start.datetime
-                or specific_period.end.datetime != general_period.end.datetime
-            ):
-                msg = (
-                    f"The verificationperiod used in {name} ({specific_period}) is not exactly"
-                    f" equal to the verificationperiod in the general section"
-                    f" ({general_period})."
-                )
-                raise ValueError(msg)
-        elif general.verificationperiod:
-            # NOTE: Do NOT use the X_period variables here, as this change needs to be applied
-            #  to the `specific` object itself.
-            specific.verificationperiod = general.verificationperiod
-        else:
-            msg = (
-                f"A {name} is used, but neither it nor the general section specifies the"
-                f"verificationperiod to be used."
-            )
-            raise ValueError(msg)

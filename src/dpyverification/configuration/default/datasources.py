@@ -61,22 +61,8 @@ class FewsWebserviceInputSimConfig(FewsWebserviceInputConfig):
     """A fews webservice input sim config element."""
 
     simobstype: Literal[SimObsKind.SIM]
-    leadtimes: Annotated[
-        LeadTimes | None,
-        Field(
-            description="Value from General leadtimes used if not set.",
-        ),
-    ] = None
-    forecastcount: Annotated[
-        int,
-        Field(
-            description=(
-                "Number of forecast runs to retrieve."
-                " When value is 0 (default), ALL matching forecast runs will be used."
-            ),
-        ),
-    ] = 0
-    ensemble_id: str | None = None
+    ensemble_id: Annotated[list[str], Field(default=None)]
+    ensemble_member_id: Annotated[list[int], Field(default=None)]
 
 
 class FewsWebserviceOutputConfig(FewsWebserviceConfig):
