@@ -27,12 +27,19 @@ need some modifications.
 #   their use.
 
 # ruff: noqa: D101 Do not require class docstrings for the classes in this file
+# ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.json_schema import SkipJsonSchema
 
 from .utils import LeadTimes, SimObsVariables, TimePeriod
+
+
+class GeneralInfoConfig(BaseModel):
+    verificationperiod: TimePeriod
+    leadtimes: LeadTimes
 
 
 class BaseConfig(BaseModel):
@@ -50,7 +57,9 @@ class BaseConfig(BaseModel):
 
     # Accept additional fields.
     # This is a requirement to make sure that all fields are
-    # available after initializing the config instance.
+    # available after initializing the config instance when
+    # the fields are created by external users and thus
+    # not known upfront.
     model_config = ConfigDict(extra="allow")
 
 
@@ -63,16 +72,18 @@ class BaseDatasourceConfig(BaseConfig):
     """
 
     simobstype: str
-    verificationperiod: TimePeriod | None = Field(
-        None,
-        description="Value from General verificationperiod used if not set.",
-    )
-    leadtimes: Annotated[
-        LeadTimes | None,
-        Field(
-            description="Value from General leadtimes used if not set.",
-        ),
-    ] = None
+    general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
+    # config is propagated from the general config section in the main config. This will prevent
+    # users that use the json-schema for making config having to explicitly set a duplicate general
+    # configuration section for each datasource.
+
+    @property
+    def leadtimes(self) -> LeadTimes:
+        return self.general.leadtimes
+
+    @property
+    def verificationperiod(self) -> TimePeriod:
+        return self.general.verificationperiod
 
 
 class BaseDatasinkConfig(BaseConfig):
@@ -92,23 +103,21 @@ class BaseScoreConfig(BaseConfig):
     this base class.
     """
 
-    leadtimes: Annotated[
-        LeadTimes | None,
+    general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
+    # config is propagated from the general config section in the main config. This will prevent
+    # users that use the json-schema for making config having to explicitly set a duplicate general
+    # configuration section for each datasource.
+
+    variablepairs: Annotated[
+        list[SimObsVariables],
         Field(
-            description="Value from General leadtimes used if not set.",
-        ),
-    ] = None
-    variablepair: Annotated[
-        SimObsVariables,
-        Field(
-            description="Variable pair to use for the computation.",
+            description="Variable pairs to use for the computation.",
         ),
     ]
 
-
-class GeneralInfoConfig(BaseModel):
-    verificationperiod: TimePeriod
-    leadtimes: LeadTimes
+    @property
+    def leadtimes(self) -> LeadTimes:
+        return self.general.leadtimes
 
 
 class Config(BaseModel):
