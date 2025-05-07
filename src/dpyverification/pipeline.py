@@ -13,6 +13,7 @@ from dpyverification.datamodel import DataModel
 from dpyverification.datasinks.base import BaseDatasink
 from dpyverification.datasinks.fewsnetcdf import FewsNetcdfFileSink
 from dpyverification.datasources.base import BaseDatasource
+from dpyverification.datasources.fewsnetcdf.main import FewsNetcdfFile
 from dpyverification.datasources.pixml import PiXmlFile
 from dpyverification.scores.base import BaseScore
 from dpyverification.scores.crps_for_ensemble import CrpsForEnsemble
@@ -21,7 +22,7 @@ from dpyverification.scores.simobspairs import SimObsPairs
 
 TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore)
 
-DEFAULT_DATASOURCES: list[type[BaseDatasource]] = [PiXmlFile]
+DEFAULT_DATASOURCES: list[type[BaseDatasource]] = [PiXmlFile, FewsNetcdfFile]
 DEFAULT_SCORES: list[type[BaseScore]] = [RankHistogram, CrpsForEnsemble, SimObsPairs]
 DEFAULT_DATASINKS: list[type[BaseDatasink]] = [FewsNetcdfFileSink]
 

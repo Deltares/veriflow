@@ -21,16 +21,17 @@ from pydantic import BaseModel, Field
 
 class FileAttrs(BaseModel):
     Conventions: Literal["CF-1.6"]
-    title: str
-    institution: str
-    source: str
 
 
 # Is a stations dim required? Do we want to require a stations, or some other location dimension?
 # Is analysis time required, or optional?
-class Dims(BaseModel):
+class SimDims(BaseModel):
     time: int
     analysis_time: int
+
+
+class ObsDims(BaseModel):
+    time: int
 
 
 class TimeAttrs(BaseModel):
@@ -59,9 +60,15 @@ class Coord(BaseModel):
 # and, generally, is an axis attrs required for all coords?
 
 
-class Coords(BaseModel):
+class SimCoords(BaseModel):
     time: TimeCoord
     analysis_time: Coord
+    lat: Coord
+    lon: Coord
+
+
+class ObsCoords(BaseModel):
+    time: TimeCoord
     lat: Coord
     lon: Coord
 
@@ -74,8 +81,15 @@ class DataVars(BaseModel):
     attrs: DataVarAttrs
 
 
-class FewsNetcdfFileInputSchema(BaseModel):
+class FewsNetcdfFileInputSimSchema(BaseModel):
     attrs: FileAttrs
-    dims: Dims
-    coords: Coords
+    dims: SimDims
+    coords: SimCoords
+    data_vars: dict[Annotated[str, Field(pattern=r"[a-zA-Z].*")], DataVars]
+
+
+class FewsNetcdfFileInputObsSchema(BaseModel):
+    attrs: FileAttrs
+    dims: ObsDims
+    coords: ObsCoords
     data_vars: dict[Annotated[str, Field(pattern=r"[a-zA-Z].*")], DataVars]

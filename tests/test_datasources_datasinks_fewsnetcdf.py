@@ -2,19 +2,23 @@
 
 from pathlib import Path
 
-import pytest
 import xarray as xr
 import yaml
 from dpyverification.configuration import ConfigFile
 from dpyverification.constants import DataModelAttributes, DataModelCoords, DataModelDims
+from dpyverification.datamodel.main import DataModel
 from dpyverification.datasinks.fewsnetcdf import FewsNetcdfFileSink, FewsNetcdfOutputSchema
-from dpyverification.datasources.fewsnetcdf import FewsNetcdfFileSource
+from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
 
-from tests import TESTS_CONFIGURATION_FILE, TESTS_FEWS_COMPLIANT_FILE
+from tests import (
+    TEST_DIR_FEWS_NETCDF_OBS,
+    TEST_DIR_FEWS_NETCDF_SIM,
+    TESTS_CONFIGURATION_FILE,
+    TESTS_FEWS_COMPLIANT_FILE,
+)
 
 
-# Not so very happy yet
-def test_get_data_happy(tmp_path: Path) -> None:
+def test_get_data_compliant_file_happy(tmp_path: Path) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
     # Create an adapted testconfig, based on default testconfig
     # - load default config
@@ -34,22 +38,59 @@ def test_get_data_happy(tmp_path: Path) -> None:
         yaml.dump(testconf, tf)
     conf = ConfigFile(tmp_conf_file, "yaml")
 
-    with pytest.raises(NotImplementedError):
-        _ = FewsNetcdfFileSource.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
+    instance = FewsNetcdfFile.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
 
-    # When no longer not-implemented, assert the contents
-    # Also, when implemented, add to TESTS_CONFIGURATION_FILE?
-    assert (
-        True
-    )  # ncdata[0].xarray["rainfall"].loc["a", "b:c"].data.tolist() == [somevalue, anothervalue]
+    assert instance.xarray.attrs["date_created"] == "2014-03-10 07:57:01 GMT"  # type: ignore[misc] # Yes, allow any
 
 
-def test_schema_testfile() -> None:
+def test_schema_compliant_file() -> None:
     """Test FEWS-compliant file is compliant with schema."""
     ds = xr.open_dataset(TESTS_FEWS_COMPLIANT_FILE)
     schema_like = ds.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
     # This will throw an error when not compliant
     _ = FewsNetcdfOutputSchema(**schema_like)  # type: ignore[misc] # See above
+
+
+def test_get_data_obs_and_check_dims_coords(tmp_path: Path) -> None:
+    """Check that the imported fewsnetcdf gives an xarray with the expected content."""
+    with TESTS_CONFIGURATION_FILE.open() as cf:
+        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
+
+    # Get the path to the obs file
+    test_file = next(iter(TEST_DIR_FEWS_NETCDF_OBS.rglob("*.nc")))
+    testconf["datasources"][0]["kind"] = "fewsnetcdf"
+    testconf["datasources"][0]["directory"] = str(test_file.parent)
+    testconf["datasources"][0]["filename"] = test_file.name
+    testconf["datasources"][0]["simobstype"] = "obs"
+    # Create:
+    tmp_conf_file = tmp_path / "tempconf.yaml"
+    with tmp_conf_file.open(mode="w") as tf:
+        yaml.dump(testconf, tf)
+    conf = ConfigFile(tmp_conf_file, "yaml")
+
+    instance = FewsNetcdfFile.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
+    DataModel._check_source_dims_and_coords(instance)
+
+
+def test_get_data_sim_and_check_dims_coords(tmp_path: Path) -> None:
+    """Check that the imported fewsnetcdf gives an xarray with the expected content."""
+    with TESTS_CONFIGURATION_FILE.open() as cf:
+        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
+
+    # Get the path to the obs file
+    test_file = next(iter(TEST_DIR_FEWS_NETCDF_SIM.rglob("*.nc")))
+    testconf["datasources"][0]["kind"] = "fewsnetcdf"
+    testconf["datasources"][0]["directory"] = str(test_file.parent)
+    testconf["datasources"][0]["filename"] = test_file.name
+    testconf["datasources"][0]["simobstype"] = "sim"
+    # Create:
+    tmp_conf_file = tmp_path / "tempconf.yaml"
+    with tmp_conf_file.open(mode="w") as tf:
+        yaml.dump(testconf, tf)
+    conf = ConfigFile(tmp_conf_file, "yaml")
+
+    instance = FewsNetcdfFile.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
+    DataModel._check_source_dims_and_coords(instance)
 
 
 def test_write_happy(tmp_path: Path) -> None:
