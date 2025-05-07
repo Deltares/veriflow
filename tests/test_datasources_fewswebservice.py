@@ -1,15 +1,19 @@
 """Test the fewswebservice module of the dpyverification.datasources package."""
 
+# mypy: ignore-errors
+
 import os
 import time
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pytest
 import requests
 import yaml
 from dpyverification.configuration import ConfigFile
-from dpyverification.datasources.fewswebservice import FewsWebService
+from dpyverification.datasources.fewswebservice import FewsWebservice
 
 from tests import TESTS_CONFIGURATION_FILE
 
@@ -28,8 +32,8 @@ def _initialize_archive() -> None:
         name: str
         task_id: str
 
-    clear_catalogue = _ArchiveTask("clear internal catalogue", "clear internal catalogue")
-    internal_harvester = _ArchiveTask("internal harvester", "harvester internal catalogue")
+    clear_catalogue = _ArchiveTask("Clear internal catalogue", "clear internal catalogue")
+    internal_harvester = _ArchiveTask("Internal harvester", "harvester internal catalogue")
 
     def get_archive_task_status(archive_task: _ArchiveTask) -> dict[str, bool | str]:
         archive_status_url = "http://localhost:8080/deltares-archive-server/api/v1/archive/status"
@@ -80,127 +84,101 @@ def _initialize_archive() -> None:
     start_and_wait_for_task(internal_harvester)
 
 
+@pytest.fixture()
+def _fews_webservice_mock_env(
+    monkeypatch: Generator[pytest.MonkeyPatch, None, None],
+) -> None:
+    """Create a mock environment for testing secret env vars."""
+    # The dummy url, username and password
+    url = "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
+    monkeypatch.setenv("FEWSWEBSERVICE_URL", url)  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_USERNAME", "")  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_PASSWORD", "")  # type: ignore  # noqa: PGH003
+
+
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
 def test_webservice_live() -> None:
     """Test that a webservice is live and can find filters."""
     url = "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
-    endpoint = "filters"
+    endpoint = "archive/locations"
     test_endpoint_url = url + "/" + endpoint
     response = requests.get(test_endpoint_url, timeout=10)
     assert response.status_code == VALID_RESPONSE_CODE
 
 
+@pytest.mark.usefixtures("_fews_webservice_mock_env")
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-@pytest.mark.parametrize(
-    "forecastcount",
-    [0, 1, 5],
-    ids=lambda x: f"forecastcount-{x}",  # type: ignore[misc] # x has type int.
-)
-def test_get_timeseries_sim_happy(forecastcount: int, tmp_path: Path) -> None:
+def test_get_obs_netcdf(
+    tmp_path: Path,
+) -> None:
     """Check that the imported pixml gives an xarray with the expected content."""
-    leadtimes = {"unit": "h", "values": [3, 6]}
     verificationperiod = {
-        "start": {"value": "2024-11-01T00:00:00Z"},
-        "end": {"value": "2024-12-01T00:00:00Z"},
+        "start": "2024-11-01T00:00:00Z",
+        "end": "2024-12-01T00:00:00Z",
     }
 
-    # Create an adapted testconfig, based on default testconfig
-    # - load default config
-    # - adapt config
-    # - create config object from adapted config
-    # Load:
     with TESTS_CONFIGURATION_FILE.open() as cf:
         testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
-    # Adapt:
+
     testconf["general"]["verificationperiod"] = verificationperiod  # type: ignore[call-overload] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["simobstype"] = "sim"
-    testconf["datasources"][0]["kind"] = "fewswebservice"
-    testconf["datasources"][0]["url"] = (
-        "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
-    )
-    testconf["datasources"][0]["location_ids"] = ["H-RN-0001"]  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["parameter_ids"] = ["Q.fs"]  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["module_instance_ids"] = ["SBK3_MaxRTK_ECMWF_ENS"]  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["leadtimes"] = leadtimes  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["forecastcount"] = forecastcount  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    # Create:
+
+    testconf["datasources"][0] = {
+        "simobstype": "obs",
+        "kind": "fewswebservice",
+        "location_ids": ["H-RN-0001"],
+        "parameter_ids": ["Q_m"],
+        "module_instance_ids": ["Hydro_Prep"],
+        "auth_config": {
+            "url": os.environ.get("FEWSWEBSERVICE_URL"),
+            "username": os.environ.get("FEWSWEBSERVICE_USERNAME"),
+            "password": os.environ.get("FEWSWEBSERVICE_PASSWORD"),
+        },
+    }
+
     tmp_conf_file = tmp_path / "tempconf.yaml"
     with tmp_conf_file.open(mode="w") as tf:
         yaml.dump(testconf, tf)
     conf = ConfigFile(tmp_conf_file, "yaml")
-
-    match forecastcount:
-        case 0:
-            # TODO(AU): Retrieve all # noqa: FIX002
-            #   https://github.com/Deltares-research/DPyVerification/issues/45
-            with pytest.raises(
-                NotImplementedError,
-                # match is a regex pattern, so do escape brackets for literal match
-                match=(
-                    r"Retrieving ALL forecasts within a period not yet implemented,"
-                    r" specify a \(very large\) forecastcount value for now."
-                ),
-            ):
-                data = FewsWebService(conf.content.datasources[0]).get_data()
-            # return early while not implemented yet, i.e. skip further checks
-            return
-        case 1:
-            data = FewsWebService(conf.content.datasources[0]).get_data()
-        case _:
-            # TODO(AU): Retrieve more than one # noqa: FIX002
-            #   https://github.com/Deltares-research/DPyVerification/issues/44
-            with pytest.raises(
-                NotImplementedError,
-                match=(
-                    r"Retrieving more than one forecast within a period not yet implemented,"
-                    r" due to fews-io package limitation in converting pixml files."
-                ),
-            ):
-                data = FewsWebService(conf.content.datasources[0]).get_data()
-            # return early while not implemented yet, i.e. skip further checks
-            return
-
-    # Time dimension expected to be the same
-    assert len(data.xarray.time) == SIM_TIME_DIM_LENGTH  # type: ignore[misc]
-    # TODO(AU): Improve webservice tests result checking # noqa: FIX002
-    #   See issue for details:
-    #   https://github.com/Deltares-research/DPyVerification/issues/46
+    instance = FewsWebservice.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
+    assert "Q_m" in instance.xarray
+    np.testing.assert_array_equal(instance.xarray["lat"].values, np.float64(51.85059))
 
 
+@pytest.mark.usefixtures("_fews_webservice_mock_env")
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_get_timeseries_obs_happy(tmp_path: Path) -> None:
+def test_get_sim_netcdf(
+    tmp_path: Path,
+) -> None:
     """Check that the imported pixml gives an xarray with the expected content."""
+    leadtimes = {"unit": "h", "values": [24, 48, 72, 96]}
     verificationperiod = {
-        "start": {"value": "2024-11-01T00:00:00Z"},
-        "end": {"value": "2024-12-01T00:00:00Z"},
+        "start": "2024-11-01T00:00:00Z",
+        "end": "2024-12-01T00:00:00Z",
     }
 
-    # Create an adapted testconfig, based on default testconfig
-    # - load default config
-    # - adapt config
-    # - create config object from adapted config
-    # Load:
     with TESTS_CONFIGURATION_FILE.open() as cf:
         testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
-    # Adapt:
+
     testconf["general"]["verificationperiod"] = verificationperiod  # type: ignore[call-overload] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["simobstype"] = "obs"
-    testconf["datasources"][0]["kind"] = "fewswebservice"
-    testconf["datasources"][0]["url"] = (
-        "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
-    )
-    testconf["datasources"][0]["location_ids"] = ["H-RN-0001"]  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["parameter_ids"] = ["Q.m"]  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["datasources"][0]["module_instance_ids"] = ["Hydro_Prep"]  # type: ignore[assignment] # Indeed this assignment does not match with our faked type def of testconf
-    # Create:
+    testconf["general"]["leadtimes"] = leadtimes  # type: ignore[call-overload] # Indeed this assignment does not match with our faked type def of testconf
+
+    testconf["datasources"][0] = {
+        "simobstype": "sim",
+        "kind": "fewswebservice",
+        "location_ids": ["H-RN-0001"],
+        "parameter_ids": ["Q_fs"],
+        "module_instance_ids": ["SBK3_MaxRTK_ECMWF_ENS"],
+        "ensemble_id": ["ECMWF_ENS"],
+        "auth_config": {
+            "url": os.environ.get("FEWSWEBSERVICE_URL"),
+            "username": os.environ.get("FEWSWEBSERVICE_USERNAME"),
+            "password": os.environ.get("FEWSWEBSERVICE_PASSWORD"),
+        },
+    }
+
     tmp_conf_file = tmp_path / "tempconf.yaml"
     with tmp_conf_file.open(mode="w") as tf:
         yaml.dump(testconf, tf)
     conf = ConfigFile(tmp_conf_file, "yaml")
-
-    data = FewsWebService(conf.content.datasources[0]).get_data()
-
-    assert len(data.xarray.time) == OBS_TIME_DIM_LENGTH  # type: ignore[misc]
-    # TODO(AU): Improve webservice tests result checking # noqa: FIX002
-    #   See issue for details:
-    #   https://github.com/Deltares-research/DPyVerification/issues/46
+    with pytest.raises(NotImplementedError, match="Simulations are not yet supported"):
+        FewsWebservice.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any

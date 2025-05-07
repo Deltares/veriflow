@@ -14,24 +14,23 @@ def test_main_yaml_happy() -> None:
 
     assert config.filename == TESTS_CONFIGURATION_FILE
     assert config.configtype == ConfigTypes.YAML
-    assert config.content.datasources[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
-        "kind": "pixml",
-        "simobstype": "obs",
-        "verificationperiod": None,
-        "leadtimes": None,
-        "directory": "iets",
-        "filename": "anders",
-    }
-    assert config.content.general.verificationperiod.model_dump() == {  # type: ignore[misc] # model_dump can have Any
-        "start": {"format": "%Y-%m-%dT%H:%M:%S%z", "value": "2000-01-01T00:00:00Z"},
-        "end": {"format": "%Y-%m-%dT%H:%M:%S%z", "value": "2001-01-01T00:00:00Z"},
-    }
-    assert config.content.scores[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
-        "kind": "simobspairs",
-        "leadtimes": {"unit": "h", "values": [3, 6]},
-        "variablepair": {"obs": "Q.m", "sim": "Q.fs"},
-        "variablepairs": [{"obs": "Q.m", "sim": "Q.fs"}],
-    }
+    assert list(config.content.datasources[0].model_dump().keys()) == [  # type: ignore[misc] # model_dump can have Any
+        "kind",
+        "simobstype",
+        "general",
+        "directory",
+        "filename",
+    ]
+    assert (
+        config.content.general.verificationperiod.model_dump_json()
+        == '{"start":"2000-01-01T00:00:00Z","end":"2001-01-01T00:00:00Z"}'
+    )
+
+    assert list(config.content.scores[0].model_dump().keys()) == [  # type: ignore[misc] # model_dump can have Any
+        "kind",
+        "general",
+        "variablepairs",
+    ]
     assert config.content.datasinks[0].model_dump() == {  # type: ignore[misc] # model_dump can have Any
         "kind": "fewsnetcdf",
         "directory": "somewhere",

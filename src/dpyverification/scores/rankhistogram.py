@@ -28,8 +28,8 @@ class RankHistogram(BaseScore):
     def compute(self, data: DataModel) -> xr.Dataset:
         """Compute the histogram of ranks over the specified dimensions."""
         # Select sim and obs.
-        obs = data.intermediate[self.config.variablepair.obs]
-        sim = data.intermediate[self.config.variablepair.sim]
+        obs = data.intermediate[self.config.variablepairs[0].obs]
+        sim = data.intermediate[self.config.variablepairs[0].sim]
 
         rankhistograms_per_leadtime = []
         for leadtime in sim[DataModelDims.leadtime]:  # type: ignore[misc]
@@ -51,7 +51,7 @@ class RankHistogram(BaseScore):
 
             # Set the variable name with specific lead time
             leadtime_seconds = int(leadtime.to_numpy() / np.timedelta64(1, "s"))  # type: ignore[misc]
-            name = f"rank_histogram_leadtime_{leadtime_seconds}s"
+            name = f"{self.kind}_leadtime_{leadtime_seconds}s"
             rank_for_leadtime.name = name
 
             # Set the long_name attribute on the variable
