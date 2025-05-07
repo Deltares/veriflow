@@ -196,7 +196,9 @@ class DataModel:
         #   Here, for variables with a leadtime dimension, extract values at intermediate dataset
         #     time locations (?)
 
-        def transform_to_intermediate_data_variable(datavar: xarray.DataArray) -> xarray.DataArray:
+        def transform_to_intermediate_data_variable(
+            datavar: xarray.DataArray,
+        ) -> xarray.DataArray:
             """Transform a variable to intermediate datavariable."""
             if DataModelDims.simstart in datavar.dims and DataModelDims.leadtime in datavar.dims:
                 msg = (
@@ -343,7 +345,7 @@ class DataModel:
                 raise ValueError(msg)
             if frozenset(ds.xarray.coords) != obs_coords:
                 msg = "For Observations data, the exact required coordinates are: " + str(
-                    obs_dims,
+                    obs_coords,
                 )
                 raise ValueError(msg)
         else:
