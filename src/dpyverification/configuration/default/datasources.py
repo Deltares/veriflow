@@ -21,7 +21,7 @@ class FewsWebserviceInputConfig(BaseDatasourceConfig):
 
 
 class FewsWebserviceInputObsConfig(FewsWebserviceInputConfig):
-    """Generic webservice config for obs and sim."""
+    """Fews webservice config for obs and sim."""
 
     simobstype: Literal[SimObsKind.OBS]
 
