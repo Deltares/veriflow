@@ -72,14 +72,14 @@ class FewsWebserviceAuthConfig(BaseSettings):  # type: ignore  # noqa: PGH003
     """
     Get url, username and password safely from environment variables.
 
-    This config class inhertis from :class:`pydantic_settings.BaseSettings`,
+    This config class inherits from :class:`pydantic_settings.BaseSettings`,
     that will try to infer field values from environment variables.
 
-    Make sure to prefix each environment variable with DPYVERIFICATION_.
+    Make sure to prefix each environment variable with FEWSWEBSERVICE_.
 
-    For url: set the environment variable as: DPYVERIFICATION_URL.
-    For username: set the environment variable as: DPYVERIFICATION_USERNAME.
-    For password: set the environment variable as: DPYVERIFICATION_PASSWORD.
+    For url: set the environment variable as: FEWSWEBSERVICE_URL.
+    For username: set the environment variable as: FEWSWEBSERVICE_USERNAME.
+    For password: set the environment variable as: FEWSWEBSERVICE_PASSWORD.
 
     see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage
     """
