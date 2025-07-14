@@ -65,9 +65,8 @@ class FewsNetcdfFileSink(BaseDatasink):
         # Check the dataset against the required schema
         # For now, assume the schema used for fewsnetcdf input, also holds for fewsnetcdf output
         # Probably, want to use a different schema at a later time for output
-        # Assign to _, since the model will throw an error when not compliant
-        schema_like = dataset.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
-        _ = FewsNetcdfOutputSchema(**schema_like)  # type: ignore[misc] # See previous line
+        dataset_dict = dataset.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
+        FewsNetcdfOutputSchema.model_validate(dataset_dict)  # type: ignore[misc] # See previous line
 
         dataset.to_netcdf(filepath)
 

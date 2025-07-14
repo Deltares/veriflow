@@ -46,9 +46,9 @@ def test_get_data_compliant_file_happy(tmp_path: Path) -> None:
 def test_schema_compliant_file() -> None:
     """Test FEWS-compliant file is compliant with schema."""
     ds = xr.open_dataset(TESTS_FEWS_COMPLIANT_FILE)
-    schema_like = ds.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
+    dataset_dict = ds.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
     # This will throw an error when not compliant
-    _ = FewsNetcdfOutputSchema(**schema_like)  # type: ignore[misc] # See above
+    FewsNetcdfOutputSchema.model_validate(dataset_dict)  # type: ignore[misc] # See above
 
 
 def test_get_data_obs_and_check_dims_coords(tmp_path: Path) -> None:
