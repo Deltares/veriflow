@@ -90,13 +90,13 @@ class FewsNetcdfFile(BaseDatasource):
         ds = xr.open_dataset(path)
 
         # Get the dataset as dict, to validate against schema
-        schema_like = ds.to_dict()  # type: ignore[misc]
+        dataset_dict = ds.to_dict()  # type: ignore[misc]
 
         if kind == SimObsKind.OBS:
-            _ = FewsNetcdfFileInputObsSchema(**schema_like)  # type: ignore[misc]
+            FewsNetcdfFileInputObsSchema.model_validate(dataset_dict)  # type: ignore[misc]
             return FewsNetcdfFile.convert_obs_to_datamodel(ds)
         if kind == SimObsKind.SIM:
-            _ = FewsNetcdfFileInputSimSchema(**schema_like)  # type: ignore[misc]
+            FewsNetcdfFileInputSimSchema.model_validate(dataset_dict)  # type: ignore[misc]
             return FewsNetcdfFile.convert_sim_to_datamodel(ds)
 
         msg = f"Kind is not valid: {kind}. Expected {SimObsKind.OBS} or {SimObsKind.SIM}"
