@@ -5,7 +5,6 @@ from enum import StrEnum
 
 import requests
 import requests.auth
-import xarray as xr
 
 
 class TimeseriesType(StrEnum):
@@ -28,10 +27,11 @@ class FewsWebserviceClient:
 
     datetime_format = "%Y-%m-%dT%H:%M:%SZ"
 
-    def __init__(self, url: str, username: str, password: str) -> None:
+    def __init__(self, url: str, username: str | None, password: str | None) -> None:
         self.url = url
         self.session = requests.Session()
-        self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
+        if username and password:
+            self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
 
     def get_timeseries(  # noqa: PLR0913
         self,
@@ -76,17 +76,3 @@ class FewsWebserviceClient:
         response = self.session.get(url=f"{self.url}/timeseries?", params=params, headers=headers)  # type: ignore[arg-type]
         response.raise_for_status()
         return response
-
-    def get_archive_netcdfstorage_forecasts(self) -> requests.Response:
-        """Get all metadata from available forecasts in external storage archive."""
-        # Request
-        # Convert response in readable format
-        return requests.Response()
-
-    def get_all_forecasts_in_verification_period(self) -> xr.Dataset:
-        """Get all available forecasts from NetCDF archive."""
-        # get metadata
-        # get one forecast for each available analysis_time
-        # write each forecast to disk
-        # merge forecasts into dataset from disk
-        return xr.Dataset()
