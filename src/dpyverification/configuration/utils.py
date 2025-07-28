@@ -1,29 +1,13 @@
 """A module for frequently used config elements in the context of verification."""
 
 from datetime import datetime, timedelta
+from typing import Annotated
 
 import numpy as np
-import pandas as pd
-from pydantic import BaseModel
+from pydantic import AnyUrl, BaseModel, Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dpyverification.constants import TimeUnits
-
-
-class DateTime(BaseModel):
-    """A datetime config element."""
-
-    format: str = "%Y-%m-%dT%H:%M:%S%z"
-    value: str
-
-    @property
-    def datetime64(self) -> np.datetime64:
-        """As numpy datetime64."""
-        return pd.to_datetime(self.value, format=self.format).to_numpy()
-
-    @property
-    def datetime(self) -> datetime:
-        """As datetime datetime."""
-        return pd.to_datetime(self.value, format=self.format)
 
 
 class LeadTimes(BaseModel):
@@ -50,8 +34,24 @@ class LeadTimes(BaseModel):
 class TimePeriod(BaseModel):
     """A time period config element."""
 
-    start: DateTime
-    end: DateTime
+    start: Annotated[
+        datetime,
+        Field(
+            description=(
+                "YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], ",
+                "see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
+            ),
+        ),
+    ]
+    end: Annotated[
+        datetime,
+        Field(
+            description=(
+                "YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], ",
+                "see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
+            ),
+        ),
+    ]
 
 
 class SimObsVariables(BaseModel):
@@ -66,3 +66,26 @@ class LocalFile(BaseModel):
 
     directory: str
     filename: str
+
+
+class FewsWebserviceAuthConfig(BaseSettings):  # type: ignore  # noqa: PGH003
+    """
+    Get url, username and password safely from environment variables.
+
+    This config class inhertis from :class:`pydantic_settings.BaseSettings`,
+    that will try to infer field values from environment variables.
+
+    Make sure to prefix each environment variable with DPYVERIFICATION_.
+
+    For url: set the environment variable as: DPYVERIFICATION_URL.
+    For username: set the environment variable as: DPYVERIFICATION_USERNAME.
+    For password: set the environment variable as: DPYVERIFICATION_PASSWORD.
+
+    see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage
+    """
+
+    model_config = SettingsConfigDict(env_prefix="FEWSWEBSERVICE_")
+
+    url: AnyUrl
+    username: SecretStr
+    password: SecretStr

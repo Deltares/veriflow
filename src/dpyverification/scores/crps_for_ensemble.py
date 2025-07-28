@@ -33,8 +33,8 @@ class CrpsForEnsemble(BaseScore):
     ) -> xr.DataArray:
         """Compute the CRPS for an ensemble of forecasts and observations."""
         # Select sim and obs.
-        obs: xr.DataArray = data.intermediate[self.config.variablepair.obs]
-        sim: xr.DataArray = data.intermediate[self.config.variablepair.sim]
+        obs: xr.DataArray = data.intermediate[self.config.variablepairs[0].obs]
+        sim: xr.DataArray = data.intermediate[self.config.variablepairs[0].sim]
 
         # Compute
         result: xr.Dataset | xr.DataArray = _crps_for_ensemble(

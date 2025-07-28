@@ -1,122 +1,100 @@
 """Module for reading from and writing to a fews webservice."""
 
 import tempfile
-from datetime import datetime
+import zipfile
 from pathlib import Path
 from typing import Self
 
-import requests
+import xarray as xr
 
-from dpyverification.configuration import FewsWebserviceInputConfig, FewsWebserviceInputSimConfig
+from dpyverification.api.fewswebservice import FewsWebserviceClient
+from dpyverification.configuration import (
+    FewsWebserviceInputConfig,
+)
+from dpyverification.constants import SimObsKind
 from dpyverification.datasources.base import BaseDatasource
-from dpyverification.datasources.pixml import PiXmlFile
+from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
 
 
-class FewsWebService(BaseDatasource):
+class FewsWebservice(BaseDatasource):
     """For downloading data using a Delft-FEWS webservice."""
 
     # TODO(AU): Fix and document timezone information in fewswebservice requests # noqa: FIX002
     #   A hardcoded Z is added at the end, that cannot be right? See the issue for details:
     #   https://github.com/Deltares-research/DPyVerification/issues/43
     #
+
+    kind = "fewswebservice"
+    config_class = FewsWebserviceInputConfig
+    # Annotate the correct type, otherwise mypy will infer from baseclass
+    config: FewsWebserviceInputConfig
     # The datetime format that is used to pass datetimes to the fewswebservice
     datetime_format = "%Y-%m-%dT%H:%M:%SZ"
     timeout = 30
 
-    def get_timeseries_xml_string(self) -> requests.Response:
-        """Perform a REST GET to retrieve timeseries data as a pi-xml string."""
-        if not isinstance(self.config, FewsWebserviceInputConfig):
-            msg = "Provided config is not valid. Expected FewsWebserviceInput."
-            raise TypeError(msg)
+    def __init__(self, config: FewsWebserviceInputConfig) -> None:
+        self.config = config
+        self.simobstype = config.simobstype
+        self.xarray = xr.Dataset()
 
-        ########## DOING: update de comments, per de PR comment
-        endpoint = "timeseries"
-        url = self.config.url + "/" + endpoint
-        if self.config.verificationperiod is None:
-            msg = "No verificationperiod specified."
-            raise ValueError(msg)
-        start = self.config.verificationperiod.start.datetime
-        end = self.config.verificationperiod.end.datetime
-
-        params = {
-            "locationIds": self.config.location_ids,
-            "parameterIds": self.config.parameter_ids,
-            "moduleInstanceIds": self.config.module_instance_ids,
-            "qualifierIds": self.config.qualifier_ids,
-            "startTime": datetime.strftime(start, FewsWebService.datetime_format),
-            "endTime": datetime.strftime(end, FewsWebService.datetime_format),
-            "documentFormat": self.config._document_format,  # noqa: SLF001 # This config private member is meant to be used directly
-            "documentVersion": self.config._document_version,  # noqa: SLF001 # This config private member is meant to be used directly
-        }
-
-        if isinstance(self.config, FewsWebserviceInputSimConfig):
-            if self.config.leadtimes is None:
-                msg = "No lead times specified for simulation."
-                raise ValueError(msg)
-            if self.config.forecastcount != 1:
-                # TODO(AU): Issues 44 and 45 # noqa: FIX002
-                #   See the more detailed split up in the get_data() for more info, and
-                #   https://github.com/Deltares-research/DPyVerification/issues/44
-                #   https://github.com/Deltares-research/DPyVerification/issues/45
-                msg = (
-                    "Retrieving ALL forecasts within a period not yet implemented,"
-                    " specify a (very large) forecastcount value for now."
-                )
-                raise NotImplementedError(msg)
-
-            # Work out the correct forecastStartTime and forecastEndTime
-            # so that all forecasts overlapping with the verification period
-            # defined by start_time and end_time will be requested from the web service.
-            start_forecast_time = start - max(self.config.leadtimes.timedelta)
-            end_forecast_time = end
-
-            params.update(
-                {
-                    "startForecastTime": datetime.strftime(
-                        start_forecast_time,
-                        FewsWebService.datetime_format,
-                    ),
-                    "endForecastTime": datetime.strftime(
-                        end_forecast_time,
-                        FewsWebService.datetime_format,
-                    ),
-                    "forecastCount": str(self.config.forecastcount),
-                },
-            )
-
-        response = requests.get(url=url, params=params, timeout=FewsWebService.timeout)
-        response.raise_for_status()
-        return response
+        # Initialize the webservice client
+        self.client = FewsWebserviceClient(
+            url=self.config.auth_config.url.unicode_string(),
+            username=self.config.auth_config.username.get_secret_value(),
+            password=self.config.auth_config.password.get_secret_value(),
+        )
 
     def get_data(self) -> Self:
         """Retrieve :py::class`~xarray.Dataset` from Delft-FEWS Webservice."""
-        if not isinstance(self.config, FewsWebserviceInputConfig):
-            msg = "Input dsconfig does not have kind FewsWebserviceInput"
-            raise TypeError(msg)
-        if isinstance(self.config, FewsWebserviceInputSimConfig) and self.config.forecastcount != 1:
-            if self.config.forecastcount == 0:
-                # TODO(AU): Implement ability to retrieve all forecastruns in period # noqa: FIX002
-                #   First, issue 44 should be fixed. Then, see this issue for details and solution
-                #   direction
-                #   https://github.com/Deltares-research/DPyVerification/issues/45
-                msg = (
-                    "Retrieving ALL forecasts within a period not yet implemented,"
-                    " specify a (very large) forecastcount value for now."
+        # Get observations
+        if self.config.simobstype == SimObsKind.OBS:
+            response = self.client.get_timeseries(
+                location_ids=self.config.location_ids,
+                parameter_ids=self.config.parameter_ids,
+                module_instance_ids=self.config.module_instance_ids,
+                qualifier_ids=self.config.qualifier_ids,
+                start_time=self.config.general.verificationperiod.start,
+                end_time=self.config.general.verificationperiod.end,
+            )
+
+            # Check response
+            response.raise_for_status()
+
+            # Write zip reponse to tmpfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as temp_file:
+                temp_file_path = temp_file.name
+                temp_file.write(response.content)
+
+            # Unzip tmpfile
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = Path(tmpdir)
+                zip_ref = zipfile.ZipFile(temp_file_path, "r")
+                zip_ref.extractall(tmpdir)
+                file_list = list(tmpdir_path.rglob("*nc"))
+
+                # Check only one file is contained within the tmpfolder
+                if len(file_list) != 1:
+                    msg = "Unzipping obs file, yielde multiple .nc files. Expected exactly one."
+                    raise ValueError(msg)
+
+                tmp_nc_file_path = file_list[0]
+
+                # Open xarray dataset and assign to self
+                self.xarray = FewsNetcdfFile.nc_to_xarray(
+                    Path(tmp_nc_file_path),
+                    self.config.simobstype,
                 )
-            else:
-                # TODO(AU): Implement ability to retrieve more than one forecastrun # noqa: FIX002
-                #   See issue for details and solution direction
-                #   https://github.com/Deltares-research/DPyVerification/issues/44
-                msg = (
-                    "Retrieving more than one forecast within a period not yet implemented,"
-                    " due to fews-io package limitation in converting pixml files."
-                )
+
+        # Get simulations
+        elif self.config.simobstype == SimObsKind.SIM:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Implement forecast retrieval, once Delft-FEWS development is completed.
+                _ = tmpdir
+                msg = "Simulations are not yet supported."
             raise NotImplementedError(msg)
-
-        response = self.get_timeseries_xml_string()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as temp_file:
-            temp_file_path = temp_file.name
-            temp_file.write(response.content)
-        self.xarray = PiXmlFile.pi_xml_to_xarray(Path(temp_file_path), self.config.simobstype)
-
+        else:
+            msg = (
+                f"Simobstype {self.simobstype} not implemented yet. Only sim and obs are supported."
+            )
+            raise NotImplementedError(msg)
         return self

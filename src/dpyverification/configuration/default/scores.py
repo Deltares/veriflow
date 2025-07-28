@@ -5,7 +5,6 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, Field
 
 from dpyverification.configuration.base import BaseScoreConfig
-from dpyverification.configuration.utils import LeadTimes, SimObsVariables
 from dpyverification.constants import DataModelDims, ScoreKind
 
 
@@ -13,15 +12,6 @@ class SimObsPairsConfig(BaseScoreConfig):
     """A sim obs pairs config element."""
 
     kind: Literal[ScoreKind.SIMOBSPAIRS]
-    # One combination of list-of-leadtimes and list-of-variablepairs, use multiple SimObsPairs
-    # to define more combinations
-    leadtimes: Annotated[
-        LeadTimes | None,
-        Field(
-            description="Value from General leadtimes used if not set.",
-        ),
-    ] = None
-    variablepairs: list[SimObsVariables]
 
 
 class RankHistogramConfig(BaseScoreConfig):
