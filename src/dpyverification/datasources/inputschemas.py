@@ -1,11 +1,38 @@
-"""A collection of schemas for input data."""
+"""A collection of schemas for input data.
+
+The pipeline in the package ingests a number of predefined data inputs. To validate
+that the input data has the correct structure, we use Pydantic models in this module.
+For now, input data are always an instance of xarray.Dataset.
+
+Using the xarray.Dataset.to_dict(data=False) method on the provided Dataset instances
+returns a dictonary which can be used as input into a Pydantic model. Each of the
+accepted input datasets has it's own dedicated schema, built up of smaller sub-models.
+This allows us to re-use much of the code and structure in this module, which keeps
+this module readable and understandable.
+
+xarray.Dataset.to_dict(data=False), returns a dictonary with the structure of the datset.
+Because we use the option data=False, we only receive the dtype of the underlying data
+array, which we can use for testing.
+
+For now, we validate
+- Dimensions: name and data type
+- Coordinates: name, datatype, dimensions
+
+On the following input datasets:
+- Observations
+- Simulations (with dimensions: time, forecast_reference_time, stations, optional[realization])
+- Simulations (with dimensions: time, forecast_period, stations, optional[realization])
+
+We do not yet validate:
+- Attributes
+"""
 
 # mypy: ignore-errors
 # ruff: noqa: D100, D101, D102, D103, D104, D105, D106, D107
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, Field
 
 AllowedDTypeInt = Literal["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"]
 AllowedDTypeFloat = Literal["float16", "float32", "float64"]
@@ -13,31 +40,29 @@ AllowedDTypeDateTime = Literal["datetime64[ns]"]
 AllowedDTypeTimeDelta = Literal["timedelta64[ns]"]
 
 
-def tuple_contains_elements(
+def check_tuple(
     required: set[str],
     optional: set[str] | None = None,
 ) -> callable:
-    def validator(cls, v: tuple[str, ...]) -> tuple[str, ...]:  # noqa: ANN001, ARG001
-        v_set = set(v)
+    """Check a if a tuple has correct elements in Pydantic AfterValidator."""
+    allowed = required | optional if optional else required
 
-        # Compute allowed elements
-        allowed = required.union(optional) if optional is not None else required
+    def validator(value: tuple[str, ...]) -> tuple[str, ...]:
+        value_set = set(value)
 
-        # Validate the provided elements are a subset of allowed elements
-        if not v_set.issubset(allowed):
-            invalid = v_set - allowed
-            msg = f"contains invalid elements not in required or optional sets: {invalid}"
-            raise ValueError(
-                msg,
-            )
-
-        # Validate the prodived elements are a subset of the required elements
-        if not required.issubset(v_set):
-            missing = required - v_set
-            msg = f"missing required elements: {missing}"
+        # Check for missing required
+        missing = required - value_set
+        if missing:
+            msg = f"Missing required dims: {missing}"
             raise ValueError(msg)
 
-        return v
+        # Check for disallowed dims
+        disallowed = value_set - allowed
+        if disallowed:
+            msg = f"Invalid dims: {disallowed}. Allowed: {allowed}"
+            raise ValueError(msg)
+
+        return value
 
     return validator
 
@@ -52,52 +77,22 @@ class ObsDims(SharedDims):
 
 
 class TimeCoord(BaseModel):
-    dims: tuple
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"time"}))]
     dtype: AllowedDTypeDateTime
-
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        if v != ("time",):
-            msg = f"value must be ('time',), got {v}"
-            raise ValueError(msg)
-        return v
 
 
 class ForecastReferenceTimeCoord(BaseModel):
-    dims: tuple
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"forecast_reference_time"}))]
     dtype: AllowedDTypeDateTime
-
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        if v != ("forecast_reference_time",):
-            msg = f"value must be ('forecast_reference_time',), got {v}"
-            raise ValueError(msg)
-        return v
 
 
 class StationsCoord(BaseModel):
-    dims: tuple
-
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        tuple_contains_elements(
-            required={"stations"},
-        )(cls, v)
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"stations"}))]
 
 
 class XYZCoord(BaseModel):
-    dims: tuple
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"stations"}))]
     dtype: AllowedDTypeFloat
-
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        tuple_contains_elements(
-            required={"stations"},
-        )(cls, v)
 
 
 class SharedCoords(BaseModel):
@@ -113,15 +108,8 @@ class ObsCoords(SharedCoords):
 
 
 class XarrayObservationsDataArray(BaseModel):
-    dims: tuple
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"time", "stations"}))]
     dtype: AllowedDTypeFloat
-
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        tuple_contains_elements(
-            required={"time", "stations"},
-        )(cls, v)
 
 
 ValidVarName = Annotated[str, Field(pattern=r"[a-zA-Z_]*")]
@@ -137,70 +125,74 @@ class XarrayDatasetObservations(BaseModel):
 
 
 class RealizationCoord(BaseModel):
-    dims: tuple
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"realization"}))]
     dtype: AllowedDTypeInt
 
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        tuple_contains_elements(
-            required={"realization"},
-        )(cls, v)
 
-
-class Sim1Dims(SharedDims):
+class XarrayDatasetSimByForecastReferenceTimeDims(SharedDims):
     forecast_reference_time: int
     realization: int | None
 
 
-class Sim1Coords(SharedCoords):
+class XarrayDatasetSimByForecastReferenceTimeCoords(SharedCoords):
     forecast_reference_time: ForecastReferenceTimeCoord
     realization: RealizationCoord | None  # Optional to handle ensemble and deterministic forecasts
 
 
+class XarrayDataArraySimulationsByForecastReferenceTime(BaseModel):
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(
+            check_tuple(
+                required={"time", "stations", "forecast_reference_time"},
+                optional={"realization"},
+            ),
+        ),
+    ]
+
+
 class XarrayDatasetSimulationsByForecastReferenceTime(BaseModel):
-    dims: Sim1Dims
-    coords: Sim1Coords
+    dims: XarrayDatasetSimByForecastReferenceTimeDims
+    coords: XarrayDatasetSimByForecastReferenceTimeCoords
+    data_vars: dict[
+        ValidVarName,
+        XarrayDataArraySimulationsByForecastReferenceTime,
+    ]
 
 
-class Sim2Dims(SharedDims):
+class XarrayDatasetSimByForecastPeriodDimsDims(SharedDims):
     forecast_period: int
     realization: int | None
 
 
 class ForecastPeriodCoord(BaseModel):
-    dims: tuple
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"forecast_period"}))]
     dtype: AllowedDTypeTimeDelta
 
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        tuple_contains_elements(
-            required={"forecast_period"},
-        )(cls, v)
 
-
-class Sim2Coords(SharedCoords):
+class XarrayDatasetSimByForecastPeriodDimsCoords(SharedCoords):
     forecast_period: ForecastPeriodCoord
-    realization: RealizationCoord | None  # Optional to handle ensemble and deterministic forecasts
+    realization: RealizationCoord | None = (
+        None  # Optional to handle ensemble and deterministic forecasts
+    )
 
 
-class XarraySimulationsByForecastPeriodDataArray(BaseModel):
-    dims: tuple[str, ...]
-
-    @field_validator("dims")
-    @classmethod
-    def check_tuple(cls, v: tuple) -> tuple:
-        tuple_contains_elements(
-            required={"forecast_period", "time", "stations"},
-            optional={"realization"},
-        )(cls, v)
+class XarrayDataArraySimulationsByForecastPeriod(BaseModel):
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(
+            check_tuple(
+                required={"time", "stations", "forecast_period"},
+                optional={"realization"},
+            ),
+        ),
+    ]
 
 
 class XarrayDatasetSimulationsByForecastPeriod(BaseModel):
-    dims: Sim2Dims
-    coords: Sim2Coords
+    dims: XarrayDatasetSimByForecastPeriodDimsDims
+    coords: XarrayDatasetSimByForecastPeriodDimsCoords
     data_vars: dict[
         ValidVarName,
-        XarraySimulationsByForecastPeriodDataArray,
+        XarrayDataArraySimulationsByForecastPeriod,
     ]

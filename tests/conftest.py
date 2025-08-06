@@ -24,7 +24,7 @@ n_stations = 3
 # Coords
 start_date = "2025-01-01T00:00"
 time = pd.date_range(start_date, periods=n_time, freq="h")
-stations = [f"station{n}" for n in range(n_stations)]
+station_ids = [f"station{n}" for n in range(n_stations)]
 x = rng.uniform(0, 100, size=n_stations)
 y = rng.uniform(0, 100, size=n_stations)
 z = rng.uniform(0, 10, size=n_stations)
@@ -43,7 +43,7 @@ forecast_period = np.array([np.timedelta64(i, "h") for i in range(1, n_forecast_
 def xarray_dataset_observations() -> xr.Dataset:
     """Return example observations."""
     # Create observation data
-    obs_data = rng.random((len(time), len(stations)))
+    obs_data = rng.random((len(time), len(station_ids)))
 
     # Create dataset
     return xr.Dataset(
@@ -52,7 +52,7 @@ def xarray_dataset_observations() -> xr.Dataset:
         },
         coords={
             "time": time,
-            "stations": stations,
+            "station_id": ("stations", station_ids),
             "x": ("stations", x),
             "y": ("stations", y),
             "z": ("stations", z),
@@ -75,7 +75,7 @@ def xarray_dataset_simulations_forecast_reference_time() -> xr.Dataset:
             "time": time,
             "forecast_reference_time": forecast_reference_time,
             "realization": realization,
-            "stations": stations,
+            "station_id": ("stations", station_ids),
             "x": ("stations", x),
             "y": ("stations", y),
             "z": ("stations", z),
@@ -105,7 +105,7 @@ def xarray_dataset_simulations_forecast_period() -> xr.Dataset:
             "time": time,
             "forecast_period": forecast_period,
             "realization": realization,
-            "stations": stations,
+            "station_id": ("stations", station_ids),
             "x": ("stations", x),
             "y": ("stations", y),
             "z": ("stations", z),
