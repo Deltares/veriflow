@@ -38,6 +38,8 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field
 
+from dpyverification.constants import StandardDims
+
 AllowedDTypeInt = Literal["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"]
 AllowedDTypeFloat = Literal["float16", "float32", "float64"]
 AllowedDTypeDateTime = Literal["datetime64[ns]"]
@@ -81,21 +83,24 @@ class ObsDims(SharedDims):
 
 
 class TimeCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"time"}))]
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({StandardDims.time}))]
     dtype: AllowedDTypeDateTime
 
 
 class ForecastReferenceTimeCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"forecast_reference_time"}))]
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(check_tuple({StandardDims.forecast_reference_time})),
+    ]
     dtype: AllowedDTypeDateTime
 
 
 class StationsCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"stations"}))]
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({StandardDims.stations}))]
 
 
 class XYZCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"stations"}))]
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({StandardDims.stations}))]
     dtype: AllowedDTypeFloat
 
 
@@ -113,7 +118,10 @@ class ObsCoords(SharedCoords):
 
 
 class XarrayObservationsDataArray(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"time", "stations"}))]
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(check_tuple({StandardDims.time, StandardDims.stations})),
+    ]
     dtype: AllowedDTypeFloat
 
 
@@ -130,7 +138,7 @@ class XarrayDatasetObservations(BaseModel):
 
 
 class RealizationCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"realization"}))]
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({StandardDims.realization}))]
     dtype: AllowedDTypeInt
 
 
@@ -149,8 +157,12 @@ class XarrayDataArraySimulationsByForecastReferenceTime(BaseModel):
         tuple[str, ...],
         AfterValidator(
             check_tuple(
-                required={"time", "stations", "forecast_reference_time"},
-                optional={"realization"},
+                required={
+                    StandardDims.time,
+                    StandardDims.stations,
+                    StandardDims.forecast_reference_time,
+                },
+                optional={StandardDims.realization},
             ),
         ),
     ]
@@ -171,7 +183,7 @@ class XarrayDatasetSimByForecastPeriodDimsDims(SharedDims):
 
 
 class ForecastPeriodCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({"forecast_period"}))]
+    dims: Annotated[tuple[str, ...], AfterValidator(check_tuple({StandardDims.forecast_period}))]
     dtype: AllowedDTypeTimeDelta
 
 
@@ -187,8 +199,8 @@ class XarrayDataArraySimulationsByForecastPeriod(BaseModel):
         tuple[str, ...],
         AfterValidator(
             check_tuple(
-                required={"time", "stations", "forecast_period"},
-                optional={"realization"},
+                required={StandardDims.time, StandardDims.stations, StandardDims.forecast_period},
+                optional={StandardDims.realization},
             ),
         ),
     ]
