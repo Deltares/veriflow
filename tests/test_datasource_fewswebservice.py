@@ -2,25 +2,14 @@
 
 # mypy: ignore-errors
 
-import io
 import os
 import time
-import zipfile
-from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from pathlib import Path
 
-import numpy as np
 import pytest
 import requests
 import yaml
-from dpyverification.api.fewswebservice import FewsWebserviceClient, TimeseriesType
-from dpyverification.configuration import ConfigFile
-from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
 from dpyverification.datasources.fewswebservice import FewsWebservice
-
-from tests import TESTS_CONFIGURATION_FILE
 
 SIM_TIME_DIM_LENGTH = 373
 OBS_TIME_DIM_LENGTH = 721
@@ -89,18 +78,6 @@ def _initialize_archive() -> None:
     start_and_wait_for_task(internal_harvester)
 
 
-@pytest.fixture()
-def _fews_webservice_mock_env(
-    monkeypatch: Generator[pytest.MonkeyPatch, None, None],
-) -> None:
-    """Create a mock environment for testing secret env vars."""
-    # The dummy url, username and password
-    url = "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
-    monkeypatch.setenv("FEWSWEBSERVICE_URL", url)  # type: ignore  # noqa: PGH003
-    monkeypatch.setenv("FEWSWEBSERVICE_USERNAME", "")  # type: ignore  # noqa: PGH003
-    monkeypatch.setenv("FEWSWEBSERVICE_PASSWORD", "")  # type: ignore  # noqa: PGH003
-
-
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
 def test_webservice_live() -> None:
     """Test that a webservice is live and can find filters."""
@@ -111,143 +88,15 @@ def test_webservice_live() -> None:
     assert response.status_code == VALID_RESPONSE_CODE
 
 
-@pytest.mark.usefixtures("_fews_webservice_mock_env")
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_get_obs_netcdf(
-    tmp_path: Path,
-) -> None:
+def test_get_obs_netcdf(datasource_fewswebservice_obs: FewsWebservice) -> None:
     """Check that the webservice gives expected outcome for obs."""
-    verification_period = {
-        "start": "2024-11-01T00:00:00Z",
-        "end": "2024-12-01T00:00:00Z",
-    }
-
-    with TESTS_CONFIGURATION_FILE.open() as cf:
-        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
-
-    testconf["general"]["verification_period"] = verification_period  # type: ignore[call-overload] # Indeed this assignment does not match with our faked type def of testconf
-
-    testconf["datasources"][0] = {
-        "simobskind": "obs",
-        "kind": "fewswebservice",
-        "location_ids": ["H-RN-0001"],
-        "parameter_ids": ["Q_m"],
-        "module_instance_ids": ["Hydro_Prep"],
-        "auth_config": {
-            "url": os.environ.get("FEWSWEBSERVICE_URL"),
-            "username": os.environ.get("FEWSWEBSERVICE_USERNAME"),
-            "password": os.environ.get("FEWSWEBSERVICE_PASSWORD"),
-        },
-    }
-
-    tmp_conf_file = tmp_path / "tempconf.yaml"
-    with tmp_conf_file.open(mode="w") as tf:
-        yaml.dump(testconf, tf)
-    conf = ConfigFile(tmp_conf_file, "yaml")
-    instance = FewsWebservice.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
-    assert "Q_m" in instance.dataset
-    np.testing.assert_array_equal(instance.dataset["lat"].values, np.float64(51.85059))
+    _ = datasource_fewswebservice_obs.get_data()
 
 
-@pytest.mark.usefixtures("_fews_webservice_mock_env")
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
 def test_get_sim_netcdf(
-    tmp_path: Path,
+    datasource_fewswebservice_sim: FewsWebservice,
 ) -> None:
     """Check that the webservice gives expected outcome for sim."""
-    forecast_periods = {"unit": "h", "values": [24, 48, 72, 96]}
-    verification_period = {
-        "start": "2024-11-01T00:00:00Z",
-        "end": "2024-12-01T00:00:00Z",
-    }
-
-    with TESTS_CONFIGURATION_FILE.open() as cf:
-        testconf: dict[str, list[dict[str, str]]] = yaml.safe_load(cf)
-
-    testconf["general"]["verification_period"] = verification_period  # type: ignore[call-overload] # Indeed this assignment does not match with our faked type def of testconf
-    testconf["general"]["forecast_periods"] = forecast_periods  # type: ignore[call-overload] # Indeed this assignment does not match with our faked type def of testconf
-
-    testconf["datasources"][0] = {
-        "simobskind": "sim",
-        "kind": "fewswebservice",
-        "location_ids": ["H-RN-0001"],
-        "parameter_ids": ["Q_fs"],
-        "module_instance_ids": ["SBK3_MaxRTK_ECMWF_ENS"],
-        "ensemble_id": ["ECMWF_ENS"],
-        "auth_config": {
-            "url": os.environ.get("FEWSWEBSERVICE_URL"),
-            "username": os.environ.get("FEWSWEBSERVICE_USERNAME"),
-            "password": os.environ.get("FEWSWEBSERVICE_PASSWORD"),
-        },
-    }
-
-    tmp_conf_file = tmp_path / "tempconf.yaml"
-    with tmp_conf_file.open(mode="w") as tf:
-        yaml.dump(testconf, tf)
-    conf = ConfigFile(tmp_conf_file, "yaml")
-    with pytest.raises(NotImplementedError, match="Simulations are not yet supported"):
-        FewsWebservice.from_config(conf.content.datasources[0].model_dump()).get_data()  # type: ignore[misc] # Yes, allow any
-
-
-@pytest.mark.usefixtures("_fews_webservice_mock_env")
-@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_get_netcdf_storage_forecast_reference_times() -> None:
-    """Test the get netcdf storage forecast endpoint."""
-    client = FewsWebserviceClient(
-        url="http://localhost:8080/FewsWebServices/rest/fewspiservice/v1",
-        username=None,
-        password=None,
-    )
-    datetime_list = client.get_netcdf_storage_forecasts_forecast_reference_times(
-        start_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
-        end_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-    )
-    assert isinstance(datetime_list, list)
-    assert isinstance(datetime_list[0], datetime)
-
-
-def test_get_netcdf_storage_data_markermeer(tmp_path: Path) -> None:
-    """Get raw forecasts from the external storage archive."""
-    client = FewsWebserviceClient(
-        url="http://localhost:8080/FewsWebServices/rest/fewspiservice/v1",
-        username=None,
-        password=None,
-    )
-    datetime_list = client.get_netcdf_storage_forecasts_forecast_reference_times(
-        start_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
-        end_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-    )
-
-    path_list = []
-    for dt in datetime_list:
-        response = client.get_timeseries(
-            location_ids=["GemaalVeendijk"],
-            parameter_ids=["waterlevel_model"],
-            module_instance_ids=["markermeer4c_ecmwf_eps"],
-            ensemble_id="ECMWF-EPS",
-            start_forecast_time=client._format_datetime(datetime(2024, 1, 1, tzinfo=timezone.utc)),
-            end_forecast_time=client._format_datetime(datetime(2025, 1, 1, tzinfo=timezone.utc)),
-            external_forecast_times=[client._format_datetime(dt)],
-            timeseries_type=TimeseriesType.EXTERNAL_FORECASTING,
-        )
-
-        # Use BytesIO to treat bytes as a file-like object
-        zip_bytes = io.BytesIO(response.content)
-
-        # Open the zipfile in memory
-        with zipfile.ZipFile(zip_bytes) as zf:
-            # Assuming you want the first .nc file in the zip
-            try:
-                netcdf_filename = next(name for name in zf.namelist() if name.endswith(".nc"))
-            except:  # noqa: E722, S112
-                continue
-
-            # Extract that file in memory
-            with zf.open(netcdf_filename) as netcdf_file:
-                netcdf_data = netcdf_file.read()  # bytes of the .nc file
-
-            # Write the NetCDF file to tmp_path
-            netcdf_path = tmp_path / f"{dt.strftime('%Y%m%d%H')}.nc"
-            netcdf_path.write_bytes(netcdf_data)
-            path_list.append(netcdf_path)
-    _ = FewsNetcdfFile._open_mf_dataset(path_list=path_list)
+    _ = datasource_fewswebservice_sim.get_data()

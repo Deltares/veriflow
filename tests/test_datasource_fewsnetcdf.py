@@ -31,17 +31,17 @@ def test_fewsnetcdf_output_schema_compliant_file() -> None:
 
 
 def test_get_data_obs(
-    datasource_fewnetcdf_obs: FewsNetcdfFile,
+    datasource_fewsnetcdf_obs: FewsNetcdfFile,
 ) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
-    _ = datasource_fewnetcdf_obs.get_data()
+    _ = datasource_fewsnetcdf_obs.get_data()
 
 
 def test_get_data_sim(
-    datasource_fewnetcdf_sim: FewsNetcdfFile,
+    datasource_fewsnetcdf_sim: FewsNetcdfFile,
 ) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
-    datasource = datasource_fewnetcdf_sim.get_data()
+    datasource = datasource_fewsnetcdf_sim.get_data()
 
     # Assert resulting forecast periods in dataset match
     #   configured forecast periods

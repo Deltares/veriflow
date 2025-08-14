@@ -204,24 +204,25 @@ class FewsNetcdfFile(BaseDatasource):
 
         # Observations
         if self.config.simobskind == SimObsKind.obs:
-            dataset = xr.open_mfdataset(
+            with xr.open_mfdataset(
                 self.config.paths,  # type:ignore[arg-type] # generator is acceptable argument
                 preprocess=preprocessor,
-            )
-            # Load dataset into memory and return
-            dataset.load()
+            ) as dataset:
+                dataset.load()
+
             self.dataset = dataset
             return self
 
         # Simulations
-        dataset = xr.open_mfdataset(
+        with xr.open_mfdataset(
             self.config.paths,  # type:ignore[arg-type] # generator is acceptable argument
             combine="nested",
             concat_dim="forecast_reference_time",
             preprocess=preprocessor,
             coords="minimal",
             compat="override",
-        )
+        ) as dataset:
+            dataset.load()
 
         # Load the dataset into memory
         #   for now, we assume the dataset with lead time filtering fits into memory
@@ -229,5 +230,4 @@ class FewsNetcdfFile(BaseDatasource):
 
         # Make the dataset ready for pipeline ingestion
         self.dataset = FewsNetcdfFile.transform_to_forecast_period_dataset(dataset)
-
         return self

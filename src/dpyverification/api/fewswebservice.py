@@ -5,6 +5,7 @@ from enum import StrEnum
 
 import requests
 import requests.auth
+from pydantic_core import Url
 
 
 class TimeseriesType(StrEnum):
@@ -27,17 +28,26 @@ class FewsWebserviceClient:
 
     datetime_format = "%Y-%m-%dT%H:%M:%SZ"
 
-    def __init__(self, url: str, username: str | None, password: str | None) -> None:
+    def __init__(self, url: str | Url, username: str | None, password: str | None) -> None:
         self.url = url
         self.session = requests.Session()
         if username and password:
             self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
 
-    def _format_datetime(self, time: datetime | None) -> str | None:
+    def format_datetime(self, time: datetime | None) -> str | None:
         """Format datetime to string."""
         if isinstance(time, datetime):
             return time.strftime(self.datetime_format)
         return time
+
+    def format_list_of_datetime(
+        self,
+        datetime_list: list[datetime] | None,
+    ) -> list[str | None] | None:
+        """Format list of datetime."""
+        if datetime_list is not None:
+            return [self.format_datetime(t) for t in datetime_list if datetime_list]
+        return None
 
     def get_timeseries(  # noqa: PLR0913
         self,
@@ -63,15 +73,15 @@ class FewsWebserviceClient:
             "parameterIds": parameter_ids,
             "moduleInstanceIds": module_instance_ids,
             "qualifierIds": qualifier_ids,
-            "startTime": self._format_datetime(start_time),
-            "endTime": self._format_datetime(end_time),
-            "startForecastTime": self._format_datetime(start_forecast_time),
-            "endForecastTime": self._format_datetime(end_forecast_time),
+            "startTime": self.format_datetime(start_time),
+            "endTime": self.format_datetime(end_time),
+            "startForecastTime": self.format_datetime(start_forecast_time),
+            "endForecastTime": self.format_datetime(end_forecast_time),
             "leadTime": lead_time,
             "ensembleId": ensemble_id,
             "ensembleMemberId": ensemble_member_id,
             "forecastCount": forecast_count,
-            "externalForecastTimes": external_forecast_times,
+            "externalForecastTimes": self.format_list_of_datetime(external_forecast_times),
             "timeSeriesType": timeseries_type,
             "documentFormat": document_format,
         }
@@ -91,11 +101,13 @@ class FewsWebserviceClient:
         self,
         start_time: datetime,
         end_time: datetime,
+        module_instance_ids: list[str],
     ) -> list[datetime]:
         """Get forecastTimes from external netcdf storage."""
         params = {
-            "startTime": self._format_datetime(start_time),
-            "endTime": self._format_datetime(end_time),
+            "startTime": self.format_datetime(start_time),
+            "endTime": self.format_datetime(end_time),
+            "requestedAttributes": "module_instance_id",
             "documentFormat": "PI_JSON",
         }
         response = self.session.get(
@@ -104,8 +116,27 @@ class FewsWebserviceClient:
         )
         response.raise_for_status()
 
+        def get_forecast_time_on_matching_module_instance_id(
+            item: dict[str, str],
+            module_instance_ids: list[str],
+        ) -> datetime | None:
+            """Return the forecastTime when the module instance id matches."""
+            if "attributes" in item:
+                for attr in item["attributes"]:
+                    if any(attr["value"] == mid for mid in module_instance_ids):  # type:ignore[index]
+                        iso_time: str = item["forecastTime"]
+                        return datetime.fromisoformat(iso_time)
+            return None
+
         response_json: dict[str, list[dict[str, str]]] = response.json()
-        return [
-            datetime.fromisoformat(json_item["forecastTime"])
-            for json_item in response_json["externalNetCDFStorageForecasts"]
-        ]
+
+        forecast_reference_time_list = []
+        for json_item in response_json["externalNetCDFStorageForecasts"]:
+            value = get_forecast_time_on_matching_module_instance_id(
+                json_item,
+                module_instance_ids=module_instance_ids,
+            )
+            if value is not None:
+                forecast_reference_time_list.append(value)
+
+        return forecast_reference_time_list

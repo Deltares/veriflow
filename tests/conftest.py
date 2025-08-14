@@ -2,6 +2,7 @@
 
 # mypy: ignore-errors
 
+from collections.abc import Generator
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from dpyverification.configuration import GeneralInfoConfig
 from dpyverification.configuration.default.datasinks import CFCompliantNetCDFConfig
 from dpyverification.configuration.default.datasources import (
     FewsNetcdfKind,
+    FewsWebserviceAuthConfig,
+    FewsWebserviceInputConfig,
 )
 from dpyverification.configuration.default.scores import CrpsForEnsembleConfig, RankHistogramConfig
 from dpyverification.configuration.utils import (
@@ -25,6 +28,7 @@ from dpyverification.constants import DataSinkKind, ScoreKind, StandardCoord, St
 from dpyverification.datamodel.main import SimObsDataset
 from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
 from dpyverification.datasources.fewsnetcdf import FewsNetcdfFile
+from dpyverification.datasources.fewswebservice import FewsWebservice, SimulationRetrievalMethod
 
 from tests import TESTS_FEWS_COMPLIANT_FILE
 
@@ -210,17 +214,68 @@ def datasource_fewsnetcdf_sim(general_info_config_fewsnetcdf: GeneralInfoConfig)
 
 
 @pytest.fixture()
+def fews_webservice_auth_config(
+    monkeypatch: Generator[pytest.MonkeyPatch, None, None],
+) -> FewsWebserviceAuthConfig:
+    """Create a mock environment for testing secret env vars."""
+    # The dummy url, username and password
+    url = "http://localhost:8080/FewsWebServices/rest/fewspiservice/v1"
+    monkeypatch.setenv("FEWSWEBSERVICE_URL", url)  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_USERNAME", "")  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_PASSWORD", "")  # type: ignore  # noqa: PGH003
+    return FewsWebserviceAuthConfig()
+
+
+@pytest.fixture()
+def datasource_fewswebservice_sim(
+    general_info_config_fewsnetcdf: GeneralInfoConfig,
+    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+) -> FewsWebservice:
+    """Fewsnetcdf datasource sim config."""
+    config = FewsWebserviceInputConfig(
+        kind="fewswebservice",
+        simobskind="sim",
+        location_ids=["H-RN-0001", "H-RN-0689"],
+        parameter_ids=["Q_fs"],
+        module_instance_ids=["SBK3_MaxRTK_ECMWF_ENS"],
+        ensemble_id="ECMWF_ENS",
+        simulation_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
+        general=general_info_config_fewsnetcdf,
+        auth_config=fews_webservice_auth_config,
+    )
+    return FewsWebservice(config)
+
+
+@pytest.fixture()
+def datasource_fewswebservice_obs(
+    general_info_config_fewsnetcdf: GeneralInfoConfig,
+    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+) -> FewsWebservice:
+    """Fewsnetcdf datasource sim config."""
+    config = FewsWebserviceInputConfig(
+        kind="fewswebservice",
+        simobskind="obs",
+        location_ids=["H-RN-0001", "H-RN-0689"],
+        parameter_ids=["Q_m"],
+        module_instance_ids=["Hydro_Prep"],
+        general=general_info_config_fewsnetcdf,
+        auth_config=fews_webservice_auth_config,
+    )
+    return FewsWebservice(config)
+
+
+@pytest.fixture()
 def datasource_fewsnetcdf_compliant(
-    datasource_fewnetcdf_obs: dict[
+    datasource_fewsnetcdf_obs: dict[
         str,
         str | list[str] | dict[str, dict[str, str | list[str]]],
     ],
 ) -> FewsNetcdfFile:
     """Get a fews netcdf datasource."""
-    config = datasource_fewnetcdf_obs
+    config = datasource_fewsnetcdf_obs
     config.station_ids = None
     config.directory = TESTS_FEWS_COMPLIANT_FILE.parent
-    return FewsNetcdfFile(datasource_fewnetcdf_obs)
+    return FewsNetcdfFile(datasource_fewsnetcdf_obs)
 
 
 @pytest.fixture()
@@ -252,9 +307,6 @@ def simobsdataset_fews_netcdf_data(
     )
 
 
-fews_netcdf_variable_pairs = [(SimObsVariables(sim="Q_fs", obs="Q_m"))]
-
-
 @pytest.fixture()
 def score_config_crps(
     general_info_config_fewsnetcdf: GeneralInfoConfig,
@@ -263,7 +315,7 @@ def score_config_crps(
     return CrpsForEnsembleConfig(
         kind=ScoreKind.crps_for_ensemble,
         general=general_info_config_fewsnetcdf,
-        variable_pairs=fews_netcdf_variable_pairs,
+        variable_pairs=[(SimObsVariables(sim="Q_fs", obs="Q_m"))],
     )
 
 
@@ -275,7 +327,7 @@ def score_config_rank_histogram(
     return RankHistogramConfig(
         kind=ScoreKind.rank_histogram,
         general=general_info_config_fewsnetcdf,
-        variable_pairs=fews_netcdf_variable_pairs,
+        variable_pairs=[(SimObsVariables(sim="Q_fs", obs="Q_m"))],
     )
 
 

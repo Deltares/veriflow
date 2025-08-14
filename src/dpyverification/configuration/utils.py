@@ -24,13 +24,23 @@ class ForecastPeriods(BaseModel):
         return [np.timedelta64(v, self.unit) for v in self.values]
 
     @property
-    def timedelta(self) -> list[timedelta]:
+    def py_timedelta(self) -> list[timedelta]:
         """As datetime timedelta."""
 
         def convert_to_timedelta(value: int) -> timedelta:
             return np.timedelta64(value, self.unit).astype(timedelta)  # type: ignore[no-any-return, misc]
 
         return [convert_to_timedelta(v) for v in self.values]
+
+    @property
+    def max(self) -> timedelta:
+        """Get the maxium forecast period."""
+        return max(self.py_timedelta)
+
+    @property
+    def min(self) -> timedelta:
+        """Get the minimum forecast period."""
+        return min(self.py_timedelta)
 
 
 class TimePeriod(BaseModel):
@@ -57,11 +67,21 @@ class TimePeriod(BaseModel):
 
     @field_validator("start", "end", mode="after")
     @classmethod
-    def to_utc_naive(cls, v: datetime) -> datetime:
+    def to_utc_naive_numpy_datetime(cls, v: datetime) -> datetime:
         """Convert timezone aware datetimes to naive UTC; leave naive untouched (assumed UTC)."""
         if v.tzinfo is not None:
             v = v.astimezone(timezone.utc).replace(tzinfo=None)
         return v
+
+    @property
+    def start_datetime64(self) -> np.datetime64:
+        """Get start as numpy format."""
+        return np.datetime64(self.start)
+
+    @property
+    def end_datetime64(self) -> np.datetime64:
+        """Get start as numpy format."""
+        return np.datetime64(self.end)
 
 
 class SimObsVariables(BaseModel):
