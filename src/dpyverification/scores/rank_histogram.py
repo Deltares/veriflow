@@ -23,7 +23,7 @@ class RankHistogram(BaseScore):
     def __init__(self, config: RankHistogramConfig) -> None:
         self.config: RankHistogramConfig = config
 
-    def compute(self, data: SimObsDataset) -> xr.DataArray:
+    def compute(self, data: SimObsDataset) -> xr.Dataset:
         """Compute the histogram of ranks over the specified dimensions."""
         results = []
         for variable_pair in self.config.variable_pairs:

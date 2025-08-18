@@ -31,7 +31,7 @@ class CrpsForEnsemble(BaseScore):
     def compute(
         self,
         data: SimObsDataset,
-    ) -> xr.DataArray:
+    ) -> xr.Dataset:
         """Compute the CRPS for an ensemble of forecasts and observations."""
         # Select sim and obs.
 

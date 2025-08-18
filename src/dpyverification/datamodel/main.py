@@ -39,9 +39,9 @@ def _transform_forecast_reference_time_sim_to_forecast_period_sim(
     # Stack time and forecast_reference_time into one dimension ft_pair,
     #   representing each unique pair of time and forecast_reference_time
     #   along a 1d dimension.
-    ds_stacked = ds.stack(
-        ft_pair=(StandardDim.forecast_reference_time, StandardDim.time)
-    )  # noqa: PD013
+    ds_stacked = ds.stack(  # noqa: PD013
+        ft_pair=(StandardDim.forecast_reference_time, StandardDim.time),
+    )
 
     # For each unique pair of time and forecast_reference_time
     #   compute the forecast_period (time - forecast_reference_time)
@@ -52,8 +52,8 @@ def _transform_forecast_reference_time_sim_to_forecast_period_sim(
 
     # Assign the result as a coordinate on dimension ft_pair
     ds_stacked = ds_stacked.assign_coords(
-        forecast_period=("ft_pair", forecast_period)
-    )  # type:ignore[misc]
+        forecast_period=("ft_pair", forecast_period),  # type:ignore[misc]
+    )
 
     # Swap the dimension so that time and forecast_reference_time now lie
     #   on dimension forecast_period
@@ -99,7 +99,7 @@ def transform_dataset(
     ) -> xr.Dataset:
         """Clip the dataset on time dimension to verification period."""
         return dataset.sel(
-            time=slice(verification_period.start, verification_period.end)
+            time=slice(verification_period.start, verification_period.end),
         )
 
     # Make a copy of the original dataset
@@ -122,7 +122,7 @@ def transform_dataset(
             # Config is dtype timedelta64, dataset may be timedelta64][ns]
             #   xarray will handle these dtype differenes automatically
             return dataset.sel(
-                forecast_period=general_config.forecast_periods.timedelta64
+                forecast_period=general_config.forecast_periods.timedelta64,
             )
         except KeyError as e:
             msg = "Not all configured lead times could be found in dataset."
@@ -131,7 +131,7 @@ def transform_dataset(
     # Return simulations with forecast reference time dimension
     #   after transforming it to a forecast-period based dataset.
     return _transform_forecast_reference_time_sim_to_forecast_period_sim(
-        dataset
+        dataset,
     )
 
 
@@ -144,7 +144,8 @@ def validate_dataset(dataset: xr.Dataset) -> tuple[xr.Dataset, DatasetKind]:
     }
 
     def attempt_validation(
-        schema: type[BaseModel], dataset: xr.Dataset
+        schema: type[BaseModel],
+        dataset: xr.Dataset,
     ) -> bool:
         """Validate and return True when succesful, else False."""
         try:
@@ -172,7 +173,7 @@ class OutputDataset:
 
         # Metadata
         self.current_time = datetime.now(tz=timezone.utc).strftime(
-            "%d/%m/%Y, %H:%M:%S"
+            "%d/%m/%Y, %H:%M:%S",
         )
 
     def add_score(self, kind: str, score: xr.Dataset | xr.DataArray) -> None:

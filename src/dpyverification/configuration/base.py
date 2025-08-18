@@ -39,9 +39,28 @@ from .utils import ForecastPeriods, SimObsVariables, TimePeriod
 
 
 class GeneralInfoConfig(BaseModel):
-    verification_period: TimePeriod
-    forecast_periods: ForecastPeriods
-    cache_dir: Path = Path("./.verification_cache")
+    verification_period: Annotated[
+        TimePeriod,
+        Field(description="The start and end of the verification period."),
+    ]
+    forecast_periods: Annotated[
+        ForecastPeriods,
+        Field(
+            "A set of forecast periods for which to evaluate of the verification scores. "
+            "A forecast period is the timedelta between the forecast reference time of a forecast"
+            "(t0, analysis_time, initialization time) and the valid time (time, observed time) "
+            "and is also known as: lead time or forecast horizon)",
+        ),
+    ]
+    cache_dir: Annotated[
+        Path,
+        Field(
+            description=(
+                "Path pointing to a cache directory.",
+                "Will be automatically created if it doesn't yet exist.",
+            ),
+        ),
+    ] = Path("./.verification_cache")
 
     @field_validator("cache_dir")
     @classmethod
