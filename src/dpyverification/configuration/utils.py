@@ -12,11 +12,31 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from dpyverification.constants import TimeUnits
 
 
+class Range(BaseModel):
+    """A range."""
+
+    start: int
+    end: int
+    step: int
+
+    def to_list(self) -> list[int]:
+        """Convert to list."""
+        return list(range(self.start, self.end + 1, self.step))
+
+
 class ForecastPeriods(BaseModel):
     """A forecast periods config element."""
 
     unit: TimeUnits
-    values: list[int]
+    values: list[int] | Range
+
+    @field_validator("values", mode="after")
+    @classmethod
+    def expand_range(cls, v: list[int] | Range) -> list[int]:
+        """Make a list from provided range."""
+        if isinstance(v, Range):
+            return v.to_list()
+        return v  # already a list[int]
 
     @property
     def timedelta64(self) -> list[np.timedelta64]:
