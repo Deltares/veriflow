@@ -55,8 +55,8 @@ class CrpsForEnsemble(BaseScore):
             # Set variable name on xr.DataArray
             result.name = f"{ScoreKind.crps_for_ensemble}_{variable_pair.sim_obs_string}"
 
-            # Set attrs on xr.DataArray
-            units: str = sim.attrs["units"] if sim.attrs["units"] is not None else "1"  # type:ignore[misc]
+            # Get unit, default to 1 (CF-compliant definition for dimensionless)
+            units: str = sim.attrs.get("units", "1")  # type:ignore[misc]
             result = set_data_array_attributes(
                 result,
                 long_name="continuous ranked probability score",
