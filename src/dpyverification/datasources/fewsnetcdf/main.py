@@ -206,16 +206,17 @@ class FewsNetcdfFile(BaseDatasource):
                 da_fp = da_fp.swap_dims({"forecast_reference_time": "time"})  # type:ignore[misc]
                 da_list.append(da_fp)
 
-        new_dataset = xr.combine_by_coords(da_list)
-
-        if isinstance(new_dataset, xr.Dataset):  # type:ignore[misc]
-            return new_dataset
-
-        msg = (
-            "Invalid resulting datatype after transforming to forecast period dataset.",
-            "Expected xr.Dataset, got {type(new_dataset)}",
+        combined_data_arrays = xr.combine_nested(
+            da_list,
+            concat_dim=StandardDim.forecast_period,
+            combine_attrs="drop_conflicts",
         )
-        raise TypeError(msg)
+
+        if isinstance(combined_data_arrays, xr.Dataset):  # type:ignore[misc]
+            return combined_data_arrays
+
+        # combine_nested can actually return xr.DataArray, despite return type signature xr.Dataset
+        return combined_data_arrays.to_dataset()  # type:ignore[unreachable]
 
     def fetch_data(self) -> Self:
         """Retrieve fewsnetcdf content as an xarray DataArray."""
