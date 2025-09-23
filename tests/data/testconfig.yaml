@@ -1,21 +1,21 @@
 fileversion: "0.0.1"
 general: 
-  verificationperiod: 
+  verification_period: 
     start: "2000-01-01T00:00:00Z"
     end: "2001-01-01T00:00:00Z"
-  leadtimes: 
+  forecast_periods: 
     unit: "h"
     values: ["3", "6"]
 datasources: [
   {
-    kind: "pixml",
-    simobstype: "obs",
+    kind: "fewsnetcdf",
+    simobskind: "obs",
     directory: "iets",
     filename: "anders",
   },
   {
-    kind: "pixml",
-    simobstype: "sim",
+    kind: "fewsnetcdf",
+    simobskind: "sim",
     directory: "twee",
     filename: "drie",
   },
@@ -23,7 +23,7 @@ datasources: [
 scores: [
   {
     kind: "simobspairs",
-    variablepairs: [
+    variable_pairs: [
       {
         sim: "Q.fs",
         obs: "Q.m",

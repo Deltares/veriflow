@@ -1,61 +1,78 @@
 """A module for default implementation of scores."""
 
+from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, Field
+from pydantic import Field, RootModel
 
 from dpyverification.configuration.base import BaseScoreConfig
-from dpyverification.constants import DataModelDims, ScoreKind
+from dpyverification.constants import ScoreKind, StandardDim
 
 
-class SimObsPairsConfig(BaseScoreConfig):
-    """A sim obs pairs config element."""
+class ComputableDim(StrEnum):
+    """List of dimensions that can be used for preservation or reduction in computations."""
 
-    kind: Literal[ScoreKind.SIMOBSPAIRS]
+    time = "time"
+    station = "station"
+    forecast_period = "forecast_period"
+
+
+class ReduceDims(RootModel[list[ComputableDim]]):
+    """A list of dimensions over which to compute a score."""
+
+    @property
+    def values(self) -> list[ComputableDim]:
+        """Return a list of values."""
+        return self.root
+
+    @property
+    def inverse(self) -> list[StandardDim]:
+        """Get the preservable dims as inverse of reduce dims."""
+        return [
+            dim
+            for dim in [
+                StandardDim.variable,
+                StandardDim.time,
+                StandardDim.station,
+                StandardDim.forecast_period,
+            ]
+            if dim not in self.root
+        ]
+
+
+ReduceDimsWithDefault = Annotated[
+    ReduceDims,
+    Field(default_factory=lambda: ReduceDims([ComputableDim.time])),
+]
+
+
+class IdMap(RootModel[dict[str, dict[str, str]]]):
+    """Mapping from internal IDs to external IDs per data source."""
+
+    def get_external_to_internal_mapping(self, data_source: str) -> dict[str, str]:
+        """Return external → internal mapping for this data source."""
+        return {v[data_source]: k for k, v in self.root.items()}
 
 
 class RankHistogramConfig(BaseScoreConfig):
     """A rank histogram config element."""
 
-    kind: Literal[ScoreKind.RANKHISTOGRAM]
-    reduce_dims: Annotated[
-        list[DataModelDims] | None,
-        Field(
-            description=(
-                "Dimension(s) over which to compute the histogram"
-                "of ranks. Defaults to all dimensions."
-            ),
-        ),
-    ] = None
+    kind: Literal[ScoreKind.rank_histogram]
+    reduce_dims: ReduceDimsWithDefault
 
 
 class CrpsForEnsembleConfig(BaseScoreConfig):
     """A crps for ensemble config element."""
 
-    @staticmethod
-    def dim_is_not_ensemble(value: DataModelDims) -> DataModelDims:
-        """Check dim is not ensemble dim."""
-        if value == DataModelDims.ensemble:
-            msg = "Cannot preserve ensemble dimension."
-            raise ValueError(msg)
-        return value
-
-    kind: Literal[ScoreKind.CRPSFORENSEMBLE]
+    kind: Literal[ScoreKind.crps_for_ensemble]
     method: Annotated[
         Literal["ecdf", "fair"],
         Field(
             description=(
-                "Defaults to ecdf."
+                "Method to compute the cumulative distribution function from an ensemble."
                 "See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble"
             ),
             default="ecdf",
         ),
     ]
-    preserve_dims: Annotated[
-        list[DataModelDims] | None,
-        AfterValidator(dim_is_not_ensemble),
-        Field(
-            description="List of dimension(s) to preserve in the output. Defaults to None.",
-            default=None,
-        ),
-    ] = None
+    reduce_dims: ReduceDimsWithDefault

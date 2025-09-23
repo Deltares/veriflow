@@ -16,7 +16,6 @@ import importlib_metadata
 class DataSourceKind(StrEnum):
     """Enumeration of the supported datasource types."""
 
-    PIXML = "pixml"
     FEWSNETCDF = "fewsnetcdf"
     FEWSWEBSERVICE = "fewswebservice"
 
@@ -24,26 +23,25 @@ class DataSourceKind(StrEnum):
 class DataSinkKind(StrEnum):
     """Enumeration of the supported datasink types."""
 
-    FEWSNETCDF = "fewsnetcdf"
+    fews_netcdf = "fewsnetcdf"
+    cf_compliant_netcdf = "cf_compliant_netcdf"
 
 
 @unique
 class SimObsKind(StrEnum):
     """Enumeration of the supported types of input data."""
 
-    SIM = "sim"
-    OBS = "obs"
-    COMBINED = "combined"
+    sim = "sim"
+    obs = "obs"
+    combined = "combined"
 
 
 @unique
 class ScoreKind(StrEnum):
     """Enumeration of the implemented verification scores."""
 
-    SIMOBSPAIRS = "simobspairs"
-    PINSCORE = "pinscore"
-    RANKHISTOGRAM = "rankhistogram"
-    CRPSFORENSEMBLE = "crps_for_ensemble"
+    rank_histogram = "rank_histogram"
+    crps_for_ensemble = "crps_for_ensemble"
 
 
 @unique
@@ -59,7 +57,7 @@ class TimeUnits(StrEnum):
     SECOND = "s"
 
 
-class DataModelDims(StrEnum):
+class StandardDim(StrEnum):
     """List of dimension names.
 
     To avoid hardcoded strings in multiple places,
@@ -67,13 +65,15 @@ class DataModelDims(StrEnum):
     """
 
     time = "time"
-    location = "location_id"
-    ensemble = "ensemble_member"
-    simstart = "simulation_starttime"
-    leadtime = "leadtime"
+    station = "station"
+    realization = "realization"
+    forecast_reference_time = "forecast_reference_time"
+    forecast_period = "forecast_period"
+    source = "source"
+    variable = "variable"
 
 
-class DataModelCoords:
+class StandardCoord:
     """List of coordinate names and attributes.
 
     To avoid hardcoded strings in multiple places, have a single list with the names of known
@@ -89,7 +89,7 @@ class DataModelCoords:
 
         name: str
         # The attributes given here are meant to be
-        # - used directly in a attrs.update() call
+        # - used directly in an attrs.update() call
         # - immutable
         # so use tuples of tuples (inner tuples length two).
         attributes: tuple[tuple[str, str], ...]
@@ -99,11 +99,11 @@ class DataModelCoords:
     #   Define units attribute here, or when putting in the values? How to make the values match the
     #   units, for the time-like coordinates mainly?
     time = CoordinateProperties(
-        DataModelDims.time,
+        StandardDim.time,
         (("standard_name", "time"), ("long_name", "time"), ("axis", "T")),
     )
-    location = CoordinateProperties(
-        DataModelDims.location,
+    station = CoordinateProperties(
+        "station",
         # TODO(AU): Check location coordinate attributes and CF compliance # noqa: FIX002
         #   https://github.com/Deltares-research/DPyVerification/issues/35
         #   Having cf_role: timeseries_id on this coordinate, and featureType: timeSeries on the
@@ -113,6 +113,10 @@ class DataModelCoords:
             ("long_name", "station identification code"),
             ("cf_role", "timeseries_id"),
         ),
+    )
+    station_name = CoordinateProperties(
+        "station_name",
+        (("long_name", "station name"),),
     )
     lat = CoordinateProperties(
         "lat",
@@ -132,31 +136,73 @@ class DataModelCoords:
             ("axis", "X"),
         ),
     )
-    ensemble = CoordinateProperties(
-        DataModelDims.ensemble,
+    x = CoordinateProperties(
+        "x",
+        (
+            ("standard_name", "projection_x_coordinate"),
+            ("long_name", "x coordinate according to WGS 1984"),
+            ("units", "degrees"),
+            ("axis", "X"),
+        ),
+    )
+    y = CoordinateProperties(
+        "x",
+        (
+            ("standard_name", "projection_y_coordinate"),
+            ("long_name", "y coordinate according to WGS 1984"),
+            ("units", "degrees"),
+            ("axis", "Y"),
+        ),
+    )
+    z = CoordinateProperties(
+        "z",
+        (
+            ("standard_name", "projection_z_coordinate"),
+            ("long_name", "z coordinate according to WGS 1984"),
+            ("units", "degrees"),
+            ("axis", "Z"),
+        ),
+    )
+    realization = CoordinateProperties(
+        StandardDim.realization,
         (
             ("standard_name", "realization"),
             ("long_name", "Index of an ensemble member within an ensemble"),
             ("units", "1"),
         ),
     )
-    simstart = CoordinateProperties(
-        DataModelDims.simstart,
+    forecast_reference_time = CoordinateProperties(
+        StandardDim.forecast_reference_time,
         (
             ("standard_name", "forecast_reference_time"),
             ("long_name", "forecast_reference_time"),
         ),
     )
-    leadtime = CoordinateProperties(
-        DataModelDims.leadtime,
+    forecast_period = CoordinateProperties(
+        StandardDim.forecast_period,
         (
             ("standard_name", "forecast_period"),
             ("long_name", "forecast_period"),
         ),
     )
+    source = CoordinateProperties(
+        StandardDim.source,
+        (
+            ("standard_name", "source"),
+            ("long_name", "source"),
+        ),
+    )
+    variable = CoordinateProperties(
+        StandardDim.variable,
+        (("long_name", "simulation_or_observation_kind"),),
+    )
+    units = CoordinateProperties(
+        "units",
+        (("long_name", "units"),),
+    )
 
 
-class DataModelAttributes:
+class StandardAttribute:
     """List of attribute names on the main xarray.
 
     To avoid hardcoded strings in multiple places,

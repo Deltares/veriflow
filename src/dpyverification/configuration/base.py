@@ -10,12 +10,6 @@ To generate a yaml / json file with the json representation of this schema:
     FILEPATH = pathlib.Path("YOUR_PATH_HERE")
     with FILEPATH.open("w") as myfile:
         yaml.dump(Config.model_json_schema(), myfile)
-
-Sidenote: It is also possible to go the other way around and generate a pydantic schema from a
-yaml/json file, see datamodel_code_generator, for example from
-https://docs.pydantic.dev/latest/integrations/datamodel_code_generator/ . Note that this can
-generate a pydantic model that is not up-to-date with the latest pydantic / python, and might
-need some modifications.
 """
 
 # TODO(AU): Add pydantic Field with description, and maybe title, to all attributes. # noqa: FIX002
@@ -29,17 +23,118 @@ need some modifications.
 # ruff: noqa: D101 Do not require class docstrings for the classes in this file
 # ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
+from collections.abc import Sequence
+from pathlib import Path
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+import xarray as xr
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 from pydantic.json_schema import SkipJsonSchema
 
-from .utils import LeadTimes, SimObsVariables, TimePeriod
+from dpyverification.constants import StandardDim
+
+from .utils import ForecastPeriods, TimePeriod, VerificationPair
 
 
 class GeneralInfoConfig(BaseModel):
-    verificationperiod: TimePeriod
-    leadtimes: LeadTimes
+    verification_period: Annotated[
+        TimePeriod,
+        Field(description="The start and end of the verification period."),
+    ]
+    verification_pairs: Annotated[
+        list[VerificationPair],
+        Field(
+            description="Specify pairs for computation of verification metrics. This allows you to "
+            "verify multiple variables and multiple sources. For example, by specifying two pairs: "
+            "verify simulated discharge for ModelA and ModelB against observed discharge from"
+            "source Observed.",
+        ),
+    ]
+    forecast_periods: Annotated[
+        ForecastPeriods,
+        Field(
+            "A set of forecast periods for which to evaluate of the verification scores. "
+            "A forecast period is the timedelta between the forecast reference time of a forecast "
+            "(t0, analysis_time, initialization time) and the valid time (time, observed time) "
+            "and is also known as: lead time or forecast horizon)",
+        ),
+    ]
+    cache_dir: Annotated[
+        Path,
+        Field(
+            description=(
+                "Path pointing to a cache directory. ",
+                "Will be automatically created if it doesn't yet exist.",
+            ),
+        ),
+    ] = Path("./.verification_cache")
+
+
+class IdMap(RootModel[dict[str, dict[str, str]]]):
+    """Mapping from internal IDs to external IDs per data source."""
+
+    def get_external_to_internal_mapping(self, data_source: str) -> dict[str, str]:
+        """Return external → internal mapping for this data source."""
+        return {v[data_source]: k for k, v in self.root.items()}
+
+
+class IdMappingConfig(BaseModel):
+    """Config for mapping external ids to their internal definition."""
+
+    variable: Annotated[
+        IdMap | None,
+        Field(
+            description="Mapping of internal to external definitions per source as a dictionary. "
+            "The key corresponds to the internal definition and the value is another dictionary "
+            "with keys corresponding to the source and the value to the external definition. ",
+        ),
+    ] = None
+    station: Annotated[
+        IdMap | None,
+        Field(
+            description="Mapping of internal to external definitions per source as a dictionary. "
+            "The key corresponds to the internal definition and the value is another dictionary "
+            "with keys corresponding to the source and the value to the external definition. ",
+        ),
+    ] = None
+
+    def rename_data_array(self, data_array: xr.DataArray) -> xr.DataArray:
+        subsets = []
+
+        # Iterate over sources. Each source may have its own unique mapping.
+        for source in data_array[StandardDim.source].to_numpy():  # type:ignore[misc]
+            subset = data_array.sel({StandardDim.source: source})  # type:ignore[misc]
+
+            # Re-assign variable coordinates
+            if self.variable is not None:
+                subset = subset.assign_coords(
+                    {  # type:ignore[misc]
+                        StandardDim.variable: (  # type:ignore[misc]
+                            StandardDim.variable,
+                            subset[StandardDim.variable]  # type:ignore[misc]
+                            .to_series()
+                            .replace(self.variable.get_external_to_internal_mapping(source))  # type:ignore[misc]
+                            .to_numpy(),
+                        ),
+                    },
+                )
+            # Re-assign station coordinates
+            if self.station is not None:
+                subset = subset.assign_coords(
+                    {  # type:ignore[misc]
+                        StandardDim.station: (  # type:ignore[misc]
+                            StandardDim.station,
+                            subset[StandardDim.station]  # type:ignore[misc]
+                            .to_series()
+                            .replace(self.station.get_external_to_internal_mapping(source))  # type:ignore[misc]
+                            .to_numpy(),
+                        ),
+                    },
+                )
+            subsets.append(subset)
+
+        # Return the fully renamed dataset
+        return xr.concat(subsets, dim=StandardDim.source)
 
 
 class BaseConfig(BaseModel):
@@ -71,19 +166,24 @@ class BaseDatasourceConfig(BaseConfig):
     this base class.
     """
 
-    simobstype: str
+    simobskind: str
     general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
     # config is propagated from the general config section in the main config. This will prevent
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
-    @property
-    def leadtimes(self) -> LeadTimes:
-        return self.general.leadtimes
+    id_mapping: SkipJsonSchema[IdMappingConfig]  # Do not serialize to json schema, since general
+    # config is propagated from the general config section in the main config. This will prevent
+    # users that use the json-schema for making config having to explicitly set a duplicate general
+    # configuration section for each datasource.
 
     @property
-    def verificationperiod(self) -> TimePeriod:
-        return self.general.verificationperiod
+    def forecast_periods(self) -> ForecastPeriods:
+        return self.general.forecast_periods
+
+    @property
+    def verification_period(self) -> TimePeriod:
+        return self.general.verification_period
 
 
 class BaseDatasinkConfig(BaseConfig):
@@ -93,6 +193,17 @@ class BaseDatasinkConfig(BaseConfig):
     Specific config definitions should inherit from
     this base class.
     """
+
+    force_overwrite: bool = True
+
+    general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
+    # config is propagated from the general config section in the main config. This will prevent
+    # users that use the json-schema for making config having to explicitly set a duplicate general
+    # configuration section for each datasource.
+
+    @property
+    def verification_period(self) -> TimePeriod:
+        return self.general.verification_period
 
 
 class BaseScoreConfig(BaseConfig):
@@ -108,21 +219,22 @@ class BaseScoreConfig(BaseConfig):
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
-    variablepairs: Annotated[
-        list[SimObsVariables],
-        Field(
-            description="Variable pairs to use for the computation.",
-        ),
-    ]
+    @property
+    def verification_pairs(self) -> list[VerificationPair]:
+        """The configured variable pairs from general config."""
+        return self.general.verification_pairs
 
     @property
-    def leadtimes(self) -> LeadTimes:
-        return self.general.leadtimes
+    def forecast_periods(self) -> ForecastPeriods:
+        return self.general.forecast_periods
 
 
 class Config(BaseModel):
+    """Config object for running the verification pipeline."""
+
     fileversion: str
     general: GeneralInfoConfig
-    datasources: Annotated[list[BaseDatasourceConfig], Field(min_length=1)]
-    scores: Annotated[list[BaseScoreConfig], Field(min_length=1)]
-    datasinks: Annotated[list[BaseDatasinkConfig], Field(min_length=1)]
+    datasources: Annotated[Sequence[BaseDatasourceConfig], Field(min_length=1)]
+    scores: Annotated[Sequence[BaseScoreConfig], Field(min_length=1)]
+    datasinks: Annotated[Sequence[BaseDatasinkConfig] | None, Field(min_length=1)] = None
+    id_mapping: IdMappingConfig | None = None

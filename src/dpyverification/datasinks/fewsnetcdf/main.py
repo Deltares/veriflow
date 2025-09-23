@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 import xarray as xr
 
 from dpyverification.configuration import (
-    FewsNetcdfOutputConfig,
+    FewsNetCDFOutputConfig,
 )
 from dpyverification.constants import (
-    DataModelAttributes,
-    DataModelCoords,
-    DataModelDims,
+    StandardAttribute,
+    StandardCoord,
+    StandardDim,
 )
 from dpyverification.datasinks.base import BaseDatasink
 
@@ -25,10 +25,10 @@ class FewsNetcdfFileSink(BaseDatasink):
     """For writing data to a fews netcdf file."""
 
     kind = "fewsnetcdf"
-    config_class = FewsNetcdfOutputConfig
+    config_class: type[FewsNetCDFOutputConfig] = FewsNetCDFOutputConfig
 
-    def __init__(self, config: FewsNetcdfOutputConfig) -> None:
-        self.config: FewsNetcdfOutputConfig = config
+    def __init__(self, config: FewsNetCDFOutputConfig) -> None:
+        self.config: FewsNetCDFOutputConfig = config
 
     def write_data(self, dataset: xr.Dataset) -> None:
         """Write the data in the xarray Dataset to the file as specified in the output config.
@@ -45,13 +45,13 @@ class FewsNetcdfFileSink(BaseDatasink):
         #   Do not do explicitly, the rename_dims will already return a new object
 
         # Renames from DPyVerification datamodel to FewsNetcdf compliance
-        renames = {DataModelDims.simstart: "analysis_time"}
+        renames = {StandardDim.forecast_reference_time: "analysis_time"}
         dataset = dataset.rename_dims(renames)
-        renames = {DataModelCoords.simstart.name: "analysis_time"}  # type: ignore[dict-item]
+        renames = {StandardCoord.forecast_reference_time.name: "analysis_time"}  # type: ignore[dict-item]
         dataset = dataset.rename_vars(renames)
 
         # Remove attributes not usable / desired in the netcdf
-        dataset.attrs.pop(DataModelAttributes.timestep)  # type: ignore[misc] # attrs is a dict[Any,Any]
+        dataset.attrs.pop(StandardAttribute.timestep)  # type: ignore[misc] # attrs is a dict[Any,Any]
 
         # Add any missing information required for CF compliance
         #   Note that most CF compliance will already be done in the creation of the xarray as
@@ -65,14 +65,13 @@ class FewsNetcdfFileSink(BaseDatasink):
         # Check the dataset against the required schema
         # For now, assume the schema used for fewsnetcdf input, also holds for fewsnetcdf output
         # Probably, want to use a different schema at a later time for output
-        # Assign to _, since the model will throw an error when not compliant
-        schema_like = dataset.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
-        _ = FewsNetcdfOutputSchema(**schema_like)  # type: ignore[misc] # See previous line
+        dataset_dict = dataset.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
+        FewsNetcdfOutputSchema.model_validate(dataset_dict)  # type: ignore[misc] # See previous line
 
         dataset.to_netcdf(filepath)
 
     @staticmethod
-    def add_global_attrs(dataset: xr.Dataset, dsconfig: FewsNetcdfOutputConfig) -> None:
+    def add_global_attrs(dataset: xr.Dataset, dsconfig: FewsNetCDFOutputConfig) -> None:
         """Add required global attributes if missing."""
         global_attrs = {
             "Conventions": "CF-1.6",

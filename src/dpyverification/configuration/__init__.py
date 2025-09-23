@@ -2,18 +2,18 @@
 
 # The public interface
 from dpyverification.configuration.base import Config, GeneralInfoConfig
-from dpyverification.configuration.default.datasinks import FewsNetcdfOutputConfig
+from dpyverification.configuration.default.datasinks import (
+    CFCompliantNetCDFConfig,
+    FewsNetCDFOutputConfig,
+)
 from dpyverification.configuration.default.datasources import (
     FewsWebserviceInputConfig,
-    FewsWebserviceInputObsConfig,
-    FewsWebserviceInputSimConfig,
-    FileInputFewsnetcdfConfig,
-    FileInputPixmlConfig,
+    FileInputFewsNetCDFConfig,
+    SimulationRetrievalMethod,
 )
 from dpyverification.configuration.default.scores import (
     CrpsForEnsembleConfig,
     RankHistogramConfig,
-    SimObsPairsConfig,
 )
-from dpyverification.configuration.file import ConfigFile, ConfigTypes
+from dpyverification.configuration.file import ConfigFile, ConfigType
 from dpyverification.configuration.utils import FewsWebserviceAuthConfig
