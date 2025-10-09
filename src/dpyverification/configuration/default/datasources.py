@@ -14,6 +14,13 @@ from dpyverification.configuration.utils import (
 from dpyverification.constants import DataSourceKind
 
 
+class ArchiveKind(StrEnum):
+    """Archive kind."""
+
+    open_archive = "open_archive"
+    external_storage_archive = "external_storage_archive"
+
+
 class FewsNetCDFKind(StrEnum):
     """List of kinds of FEWS NetCDFs."""
 
@@ -43,6 +50,13 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
     module_instance_id: Annotated[str, Field(min_length=1)]
     ensemble_id: Annotated[str, Field(min_length=1)] | None = None
     qualifier_ids: Annotated[list[str], Field(min_length=1)] | None = None
+    archive_kind: Annotated[
+        ArchiveKind,
+        Field(
+            description="Archive kind. Defaults to a Delft-FEWS Open Archive, "
+            "which is the Delft-FEWS standard and is most used.",
+        ),
+    ] = ArchiveKind.open_archive
     simulation_retrieval_method: (
         Annotated[
             SimulationRetrievalMethod,
