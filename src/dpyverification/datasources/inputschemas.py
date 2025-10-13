@@ -29,7 +29,7 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field
 
-from dpyverification.constants import StandardDim
+from dpyverification.constants import StandardDim, TimeseriesKind
 
 AllowedDTypeInt = Literal["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"]
 AllowedDTypeFloat = Literal["float16", "float32", "float64"]
@@ -86,10 +86,6 @@ class XYZCoord(BaseModel):
     dtype: AllowedDTypeFloat
 
 
-class SourceCoord(BaseModel):
-    dims: Annotated[tuple[str, ...], AfterValidator(check_dims({StandardDim.source}))]
-
-
 class VariableCoord(BaseModel):
     dims: Annotated[tuple[str, ...], AfterValidator(check_dims({StandardDim.variable}))]
 
@@ -98,11 +94,10 @@ class UnitsCoord(BaseModel):
     dims: Annotated[tuple[str, ...], AfterValidator(check_dims({StandardDim.variable}))]
 
 
-class SharedCoords(BaseModel):
+class BaseCoords(BaseModel):
     time: TimeCoord
     station: StationCoord
     station_name: StationCoord | None = None  # Optional station name coordinate
-    source: SourceCoord
     variable: VariableCoord
     units: UnitsCoord
     lat: XYZCoord  # Always required lat, lon
@@ -110,10 +105,6 @@ class SharedCoords(BaseModel):
     x: XYZCoord | None = None  # Optional x, y, z
     y: XYZCoord | None = None
     z: XYZCoord | None = None
-
-
-class ObsCoords(SharedCoords):
-    pass
 
 
 CFCompliantName = Annotated[
@@ -139,37 +130,74 @@ class ForecastPeriodCoord(BaseModel):
     dtype: AllowedDTypeTimeDelta
 
 
-class SimulationCoords(SharedCoords):
+class BaseSimulationCoords(BaseCoords):
     forecast_period: ForecastPeriodCoord
     realization: RealizationCoord
 
 
-# Below, the final allowed input data structures
-class Observation(BaseModel):
+class BaseAttrs(BaseModel):
+    timeseries_kind: str
+
+
+class Base(BaseModel):
     dims: Annotated[
         tuple[str, ...],
         AfterValidator(
             check_dims(
                 {
                     StandardDim.variable,
-                    StandardDim.source,
                     StandardDim.time,
                     StandardDim.station,
                 },
             ),
         ),
     ]
-    coords: ObsCoords
+    coords: BaseCoords
+    attrs: BaseAttrs
 
 
-class Simulation(BaseModel):
+# Below, the final allowed input data structures
+class ObservedHistorical(Base):
+    pass
+
+
+class SimulatedHistorical(Base):
+    pass
+
+
+class SimulatedForecastSingleCoords(BaseCoords):
+    forecast_period: ForecastPeriodCoord
+
+
+class SimulatedForecastSingle(Base):
     dims: Annotated[
         tuple[str, ...],
         AfterValidator(
             check_dims(
                 {
                     StandardDim.variable,
-                    StandardDim.source,
+                    StandardDim.time,
+                    StandardDim.station,
+                    StandardDim.forecast_period,
+                },
+            ),
+        ),
+    ]
+    coords: SimulatedForecastSingleCoords
+
+
+class SimulatedForecastEnsembleCoords(BaseCoords):
+    realization: RealizationCoord
+    forecast_period: ForecastPeriodCoord
+
+
+class SimulatedForecastEnsemble(Base):
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(
+            check_dims(
+                {
+                    StandardDim.variable,
                     StandardDim.time,
                     StandardDim.station,
                     StandardDim.forecast_period,
@@ -178,4 +206,36 @@ class Simulation(BaseModel):
             ),
         ),
     ]
-    coords: SimulationCoords
+    coords: SimulatedForecastEnsembleCoords
+
+
+class SimulatedForecastProbabilisticCoords(BaseCoords):
+    forecast_period: ForecastPeriodCoord
+
+
+class SimulatedForecastProbabilistic(Base):
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(
+            check_dims(
+                {
+                    StandardDim.variable,
+                    StandardDim.time,
+                    StandardDim.station,
+                    StandardDim.forecast_period,
+                    StandardDim.realization,
+                },
+            ),
+        ),
+    ]
+    coords: SimulatedForecastProbabilisticCoords
+
+
+# All input schemas, keyed by the corresponding timeseries kind
+input_schemas: dict[TimeseriesKind, BaseModel] = {
+    TimeseriesKind.observed_historical: ObservedHistorical,
+    TimeseriesKind.simulated_historical: SimulatedHistorical,
+    TimeseriesKind.simulated_forecast_single: SimulatedForecastSingle,
+    TimeseriesKind.simulated_forecast_ensemble: SimulatedForecastEnsemble,
+    TimeseriesKind.simulated_forecast_probabilistic: SimulatedForecastProbabilistic,
+}

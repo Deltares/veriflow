@@ -6,22 +6,21 @@ import xarray as xr
 from dpyverification.configuration import GeneralInfoConfig
 from dpyverification.configuration.utils import (
     ForecastPeriods,
-    Pair,
     TimePeriod,
     TimeUnits,
     VerificationPair,
 )
-from dpyverification.datamodel.main import SimObsDataset
+from dpyverification.datamodel.main import InputDataset
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF
 
 # mypy: disable-error-code="misc"
 
 
-def test_init_simobsdataset(
+def test_init_input_dataset(
     xarray_data_array_observations: xr.DataArray,
     xarray_data_array_simulation: xr.DataArray,
 ) -> None:
-    """Test the simobsdataset initializes successfully with forecast period (fp) input."""
+    """Test the input_dataset initializes successfully with forecast period (fp) input."""
     general_config = GeneralInfoConfig(
         verification_period=TimePeriod(
             start=datetime(2025, 1, 1, tzinfo=timezone.utc),
@@ -31,24 +30,25 @@ def test_init_simobsdataset(
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                source=Pair(obs="source_1", sim="source_1"),
+                obs="source_1",
+                sim="source_1",
             ),
         ],
     )
 
-    _ = SimObsDataset(
+    _ = InputDataset(
         data=[xarray_data_array_observations, xarray_data_array_simulation],
         general_config=general_config,
     )
 
 
-def test_init_simobsdataset_fewsnetcdf(
+def test_init_input_dataset_fewsnetcdf(
     datasource_fewsnetcdf_obs: FewsNetCDF,
     datasource_fewsnetcdf_sim_per_forecast_reference_time: FewsNetCDF,
     general_info_config_fewsnetcdf: GeneralInfoConfig,
 ) -> None:
-    """Test the fewsnetcdf is accepted by the simobsdataset."""
-    SimObsDataset(
+    """Test the fewsnetcdf is accepted by the input_dataset."""
+    InputDataset(
         data=[
             datasource_fewsnetcdf_obs.get_data().data_array,
             datasource_fewsnetcdf_sim_per_forecast_reference_time.get_data().data_array,

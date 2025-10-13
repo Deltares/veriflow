@@ -23,17 +23,17 @@ To generate a yaml / json file with the json representation of this schema:
 # ruff: noqa: D101 Do not require class docstrings for the classes in this file
 # ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Self
 
 import xarray as xr
-from pydantic import BaseModel, ConfigDict, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from dpyverification.constants import StandardDim, TimeseriesKind
 
-from .utils import ForecastPeriods, TimePeriod, VerificationPair
+from .utils import ForecastPeriods, Source, TimePeriod, VerificationPair
 
 
 class GeneralInfoConfig(BaseModel):
@@ -69,13 +69,30 @@ class GeneralInfoConfig(BaseModel):
         ),
     ] = Path("./.verification_cache")
 
+    def get_verification_pair(self, pair_id: str) -> VerificationPair:
+        """Get one verification_pair by its id."""
+        for pair in self.verification_pairs:
+            if pair.id == pair_id:
+                return pair
+        # At runtime, the following statement should be unreachable, because
+        #   we already validated all pair_ids are present during config initialization.
+        msg = f"Pair with id '{pair_id}' not found in general verification_pairs configuration."
+        raise ValueError(msg)
+
 
 class IdMap(RootModel[dict[str, dict[str, str]]]):
     """Mapping from internal IDs to external IDs per data source."""
 
-    def get_external_to_internal_mapping(self, data_source: str) -> dict[str, str]:
+    def check_source_defined(self, source: str) -> None:
+        """Check a source is defined in the IdMap."""
+        if not any(source in inner for inner in self.root.values()):
+            msg = f"No IdMapping found for source: {source}"
+            raise ValueError(msg)
+
+    def get_external_to_internal_mapping(self, source: str) -> dict[str, str]:
         """Return external → internal mapping for this data source."""
-        return {v[data_source]: k for k, v in self.root.items()}
+        self.check_source_defined(source)
+        return {v[source]: k for k, v in self.root.items()}
 
 
 class IdMappingConfig(BaseModel):
@@ -99,42 +116,35 @@ class IdMappingConfig(BaseModel):
     ] = None
 
     def rename_data_array(self, data_array: xr.DataArray) -> xr.DataArray:
-        subsets = []
+        source = str(data_array.name)
 
-        # Iterate over sources. Each source may have its own unique mapping.
-        for source in data_array[StandardDim.source].to_numpy():  # type:ignore[misc]
-            subset = data_array.sel({StandardDim.source: source})  # type:ignore[misc]
-
-            # Re-assign variable coordinates
-            if self.variable is not None:
-                subset = subset.assign_coords(
-                    {  # type:ignore[misc]
-                        StandardDim.variable: (  # type:ignore[misc]
-                            StandardDim.variable,
-                            subset[StandardDim.variable]  # type:ignore[misc]
-                            .to_series()
-                            .replace(self.variable.get_external_to_internal_mapping(source))  # type:ignore[misc]
-                            .to_numpy(),
-                        ),
-                    },
-                )
-            # Re-assign station coordinates
-            if self.station is not None:
-                subset = subset.assign_coords(
-                    {  # type:ignore[misc]
-                        StandardDim.station: (  # type:ignore[misc]
-                            StandardDim.station,
-                            subset[StandardDim.station]  # type:ignore[misc]
-                            .to_series()
-                            .replace(self.station.get_external_to_internal_mapping(source))  # type:ignore[misc]
-                            .to_numpy(),
-                        ),
-                    },
-                )
-            subsets.append(subset)
-
-        # Return the fully renamed dataset
-        return xr.concat(subsets, dim=StandardDim.source)
+        # Re-assign variable coordinates, if mapping is provided for source
+        if self.variable is not None:
+            data_array = data_array.assign_coords(
+                {  # type:ignore[misc]
+                    StandardDim.variable: (  # type:ignore[misc]
+                        StandardDim.variable,
+                        data_array[StandardDim.variable]  # type:ignore[misc]
+                        .to_series()
+                        .replace(self.variable.get_external_to_internal_mapping(source))
+                        .to_numpy(),
+                    ),
+                },
+            )
+        # Re-assign station coordinates, if mapping is provided for source
+        if self.station is not None:
+            data_array = data_array.assign_coords(
+                {  # type:ignore[misc]
+                    StandardDim.station: (  # type:ignore[misc]
+                        StandardDim.station,
+                        data_array[StandardDim.station]  # type:ignore[misc]
+                        .to_series()
+                        .replace(self.station.get_external_to_internal_mapping(source))
+                        .to_numpy(),
+                    ),
+                },
+            )
+        return data_array
 
 
 class BaseConfig(BaseModel):
@@ -166,6 +176,7 @@ class BaseDatasourceConfig(BaseConfig):
     this base class.
     """
 
+    source: Source
     timeseries_kind: TimeseriesKind
     general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
     # config is propagated from the general config section in the main config. This will prevent
@@ -219,14 +230,48 @@ class BaseScoreConfig(BaseConfig):
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
+    filter_verification_pairs: Annotated[
+        list[str] | None,
+        Field(
+            description="Optional field to filter verification_pairs from the general "
+            "configuration, by providing a list of verification pair ids from the general config. "
+            "Only the pair ids will be used in the computation of "
+            "this score.",
+        ),
+    ] = None
+
     @property
     def verification_pairs(self) -> list[VerificationPair]:
-        """The configured variable pairs from general config."""
-        return self.general.verification_pairs
+        """The configured variable pairs.
+
+        If the verification_pairs element is configured for the score, filter only these ids
+        from the verification_pairs defined in general config.
+        """
+        if self.filter_verification_pairs is None:
+            return self.general.verification_pairs
+        return [
+            self.general.get_verification_pair(pair_id)
+            for pair_id in self.filter_verification_pairs
+        ]
 
     @property
     def forecast_periods(self) -> ForecastPeriods:
         return self.general.forecast_periods
+
+    @model_validator(mode="after")
+    def filter_verification_pairs_valid(self) -> Self:
+        """Check provided filter for verification pairs contains valid ids."""
+        valid_pair_ids: Generator[str] = (pair.id for pair in self.general.verification_pairs)
+        if self.filter_verification_pairs is not None:
+            for pair_id in self.filter_verification_pairs:
+                if pair_id not in valid_pair_ids:
+                    msg = (
+                        f"Pair id '{pair_id}' in filter_verification_pairs is not present in "
+                        "the general configuration for verification_pairs. "
+                        "Please make sure ids match exactly."
+                    )
+                    raise ValueError(msg)
+        return self
 
 
 class Config(BaseModel):

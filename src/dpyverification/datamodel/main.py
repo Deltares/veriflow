@@ -5,15 +5,11 @@ from enum import Enum
 from typing import Literal
 
 import xarray as xr
-from pydantic import BaseModel, ValidationError
 
 from dpyverification.configuration import GeneralInfoConfig
 from dpyverification.configuration.utils import TimePeriod, VerificationPair
-from dpyverification.constants import StandardCoord, StandardDim
-from dpyverification.datasources.inputschemas import (
-    Observation,
-    Simulation,
-)
+from dpyverification.constants import ForecastTimeseriesKind, StandardCoord, StandardDim
+from dpyverification.datasources.inputschemas import input_schemas
 
 
 class DatasetKind(Enum):
@@ -25,7 +21,6 @@ class DatasetKind(Enum):
 
 def transform_data_array(
     data_array: xr.DataArray,
-    kind: DatasetKind,
     general_config: GeneralInfoConfig,
 ) -> xr.DataArray:
     """Transform a datasource to be compatible with the internal DataModel."""
@@ -54,7 +49,7 @@ def transform_data_array(
     )
 
     # Select only relevant forecast periods for simulations
-    if kind == DatasetKind.SIMULATION:
+    if data_array.attrs["timeseries_kind"] in ForecastTimeseriesKind:  # type:ignore[misc]
         data_array = data_array.sel(
             forecast_period=general_config.forecast_periods.timedelta64,
         )
@@ -62,29 +57,11 @@ def transform_data_array(
     return data_array
 
 
-def validate_data_array(data_array: xr.DataArray) -> tuple[xr.DataArray, DatasetKind]:
+def validate_data_array(data_array: xr.DataArray) -> xr.DataArray:
     """Validate a datasource by validating the data to a Pydantic schema."""
-    schemas: dict[type[BaseModel], DatasetKind] = {
-        Observation: DatasetKind.OBSERVATION,
-        Simulation: DatasetKind.SIMULATION,
-    }
-
-    def attempt_validation(
-        schema: type[BaseModel],
-        data_array: xr.DataArray,
-    ) -> bool:
-        """Validate and return True when successful, else False."""
-        try:
-            schema.model_validate(data_array.to_dict(data=False))  # type:ignore[misc]
-            return True  # noqa: TRY300
-        except ValidationError:
-            return False
-
-    for schema, kind in schemas.items():
-        if attempt_validation(schema=schema, data_array=data_array):
-            return data_array, kind
-    msg = f"Invalid dataset {data_array}."
-    raise ValidationError(msg)
+    schema = input_schemas[data_array.attrs["timeseries_kind"]]  # type:ignore[misc]
+    schema.model_validate(data_array.to_dict(data=False))  # type:ignore[misc]
+    return data_array
 
 
 class OutputDataset:
@@ -95,11 +72,7 @@ class OutputDataset:
 
     def __init__(
         self,
-        obs: xr.DataArray,
-        sim: xr.DataArray,
     ) -> None:
-        self.obs: xr.DataArray = obs
-        self.sim: xr.DataArray = sim
         self.scores: dict[str, xr.DataArray] = {}
 
     def add_score(self, kind: str, score: xr.DataArray) -> None:
@@ -122,24 +95,22 @@ class OutputDataset:
     def get_output_dataset(
         self,
         scores: list[str] | Literal["all"] = "all",
-        *,
-        include_simobs: bool = True,
+        input_dataset: xr.Dataset | None = None,
     ) -> xr.Dataset:
         """Get the output dataset."""
-        scores_selection = (
+        scores_selection: list[xr.DataArray] = (
             list(self.scores.values())
             if scores == "all"
             else [self._get_score(kind) for kind in scores]
         )
 
-        if include_simobs:
-            scores_selection.append(self.obs)
-            scores_selection.append(self.sim)
+        if input_dataset:
+            scores_selection.append(input_dataset)  # type:ignore[arg-type] # it's ok to add a dataset to this list, merge will convert all inputs to datasets
 
         return xr.merge(scores_selection, combine_attrs="drop")
 
 
-class SimObsDataset:
+class InputDataset:
     """
     Class containing simulations and observations.
 
@@ -166,12 +137,11 @@ class SimObsDataset:
             verification period.
         """
         # Validate input data
-        validated_data_arrays = (validate_data_array(dataset) for dataset in data)
+        validated_data_arrays = (validate_data_array(data_array) for data_array in data)
 
         # Transform datasets based on their type
         transformed_datasets = (
-            transform_data_array(data_array, simulation_kind, general_config)
-            for data_array, simulation_kind in validated_data_arrays
+            transform_data_array(data_array, general_config) for data_array in validated_data_arrays
         )
 
         # Merge input data with outer join as a first validation
@@ -182,11 +152,7 @@ class SimObsDataset:
         )
 
         # Re-order shared dims in order
-        dataset = dataset.transpose("source", "variable", "time", "station", ...)
-
-        # Now assign obs and sim separately, to minimize memory on source dim
-        self.obs = dataset["observations"]
-        self.sim = dataset["simulations"]
+        self.dataset = dataset.transpose("variable", "time", "station", ...)
 
     @staticmethod
     def inner_join_on_time(
@@ -229,12 +195,17 @@ class SimObsDataset:
         verification_pair: VerificationPair,
     ) -> tuple[xr.DataArray, xr.DataArray]:
         """Return observations and simulations for a given verification pair."""
-        obs = self.obs.sel(
-            source=verification_pair.source.obs,
-        )
-        sim = self.sim.sel(
-            source=verification_pair.source.sim,
-        )
+        obs = self.dataset[verification_pair.obs]
+        sim = self.dataset[verification_pair.sim]
 
         # Only return time indexes for which both obs and sim are available not nan
         return self.inner_join_on_time(obs, sim)
+
+    def get_timeseries_kinds_for_verification_pair(
+        self,
+        verification_pair: VerificationPair,
+    ) -> tuple[str, str]:
+        """Return the timeseries kinds for a verification pais."""
+        return str(self.dataset[verification_pair.obs].attrs["timeseries_kind"]), str(  # type:ignore[misc]
+            self.dataset[verification_pair.sim].attrs["timeseries_kind"],  # type:ignore[misc]
+        )

@@ -54,7 +54,7 @@ class ForecastPeriods(BaseModel):
     @property
     def timedelta64(self) -> list[np.timedelta64]:
         """As numpy timedelta64."""
-        return [np.timedelta64(v, self.unit) for v in self.values]  # type:ignore[arg-type]
+        return [np.timedelta64(v, self.unit) for v in self.values]
 
     @property
     def stdlib_timedelta(self) -> list[timedelta]:
@@ -63,7 +63,7 @@ class ForecastPeriods(BaseModel):
         def convert_to_timedelta(value: int) -> timedelta:
             return np.timedelta64(value, self.unit).astype(timedelta)  # type: ignore[no-any-return, misc]
 
-        return [convert_to_timedelta(v) for v in self.values]  # type:ignore[arg-type]
+        return [convert_to_timedelta(v) for v in self.values]
 
     @property
     def max(self) -> timedelta:
@@ -117,18 +117,12 @@ class TimePeriod(BaseModel):
         return np.datetime64(self.end)
 
 
-class Pair(BaseModel):
-    """A pair with keys obs and sim."""
-
-    obs: str
-    sim: str
-
-
 class VerificationPair(BaseModel):
     """A selection of data."""
 
     id: str
-    source: Pair
+    obs: str
+    sim: str
 
 
 class LocalFile(BaseModel):

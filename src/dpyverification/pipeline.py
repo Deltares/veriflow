@@ -7,7 +7,7 @@ import xarray as xr
 
 from dpyverification.configuration import Config, ConfigFile
 from dpyverification.configuration.file import ConfigType
-from dpyverification.datamodel import OutputDataset, SimObsDataset
+from dpyverification.datamodel import InputDataset, OutputDataset
 from dpyverification.datasinks.base import BaseDatasink
 from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
 from dpyverification.datasources.base import BaseDatasource
@@ -93,13 +93,13 @@ def execute_pipeline(
         datasource.get_data()
 
     # Initialize the input dataset
-    input_dataset = SimObsDataset(
+    input_dataset = InputDataset(
         [datasource.data_array for datasource in datasources],
         config.general,
     )
 
-    # Initialize output dataset
-    output_dataset = OutputDataset(obs=input_dataset.obs, sim=input_dataset.sim)
+    # Initialize the output dataset
+    output_dataset = OutputDataset()
 
     # Add score results to the output dataset
     for score_config in config.scores:
@@ -108,7 +108,7 @@ def execute_pipeline(
             kind=score_config.kind,
         )
         score = score_kind.from_config(score_config.model_dump())  # type: ignore[misc] # Allow Any
-        result = score.compute(input_dataset)
+        result = score.validate_and_compute(input_dataset)
         output_dataset.add_score(kind=score.kind, score=result)
 
     # Write data for each datasink if not None
@@ -120,7 +120,7 @@ def execute_pipeline(
             )
             datasink = sink_kind.from_config(datasink_config.model_dump())  # type: ignore[misc] # Allow Any
             datasink.write_data(
-                output_dataset.get_output_dataset(),
+                output_dataset.get_output_dataset(input_dataset=input_dataset.dataset),
             )
 
     # Return the output dataset by default

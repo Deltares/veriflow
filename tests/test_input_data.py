@@ -6,9 +6,9 @@
 import pytest
 import xarray as xr
 from dpyverification.datasources.inputschemas import (
-    Observation,
-    Simulation,
+    ObservedHistorical,
     TimeCoord,
+    input_schemas,
 )
 from pydantic import ValidationError
 
@@ -31,26 +31,29 @@ def test_time_coord_bad() -> None:
 
 
 def test_xarray_observations(xarray_data_array_observations: xr.DataArray) -> None:
-    Observation.model_validate(xarray_data_array_observations.to_dict(data=False))
+    ObservedHistorical.model_validate(xarray_data_array_observations.to_dict(data=False))
 
 
 def test_xarray_observations_invalid_dims(xarray_data_array_observations: xr.DataArray) -> None:
     ds = xarray_data_array_observations.copy()
     ds = ds.expand_dims("invalid_dimension")
     with pytest.raises(ValidationError):
-        Observation.model_validate(ds.to_dict(data=False))
+        ObservedHistorical.model_validate(ds.to_dict(data=False))
 
 
 def test_xarray_simulation_ensemble(
     xarray_data_array_simulation: xr.DataArray,
 ) -> None:
-    ds = xarray_data_array_simulation
-    Simulation.model_validate(ds.to_dict(data=False))
+    da = xarray_data_array_simulation
+    schema = input_schemas[da.attrs["timeseries_kind"]]
+    schema.model_validate(da.to_dict(data=False))
 
 
 def test_xarray_simulation_no_ensemble(
     xarray_data_array_simulation: xr.DataArray,
 ) -> None:
-    ds = xarray_data_array_simulation.drop_vars("realization")
+    da = xarray_data_array_simulation.drop_vars("realization")
+    schema = input_schemas[da.attrs["timeseries_kind"]]
+
     with pytest.raises(ValidationError):
-        Simulation.model_validate(ds.to_dict(data=False))
+        schema.model_validate(da.to_dict(data=False))

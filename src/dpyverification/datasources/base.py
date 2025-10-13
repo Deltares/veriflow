@@ -3,7 +3,7 @@
 import hashlib
 from abc import abstractmethod
 from os import R_OK, access
-from typing import Self
+from typing import ClassVar, Self
 
 import xarray
 import xarray as xr
@@ -18,6 +18,7 @@ class BaseDatasource(Base):
 
     kind: str = ""
     config_class: type[BaseDatasourceConfig] = BaseDatasourceConfig
+    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = set()
 
     def __init__(self, config: BaseDatasourceConfig) -> None:
         self.config: BaseDatasourceConfig = config
@@ -31,15 +32,10 @@ class BaseDatasource(Base):
 
     @timeseries_kind.setter
     def timeseries_kind(self, new_timeseries_kind: TimeseriesKind) -> None:
-        if new_timeseries_kind not in (
-            TimeseriesKind.simulated_forecast_ensemble,
-            TimeseriesKind.observed_historical,
-        ):
-            # Even if the underlying file or service can contain combined data, the creation of the
-            #  datasource objects should split those. This assumption can then be used in the
-            #  creation of the data model.
-            msg: str = "The timeseries_kind " + self.__class__.__name__ + " is not valid."
-            raise ValueError(msg)
+        if new_timeseries_kind not in self.supported_timeseries_kinds:
+            msg = f"{new_timeseries_kind} is not supported by {self.__class__.__name__}"
+            raise NotImplementedError(msg)
+
         self._timeseries_kind = new_timeseries_kind
 
     @abstractmethod
@@ -72,14 +68,11 @@ class BaseDatasource(Base):
         # Go fetch and cache
         self.fetch_data()
 
-        # Set correct name on array
-        if self.config.timeseries_kind == TimeseriesKind.observed_historical:
-            self.data_array.name = "observations"
-        else:
-            self.data_array.name = "simulations"
-
         # Apply re-naming based on configured id mapping
         self.data_array = self.config.id_mapping.rename_data_array(self.data_array)
+
+        # Make sure the name of the array is set to the configured source
+        self.data_array.name = self.config.source
 
         # Write to cache
         self.data_array.to_netcdf(cached_dataset_path)

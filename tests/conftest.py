@@ -4,6 +4,7 @@
 
 import shutil
 from datetime import datetime, timezone
+from enum import StrEnum
 from pathlib import Path
 
 import numpy as np
@@ -20,13 +21,18 @@ from dpyverification.configuration.default.datasources import (
 from dpyverification.configuration.default.scores import CrpsForEnsembleConfig, RankHistogramConfig
 from dpyverification.configuration.utils import (
     ForecastPeriods,
-    Pair,
     TimePeriod,
     TimeUnits,
     VerificationPair,
 )
-from dpyverification.constants import DataSinkKind, ScoreKind, StandardCoord, StandardDim
-from dpyverification.datamodel.main import SimObsDataset
+from dpyverification.constants import (
+    DataSinkKind,
+    ScoreKind,
+    StandardCoord,
+    StandardDim,
+    TimeseriesKind,
+)
+from dpyverification.datamodel.main import InputDataset
 from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
 from dpyverification.datasources.fewswebservice import FewsWebservice, SimulationRetrievalMethod
@@ -53,7 +59,7 @@ n_forecast_period = 4  # Hours
 n_realization = 10
 n_stations = 3
 n_variables = 1
-n_sources = 1
+
 
 # Coords
 start_date = "2025-01-01T00:00"
@@ -66,9 +72,14 @@ lat = y
 lon = x
 realization = np.arange(1, n_realization + 1)
 variables = [f"var_{x}" for x in range(n_variables)]
-obs_sources = [f"obs_source_{x}" for x in range(n_sources)]
-sim_sources = [f"sim_source_{x}" for x in range(n_sources)]
-units = [f"unit_{x}" for x in range(n_sources)]
+
+
+class DummySource(StrEnum):
+    """Dummy sources."""
+
+    observation_source = "observation_source"
+    simulation_ensemble_source = "simulation_ensemble_source"
+
 
 # One forecast every 6 hours
 forecast_reference_time = pd.date_range(
@@ -89,18 +100,17 @@ def xarray_dataset_fews_compliant() -> xr.Dataset:
 def xarray_data_array_observations() -> xr.Dataset:
     """Return example observations."""
     # Create observation data
-    obs_data = rng.random((len(time), len(stations), 1, len(obs_sources)))
+    obs_data = rng.random((len(time), len(stations), 1))
 
     # Create dataset
     return xr.DataArray(
         data=obs_data,
-        name="observations",
-        dims=[StandardDim.time, StandardDim.station, StandardDim.variable, StandardDim.source],
+        name=DummySource.observation_source,
+        dims=[StandardDim.time, StandardDim.station, StandardDim.variable],
         coords={
             StandardCoord.time.name: time,
-            StandardCoord.source.name: obs_sources,
             StandardCoord.variable.name: variables,
-            StandardCoord.units.name: (StandardDim.variable, units),
+            StandardCoord.units.name: (StandardDim.variable, ["dummy_unit"]),
             StandardDim.station: (StandardDim.station, stations),
             StandardCoord.station.name: (StandardDim.station, stations),
             StandardCoord.lat.name: (StandardDim.station, lat),
@@ -109,6 +119,7 @@ def xarray_data_array_observations() -> xr.Dataset:
             StandardCoord.y.name: (StandardDim.station, y),
             StandardCoord.z.name: (StandardDim.station, z),
         },
+        attrs={"timeseries_kind": TimeseriesKind.observed_historical},
     )
 
 
@@ -119,27 +130,25 @@ def xarray_data_array_simulation() -> xr.DataArray:
     Uses forecast_period as dimension and coordinates.
     """
     data = rng.random(
-        (n_time, n_forecast_period, n_realization, n_stations, 1, len(obs_sources)),
+        (n_time, n_forecast_period, n_realization, n_stations, 1),
     )
 
     return xr.DataArray(
         data=data,
-        name="simulations",
+        name=DummySource.simulation_ensemble_source,
         dims=[
             StandardDim.time,
             StandardDim.forecast_period,
             StandardDim.realization,
             StandardDim.station,
             StandardDim.variable,
-            StandardDim.source,
         ],
         coords={
             StandardCoord.time.name: time,
             StandardCoord.forecast_period.name: forecast_period,
             StandardCoord.realization.name: realization,
-            StandardCoord.source.name: sim_sources,
             StandardCoord.variable.name: variables,
-            StandardCoord.units.name: (StandardDim.variable, units),
+            StandardCoord.units.name: (StandardDim.variable, ["dummy_unit"]),
             StandardCoord.station.name: (StandardDim.station, stations),
             StandardCoord.lat.name: (StandardDim.station, lat),
             StandardCoord.lon.name: (StandardDim.station, lon),
@@ -147,11 +156,12 @@ def xarray_data_array_simulation() -> xr.DataArray:
             StandardCoord.y.name: (StandardDim.station, y),
             StandardCoord.z.name: (StandardDim.station, z),
         },
+        attrs={"timeseries_kind": TimeseriesKind.simulated_forecast_ensemble},
     )
 
 
 @pytest.fixture()
-def testconfig_general_info_simobsdataset_from_dummy_data() -> GeneralInfoConfig:
+def testconfig_general_info_input_dataset_from_dummy_data() -> GeneralInfoConfig:
     """General info config to be used across tests."""
     return GeneralInfoConfig(
         verification_period=TimePeriod(
@@ -162,10 +172,8 @@ def testconfig_general_info_simobsdataset_from_dummy_data() -> GeneralInfoConfig
         verification_pairs=[
             VerificationPair(
                 id="dummy_var",
-                source={
-                    "obs": "source_1",
-                    "sim": "source_1",
-                },
+                obs=DummySource.observation_source,
+                sim=DummySource.simulation_ensemble_source,
             ),
         ],
     )
@@ -198,7 +206,8 @@ def general_info_config_fewsnetcdf() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                source=Pair(obs="observed", sim="Sobek3"),
+                obs="observed",
+                sim="Sobek3",
             ),
         ],
     )
@@ -331,26 +340,26 @@ def datasource_fewsnetcdf_compliant(
 
 
 @pytest.fixture()
-def simobsdataset_dummy_data_forecast_reference_time(
+def input_dataset_dummy_data_forecast_reference_time(
     xarray_data_array_observation: xr.DataArray,
     xarray_dataset_simulations_forecast_reference_time: xr.DataArray,
-    testconfig_general_info_simobsdataset_from_dummy_data: GeneralInfoConfig,
-) -> SimObsDataset:
+    testconfig_general_info_input_dataset_from_dummy_data: GeneralInfoConfig,
+) -> InputDataset:
     """Initialize datamodel with observations and forecasts (based on frt)."""
-    return SimObsDataset(
+    return InputDataset(
         data=[xarray_data_array_observation, xarray_dataset_simulations_forecast_reference_time],
-        general_config=testconfig_general_info_simobsdataset_from_dummy_data,
+        general_config=testconfig_general_info_input_dataset_from_dummy_data,
     )
 
 
 @pytest.fixture()
-def simobsdataset_fews_netcdf_data(
+def input_dataset_fews_netcdf_data(
     datasource_fewsnetcdf_obs: FewsNetCDF,
     datasource_fewsnetcdf_sim_per_forecast_reference_time: FewsNetCDF,
     general_info_config_fewsnetcdf: GeneralInfoConfig,
-) -> SimObsDataset:
+) -> InputDataset:
     """Initialize datamodel with observations and forecasts (based on frt)."""
-    return SimObsDataset(
+    return InputDataset(
         data=[
             datasource_fewsnetcdf_obs.get_data().data_array,
             datasource_fewsnetcdf_sim_per_forecast_reference_time.get_data().data_array,

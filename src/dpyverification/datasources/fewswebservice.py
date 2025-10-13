@@ -128,7 +128,7 @@ def process_forecast_period_netcdf_response(
         },
     )
 
-    return FewsNetCDF.convert_to_data_array_and_set_source_variable_coords(
+    return FewsNetCDF.convert_to_data_array_and_set_variable_and_units_coords(
         dataset,
         timeseries_kind.data_array_name,
         source=source,

@@ -1,7 +1,7 @@
 """Read and write NetCDF files in a fews compatible format."""
 
 from enum import StrEnum
-from typing import Self
+from typing import ClassVar, Self
 
 import numpy as np
 import xarray as xr
@@ -179,6 +179,10 @@ class FewsNetCDF(BaseDatasource):
 
     kind = "fewsnetcdf"
     config_class = FewsNetCDFConfig
+    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
+        TimeseriesKind.observed_historical,
+        TimeseriesKind.simulated_forecast_ensemble,
+    }
 
     def __init__(self, config: FewsNetCDFConfig) -> None:
         self.config: FewsNetCDFConfig = config
@@ -234,26 +238,25 @@ class FewsNetCDF(BaseDatasource):
         )
 
     @staticmethod
-    def convert_to_data_array_and_set_source_variable_coords(
+    def convert_to_data_array_and_set_variable_and_units_coords(
         dataset: xr.Dataset,
-        name: str,
         source: str,
+        timeseries_kind: TimeseriesKind,
     ) -> xr.DataArray:
         """Transform dataset to internal datamodel."""
         # Extract the variable units from data variables
         units = [dataset[da].attrs["units"] for da in dataset]  # type:ignore[misc]
 
         # Stack the variables along dimension variable
-        da = dataset.to_dataarray(dim=StandardDim.variable, name=name)
+        da = dataset.to_dataarray(dim=StandardDim.variable, name=source)
+
+        # Set the configured timeseries kind as attribute
+        da.attrs["timeseries_kind"] = timeseries_kind  # type:ignore[misc]
 
         # Set the units as auxillary coordinate on new dimension variable
-        da = da.assign_coords(
+        return da.assign_coords(
             {StandardCoord.units.name: (StandardDim.variable, units)},  # type:ignore[misc]
         )
-
-        # Set the source as coordinate
-        da = da.expand_dims({StandardCoord.source.name: 1})
-        return da.assign_coords({StandardCoord.source.name: [source]})  # type:ignore[misc]
 
     def fetch_data(self) -> Self:
         """Retrieve fewsnetcdf content as an xarray DataArray."""
@@ -292,10 +295,10 @@ class FewsNetCDF(BaseDatasource):
             )
 
         # Final transformation for observations and simulations
-        self.data_array = FewsNetCDF.convert_to_data_array_and_set_source_variable_coords(
+        self.data_array = FewsNetCDF.convert_to_data_array_and_set_variable_and_units_coords(
             dataset,
-            name=self.config.timeseries_kind.data_array_name,
             source=self.config.source,
+            timeseries_kind=self.config.timeseries_kind,
         )
 
         return self

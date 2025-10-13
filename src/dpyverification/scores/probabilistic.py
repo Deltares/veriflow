@@ -4,7 +4,7 @@ For documentation, see below:
 https://scores.readthedocs.io/en/1.0.0/tutorials/CRPS_for_Ensembles.html
 """
 
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 import xarray as xr
 from scores.probability import crps_for_ensemble  # type: ignore[import-untyped]
@@ -12,8 +12,8 @@ from xskillscore import rank_histogram  # type: ignore[import-untyped]
 
 from dpyverification.configuration import CrpsForEnsembleConfig, RankHistogramConfig
 from dpyverification.configuration.base import BaseScoreConfig
-from dpyverification.constants import StandardCoord, StandardDim
-from dpyverification.datamodel import SimObsDataset
+from dpyverification.constants import StandardCoord, StandardDim, TimeseriesKind
+from dpyverification.datamodel import InputDataset
 from dpyverification.scores.base import BaseScore
 from dpyverification.scores.utils import set_data_array_attributes
 
@@ -49,7 +49,7 @@ class WrappedScoreFunc(Protocol):
 
     def __call__(  # noqa: D102
         self,
-        data: SimObsDataset,
+        data: InputDataset,
         config: BaseScoreConfig,
         **kwargs: object,
     ) -> xr.DataArray: ...
@@ -61,7 +61,7 @@ def loop_verification_pairs(func: ScoreFunc) -> WrappedScoreFunc:
     A helper function that can be re-used for scores to avoid duplicate code.
     """
 
-    def wrapper(data: SimObsDataset, config: BaseScoreConfig, **kwargs: object) -> xr.DataArray:
+    def wrapper(data: InputDataset, config: BaseScoreConfig, **kwargs: object) -> xr.DataArray:
         results: list[xr.DataArray] = []
         for pair in config.verification_pairs:
             obs, sim = data.get_verification_pair(pair)
@@ -78,14 +78,11 @@ def loop_verification_pairs(func: ScoreFunc) -> WrappedScoreFunc:
             # Assign auxiliary coords on dim, indicating the obs source and sim source
             result = result.assign_coords(
                 {
-                    "verification_pair": ("verification_pair", [pair.id]),
-                    "obs_source": ("verification_pair", [obs.source.to_numpy()]),  # type:ignore[misc]
-                    "sim_source": ("verification_pair", [sim.source.to_numpy()]),  # type:ignore[misc]
+                    "verification_pair": ("verification_pair", [pair.id]),  # type:ignore[misc]
+                    "obs_source": ("verification_pair", [pair.obs]),
+                    "sim_source": ("verification_pair", [pair.sim]),
                 },
             )
-
-            # Drop the original source dim, only for scores based calculations
-            result = result.drop_vars(StandardDim.source.value)
 
             # Set variable name on xr.DataArray
             result.name = str(config.kind)
@@ -109,13 +106,16 @@ class CrpsForEnsemble(BaseScore):
 
     kind = "crps_for_ensemble"
     config_class = CrpsForEnsembleConfig
+    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
+        TimeseriesKind.simulated_forecast_ensemble,
+    }
 
     def __init__(self, config: CrpsForEnsembleConfig) -> None:
         self.config: CrpsForEnsembleConfig = config
 
     def compute(
         self,
-        data: SimObsDataset,
+        data: InputDataset,
     ) -> xr.DataArray:
         """Compute the CRPS for an ensemble of forecasts and observations."""
         typed_crps_for_ensemble: ScoreFunc = crps_for_ensemble
@@ -136,11 +136,14 @@ class RankHistogram(BaseScore):
 
     kind = "rank_histogram"
     config_class = RankHistogramConfig
+    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
+        TimeseriesKind.simulated_forecast_ensemble,
+    }
 
     def __init__(self, config: RankHistogramConfig) -> None:
         self.config: RankHistogramConfig = config
 
-    def compute(self, data: SimObsDataset) -> xr.DataArray:
+    def compute(self, data: InputDataset) -> xr.DataArray:
         """Compute the histogram of ranks over the specified dimensions."""
 
         def _rank_histogram(

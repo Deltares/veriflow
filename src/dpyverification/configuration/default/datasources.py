@@ -98,6 +98,5 @@ class FewsNetCDFConfig(BaseDatasourceConfig, LocalFiles):
 
     kind: Literal[DataSourceKind.FEWSNETCDF]
     netcdf_kind: FewsNetCDFKind
-    source: Source
     station_ids: Annotated[list[str], Field(min_length=1)] | None = None
     parameter_ids: Annotated[list[str], Field(min_length=1)] | None = None

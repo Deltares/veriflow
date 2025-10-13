@@ -31,16 +31,19 @@ class DataSinkKind(StrEnum):
 class TimeseriesKind(StrEnum):
     """Enumeration of the supported types of input data."""
 
-    simulated_forecast_ensemble = "simulated_forecast_ensemble"
     observed_historical = "observed_historical"
+    simulated_historical = "simulated_historical"
+    simulated_forecast_single = "simulated_forecast_single"
+    simulated_forecast_ensemble = "simulated_forecast_ensemble"
+    simulated_forecast_probabilistic = "simulated_forecast_probabilistic"
 
-    @property
-    def data_array_name(self) -> str:
-        """Get the array name used in in the internal datamodel."""
-        return {
-            TimeseriesKind.simulated_forecast_ensemble: "sim",
-            TimeseriesKind.observed_historical: "obs",
-        }[self]
+
+class ForecastTimeseriesKind(StrEnum):
+    """Enumeration of forecast timeseries kinds."""
+
+    simulated_forecast_single = "simulated_forecast_single"
+    simulated_forecast_ensemble = "simulated_forecast_ensemble"
+    simulated_forecast_probabilistic = "simulated_forecast_probabilistic"
 
 
 @unique
