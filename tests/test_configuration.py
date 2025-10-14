@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 import xarray as xr
-import yaml
 from dpyverification.configuration import Config
 from dpyverification.configuration.base import IdMap, IdMappingConfig
 from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
@@ -41,10 +40,8 @@ def test_schema_jsonable(tmp_path: Path) -> None:
     This so we can be sure it will generate correctly for the documentation of our configuration.
     """
     tmpfile = tmp_path / "config.json"
-    assert not tmpfile.exists()
 
-    with tmpfile.open(mode="w") as myfile:
-        yaml.dump(Config.model_json_schema(), myfile)  # type: ignore[misc] # model_json_schema output has Any
+    Config.write_yaml_schema(tmpfile)
 
     assert tmpfile.exists()
 

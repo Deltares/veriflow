@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Annotated, Self
 
 import xarray as xr
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
@@ -280,3 +281,12 @@ class Config(BaseModel):
     scores: Annotated[Sequence[BaseScoreConfig], Field(min_length=1)]
     datasinks: Annotated[Sequence[BaseDatasinkConfig] | None, Field(min_length=1)] = None
     id_mapping: IdMappingConfig | None = None
+
+    @staticmethod
+    def write_yaml_schema(output_path: Path) -> None:
+        """Generate a YAML schema from the Pydantic model."""
+        schema = Config.model_json_schema()
+        output_path.write_text(
+            yaml.safe_dump(schema, sort_keys=False),
+            encoding="utf-8",
+        )
