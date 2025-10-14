@@ -227,6 +227,7 @@ class FewsWebservice(BaseDatasource):
                     module_instance_ids=self.config.module_instance_id,
                     start_time=self.config.verification_period.start,
                     end_time=self.config.verification_period.end,
+                    export_id_map=self.config.export_id_map,
                     timeseries_type=TimeseriesType.EXTERNAL_HISTORICAL,
                 )
 
@@ -326,6 +327,7 @@ class FewsWebservice(BaseDatasource):
                             start_forecast_time=min(forecast_reference_times),
                             end_forecast_time=max(forecast_reference_times),
                             external_forecast_times=[forecast_reference_time],
+                            export_id_map=config.export_id_map,
                             timeseries_type=TimeseriesType.EXTERNAL_FORECASTING
                             if self.config.archive_kind == ArchiveKind.external_storage_archive
                             else None,
@@ -417,6 +419,7 @@ class FewsWebservice(BaseDatasource):
                         start_time=self.config.general.verification_period.start,
                         end_time=self.config.general.verification_period.end,
                         lead_time=fp,
+                        export_id_map=self.config.export_id_map,
                         timeseries_type=TimeseriesType.EXTERNAL_FORECASTING
                         if self.config.archive_kind == ArchiveKind.external_storage_archive
                         else None,

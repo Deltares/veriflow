@@ -63,6 +63,7 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
     module_instance_id: Annotated[str, Field(min_length=1)]
     ensemble_id: Annotated[str, Field(min_length=1)] | None = None
     qualifier_ids: Annotated[list[str], Field(min_length=1)] | None = None
+    export_id_map: Annotated[str, Field(min_length=1)] | None = None
     archive_kind: Annotated[
         ArchiveKind,
         Field(
