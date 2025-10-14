@@ -4,13 +4,15 @@
 
 import os
 import time
+from copy import deepcopy
 from dataclasses import dataclass
 
 import pytest
 import requests
 import xarray as xr
 import yaml
-from dpyverification.datasources.fewswebservice import FewsWebservice
+from dpyverification.datasources.fewswebservice import FewsWebservice, SimulationRetrievalMethod
+from dpyverification.datasources.inputschemas import input_schemas
 
 SIM_TIME_DIM_LENGTH = 373
 OBS_TIME_DIM_LENGTH = 721
@@ -90,33 +92,86 @@ def test_webservice_live() -> None:
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_get_obs_netcdf(datasource_fewswebservice_obs: FewsWebservice) -> None:
+def test_get_obs_netcdf(fews_webservice_observed_historical: FewsWebservice) -> None:
     """Check that the webservice gives expected outcome for obs."""
-    _ = datasource_fewswebservice_obs.get_data()
+    _ = fews_webservice_observed_historical.get_data()
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_get_sim_netcdf_per_forecast_reference_time(
-    datasource_fewswebservice_sim_all_forecasts: FewsWebservice,
+def test_get_data_fews_webservice_simulated_forecast_ensemble_by_frt(
+    fews_webservice_simulated_forecast_ensemble_by_forecast_reference_time: FewsWebservice,
 ) -> None:
     """Check that the webservice gives expected outcome for sim."""
-    _ = datasource_fewswebservice_sim_all_forecasts.get_data()
+    instance = fews_webservice_simulated_forecast_ensemble_by_forecast_reference_time.get_data()
+    schema = input_schemas[
+        fews_webservice_simulated_forecast_ensemble_by_forecast_reference_time.config.timeseries_kind
+    ]
+    schema.model_validate(instance.data_array.to_dict(data=False))
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_get_sim_netcdf_per_forecast_period(
-    datasource_fewswebservice_sim_for_forecast_period: FewsWebservice,
+def test_get_data_fews_webservice_simulated_forecast_ensemble_by_fp(
+    fews_webservice_simulated_forecast_ensemble_by_forecast_period: FewsWebservice,
 ) -> None:
     """Check that the webservice gives expected outcome for sim."""
-    _ = datasource_fewswebservice_sim_for_forecast_period.get_data()
+    instance = fews_webservice_simulated_forecast_ensemble_by_forecast_period.get_data()
+    schema = input_schemas[
+        fews_webservice_simulated_forecast_ensemble_by_forecast_period.config.timeseries_kind
+    ]
+    schema.model_validate(instance.data_array.to_dict(data=False))
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
-def test_sim_retrieval_methods_return_equal_datasets(
-    datasource_fewswebservice_sim_for_forecast_period: FewsWebservice,
-    datasource_fewswebservice_sim_all_forecasts: FewsWebservice,
+def test_get_data_fews_webservice_retrieval_methods_return_equal_data_simulated_forecast_ensemble(
+    fews_webservice_simulated_forecast_ensemble_by_forecast_period: FewsWebservice,
+    fews_webservice_simulated_forecast_ensemble_by_forecast_reference_time: FewsWebservice,
 ) -> None:
     """Check that retrieval methods for webservice return equal datasets."""
-    a = datasource_fewswebservice_sim_for_forecast_period.get_data().dataset
-    b = datasource_fewswebservice_sim_all_forecasts.get_data().dataset
+    a = fews_webservice_simulated_forecast_ensemble_by_forecast_period.get_data().data_array
+    b = fews_webservice_simulated_forecast_ensemble_by_forecast_reference_time.get_data().data_array
+    xr.testing.assert_equal(a, b)
+
+
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
+def test_get_data_fews_webservice_simulated_forecast_single_by_frt(
+    fews_webservice_simulated_forecast_single_by_forecast_reference_time: FewsWebservice,
+) -> None:
+    """Check that the webservice gives expected outcome for sim."""
+    instance = fews_webservice_simulated_forecast_single_by_forecast_reference_time.get_data()
+    schema = input_schemas[
+        fews_webservice_simulated_forecast_single_by_forecast_reference_time.config.timeseries_kind
+    ]
+    schema.model_validate(instance.data_array.to_dict(data=False))
+
+
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
+def test_get_data_fews_webservice_simulated_forecast_single_by_fp(
+    fews_webservice_simulated_forecast_single_by_forecast_reference_time: FewsWebservice,
+) -> None:
+    """Check that the webservice gives expected outcome for sim."""
+    # Re-use fixture, but modify to represent a fp-based config
+    instance = deepcopy(
+        fews_webservice_simulated_forecast_single_by_forecast_reference_time,
+    )
+    instance.config.forecast_retrieval_method = (
+        SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time
+    )
+    instance.get_data()
+    schema = input_schemas[instance.config.timeseries_kind]
+    schema.model_validate(instance.data_array.to_dict(data=False))
+
+
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
+def test_get_data_fews_webservice_retrieval_methods_return_equal_data_simulated_forecast_single(
+    fews_webservice_simulated_forecast_single_by_forecast_reference_time: FewsWebservice,
+) -> None:
+    """Check that retrieval methods for webservice return equal datasets."""
+    a = fews_webservice_simulated_forecast_single_by_forecast_reference_time.get_data().data_array
+    instance_b = deepcopy(
+        fews_webservice_simulated_forecast_single_by_forecast_reference_time,
+    )
+    instance_b.config.forecast_retrieval_method = (
+        SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time
+    )
+    b = instance_b.get_data().data_array
     xr.testing.assert_equal(a, b)

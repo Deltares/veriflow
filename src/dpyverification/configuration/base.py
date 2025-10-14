@@ -183,10 +183,7 @@ class BaseDatasourceConfig(BaseConfig):
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
-    id_mapping: SkipJsonSchema[IdMappingConfig]  # Do not serialize to json schema, since general
-    # config is propagated from the general config section in the main config. This will prevent
-    # users that use the json-schema for making config having to explicitly set a duplicate general
-    # configuration section for each datasource.
+    id_mapping: SkipJsonSchema[IdMappingConfig] | None = None  # Do not serialize to json schema
 
     @property
     def forecast_periods(self) -> ForecastPeriods:

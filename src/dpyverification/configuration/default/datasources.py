@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from dpyverification.configuration.base import BaseDatasourceConfig
 from dpyverification.configuration.utils import (
@@ -38,6 +38,19 @@ class SimulationRetrievalMethod(StrEnum):
     retrieve_forecast_data_per_lead_time = "retrieve_forecast_data_per_lead_time"
 
 
+class FewsWebserviceVersion(BaseModel):
+    """Configuration of FEWS Webservice version."""
+
+    year: Annotated[int, Field(gt=2012, lt=2100, type=int)]
+    subversion: Literal[1, 2]
+
+    @property
+    def supports_lead_time(self) -> bool:
+        """Return True if lead time parameter is available in the webservice."""
+        year_of_implementation = 2025
+        return self.year >= year_of_implementation
+
+
 class FewsWebserviceConfig(BaseDatasourceConfig):
     """A fews webservice input config element."""
 
@@ -57,7 +70,8 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
             "which is the Delft-FEWS standard and is most used.",
         ),
     ] = ArchiveKind.open_archive
-    simulation_retrieval_method: (
+    webservice_version: FewsWebserviceVersion = FewsWebserviceVersion(year=2025, subversion=1)
+    forecast_retrieval_method: (
         Annotated[
             SimulationRetrievalMethod,
             Field(

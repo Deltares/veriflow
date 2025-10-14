@@ -7,10 +7,10 @@ from dpyverification.datasources.fewsnetcdf import FewsNetCDF
 
 
 def test_get_data_compliant_file_happy(
-    datasource_fewsnetcdf_compliant: FewsNetCDF,
+    fews_netcdf_compliant_file: FewsNetCDF,
 ) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
-    _ = datasource_fewsnetcdf_compliant
+    _ = fews_netcdf_compliant_file
 
 
 def test_fewsnetcdf_output_schema_compliant_file(xarray_dataset_fews_compliant: xr.Dataset) -> None:
@@ -21,17 +21,17 @@ def test_fewsnetcdf_output_schema_compliant_file(xarray_dataset_fews_compliant: 
 
 
 def test_get_data_obs(
-    datasource_fewsnetcdf_obs: FewsNetCDF,
+    fews_netcdf_observed_historical: FewsNetCDF,
 ) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
-    _ = datasource_fewsnetcdf_obs.get_data()
+    _ = fews_netcdf_observed_historical.get_data()
 
 
 def test_get_data_sim_for_full_simulations(
-    datasource_fewsnetcdf_sim_per_forecast_reference_time: FewsNetCDF,
+    fews_netcdf_simulated_forecast_ensemble_frt: FewsNetCDF,
 ) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
-    datasource = datasource_fewsnetcdf_sim_per_forecast_reference_time.get_data()
+    datasource = fews_netcdf_simulated_forecast_ensemble_frt.get_data()
 
     # Assert resulting forecast periods in dataset match
     #   configured forecast periods

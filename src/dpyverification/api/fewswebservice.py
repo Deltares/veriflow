@@ -74,7 +74,7 @@ class FewsWebserviceClient:
         ensemble_member_id: int | None = None,
         forecast_count: int | None = None,
         external_forecast_times: list[datetime | None] | None = None,
-        timeseries_type: TimeseriesType = TimeseriesType.EXTERNAL_HISTORICAL,
+        timeseries_type: TimeseriesType | None = None,
         document_format: DocumentFormat = DocumentFormat.PI_NETCDF,
     ) -> requests.Response:
         """Get a timeseries from the Delft-FEWS webservice."""

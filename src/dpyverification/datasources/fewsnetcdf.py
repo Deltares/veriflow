@@ -73,7 +73,11 @@ class Preprocessor:
             {FewsNetcdfDims.stations: StandardDim.station},  # type:ignore[misc]
         )
 
-        return dataset.set_coords(StandardCoord.station_name.name)
+        # Only the case when retrieving full forecasts (per forecast reference time)
+        if StandardCoord.station_name.name in dataset:
+            dataset = dataset.set_coords(StandardCoord.station_name.name)
+
+        return dataset
 
     @staticmethod
     def filter_stations(
@@ -94,27 +98,32 @@ class Preprocessor:
     ) -> xr.Dataset:
         """Transform the dataset to full-information dataset."""
         forecast_periods = (
-            (dataset["time"] - dataset["forecast_reference_time"])
+            (dataset[StandardDim.time] - dataset[StandardDim.forecast_reference_time])
             # type:ignore[misc]
             .to_numpy()
             .ravel()
         )
         ds = dataset.assign_coords(
-            {"forecast_period": ("time", forecast_periods)},  # type:ignore[misc]
+            {StandardDim.forecast_period: (StandardDim.time, forecast_periods)},  # type:ignore[misc]
         )
 
-        ds = ds.swap_dims({"time": "forecast_period"}).drop_vars("time")  # type:ignore[misc]
+        ds = ds.swap_dims({StandardDim.time: StandardDim.forecast_period}).drop_vars(  # type:ignore[misc]
+            StandardDim.time,
+        )
 
         # Re-compute time as 2d matrix along forecast_period and forecast_reference_time
         time_index_2d = (
-            (ds["forecast_reference_time"] + ds["forecast_period"]).to_numpy().swapaxes(0, 1)  # type:ignore[misc]
+            (ds[StandardDim.forecast_reference_time] + ds[StandardDim.forecast_period])
+            # type:ignore[misc]
+            .to_numpy()
+            .swapaxes(0, 1)
         )
 
         # Now assign time
         ds = ds.assign_coords(
             {
-                "time": (  # type:ignore[misc]
-                    ("forecast_period", "forecast_reference_time"),
+                StandardDim.time: (  # type:ignore[misc]
+                    (StandardDim.forecast_period, StandardDim.forecast_reference_time),
                     time_index_2d,  # type:ignore[misc]
                 ),
             },
@@ -123,7 +132,7 @@ class Preprocessor:
         # Set forecast reference time as dim on all vars
         for data_var in ds.data_vars:
             ds[data_var] = ds[data_var].expand_dims(
-                {"forecast_reference_time": ds["forecast_reference_time"]},
+                {StandardDim.forecast_reference_time: ds[StandardDim.forecast_reference_time]},
             )
 
         return ds
@@ -203,18 +212,18 @@ class FewsNetCDF(BaseDatasource):
             da = dataset[data_var]
 
             forecast_period_arrays = []
-            for forecast_period in da["forecast_period"]:  # type:ignore[misc]
-                da_fp = da.sel({"forecast_period": forecast_period})  # type:ignore[misc]
-                da_fp = da_fp.expand_dims({"forecast_period": 1})
+            for forecast_period in da[StandardDim.forecast_period]:  # type:ignore[misc]
+                da_fp = da.sel({StandardDim.forecast_period: forecast_period})  # type:ignore[misc]
+                da_fp = da_fp.expand_dims({StandardDim.forecast_period: 1})
                 da_fp = da_fp.assign_coords(
                     {
-                        "forecast_period": (  # type:ignore[misc]
-                            "forecast_period",
+                        StandardDim.forecast_period: (  # type:ignore[misc]
+                            StandardDim.forecast_period,
                             forecast_period.to_numpy().reshape(1),  # type:ignore[misc]
                         ),
                     },
                 )
-                da_fp = da_fp.swap_dims({"forecast_reference_time": "time"})  # type:ignore[misc]
+                da_fp = da_fp.swap_dims({StandardDim.forecast_reference_time: StandardDim.time})  # type:ignore[misc]
                 forecast_period_arrays.append(da_fp)
 
             data_arrays.append(
@@ -279,8 +288,7 @@ class FewsNetCDF(BaseDatasource):
         if self.config.netcdf_kind == FewsNetCDFKind.simulated_forecast_per_forecast_reference_time:
             with xr.open_mfdataset(
                 self.config.paths,  # type:ignore[arg-type] # generator is acceptable argument
-                combine="nested",
-                concat_dim="forecast_reference_time",
+                combine="by_coords",
                 preprocess=preprocessor,
                 coords="minimal",
                 compat="override",
@@ -289,16 +297,27 @@ class FewsNetCDF(BaseDatasource):
                 #   for now, we assume the dataset with lead time filtering fits into memory
                 dataset.load()
 
-            # Transform forecast reference time simulation to forecast period
+            # Transform forecast reference time simulation to internal datamodel based on
+            #   forecast_period
             dataset = FewsNetCDF.transform_frt_simulation_to_internal_datamodel(
                 dataset,
             )
 
-        # Final transformation for observations and simulations
-        self.data_array = FewsNetCDF.convert_to_data_array_and_set_variable_and_units_coords(
+        # Final transformation for all data
+        data_array = FewsNetCDF.convert_to_data_array_and_set_variable_and_units_coords(
             dataset,
             source=self.config.source,
             timeseries_kind=self.config.timeseries_kind,
+        )
+
+        # Select only relevant time steps, given the configured verification_period
+        self.data_array = data_array.sel(
+            {  # type:ignore[misc]
+                StandardDim.time: slice(
+                    self.config.verification_period.start,
+                    self.config.verification_period.end,
+                ),
+            },
         )
 
         return self

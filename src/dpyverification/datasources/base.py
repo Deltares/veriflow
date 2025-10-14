@@ -33,7 +33,10 @@ class BaseDatasource(Base):
     @timeseries_kind.setter
     def timeseries_kind(self, new_timeseries_kind: TimeseriesKind) -> None:
         if new_timeseries_kind not in self.supported_timeseries_kinds:
-            msg = f"{new_timeseries_kind} is not supported by {self.__class__.__name__}"
+            msg = (
+                f"Timeseries kind '{new_timeseries_kind}' is not supported ",
+                f"by {self.__class__.__name__}",
+            )
             raise NotImplementedError(msg)
 
         self._timeseries_kind = new_timeseries_kind
@@ -68,8 +71,9 @@ class BaseDatasource(Base):
         # Go fetch and cache
         self.fetch_data()
 
-        # Apply re-naming based on configured id mapping
-        self.data_array = self.config.id_mapping.rename_data_array(self.data_array)
+        # Apply re-naming based on configured id mapping, if not None
+        if self.config.id_mapping is not None:
+            self.data_array = self.config.id_mapping.rename_data_array(self.data_array)
 
         # Make sure the name of the array is set to the configured source
         self.data_array.name = self.config.source

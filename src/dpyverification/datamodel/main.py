@@ -151,6 +151,10 @@ class InputDataset:
             compat="override",
         )
 
+        # Empty attrs on the dataset level, while keeping attrs on individual variables
+        #   in the dataset, that have the required 'timeseries_kind' attr.
+        dataset.attrs.clear()  # type:ignore[misc]
+
         # Re-order shared dims in order
         self.dataset = dataset.transpose("variable", "time", "station", ...)
 

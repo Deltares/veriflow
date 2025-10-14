@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from typing import Self, TypeVar
+from typing import ClassVar, Self, TypeVar
 
 import numpy as np
 import requests
@@ -23,6 +23,7 @@ from dpyverification.configuration import (
     FewsWebserviceConfig,
     SimulationRetrievalMethod,
 )
+from dpyverification.configuration.default.datasources import ArchiveKind
 from dpyverification.constants import DataSourceKind, StandardCoord, StandardDim, TimeseriesKind
 from dpyverification.datasources.base import BaseDatasource
 from dpyverification.datasources.fewsnetcdf import (
@@ -87,6 +88,10 @@ def process_forecast_period_netcdf_response(
         forecast_period_millis = int(filename.split("_")[0])
         forecast_period = np.timedelta64(forecast_period_millis, "ms")
 
+        # Set the station_name as coord instead of variable
+        if FewsNetcdfCoord.station_names in dataset:
+            dataset = dataset.set_coords(FewsNetcdfCoord.station_names)
+
         # Now assign forecast period as coordinate
         return dataset.assign_coords(
             {
@@ -99,14 +104,14 @@ def process_forecast_period_netcdf_response(
 
     with xr.open_mfdataset(
         paths,  # type:ignore[arg-type] # generator is acceptable argument
-        combine="nested",
-        concat_dim="forecast_period",
         preprocess=_preprocess,
         coords="minimal",
         compat="override",
     ) as dataset:
         dataset.load()
 
+    # Sort forecast_period index
+    dataset = dataset.sortby(StandardDim.forecast_period)
     # Decode byte-string coords
     dataset = Preprocessor.convert_byte_string_coord_to_utf8(
         dataset,
@@ -129,9 +134,9 @@ def process_forecast_period_netcdf_response(
     )
 
     return FewsNetCDF.convert_to_data_array_and_set_variable_and_units_coords(
-        dataset,
-        timeseries_kind.data_array_name,
+        dataset=dataset,
         source=source,
+        timeseries_kind=timeseries_kind,
     )
 
 
@@ -145,6 +150,12 @@ class FewsWebservice(BaseDatasource):
 
     kind = "fewswebservice"
     config_class = FewsWebserviceConfig
+    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
+        TimeseriesKind.observed_historical,
+        TimeseriesKind.simulated_forecast_ensemble,
+        TimeseriesKind.simulated_forecast_single,
+    }
+
     # Annotate the correct type, otherwise mypy will infer from baseclass
     config: FewsWebserviceConfig
     # The datetime format that is used to pass datetimes to the fewswebservice
@@ -169,7 +180,14 @@ class FewsWebservice(BaseDatasource):
         write_dir: Path,
         unique_prefix: str | None = None,
     ) -> Path:
-        """Unzip a file and write the first NetCDF to a directory."""
+        """Unzip a file and write the first NetCDF to a directory.
+
+        Optional parameter unique_prefix is used only when using the leadTime
+        parameter in the request. In this case, the Delft-FEWS webservice response
+        does not contain any meta data on the exact leadTime that was used. That's why
+        we need to store it in the filename, so that we can internally assign it later
+        as a proper coordinate on the internal xr.DataArray.
+        """
         zip_bytes = io.BytesIO(response.content)
 
         if not write_dir.is_dir():
@@ -179,25 +197,25 @@ class FewsWebservice(BaseDatasource):
         # Open the zipfile in memory
         with zipfile.ZipFile(zip_bytes) as zf:
             n_files = len(zf.namelist())
-            if n_files >= 1:
-                msg = f"Expected exactly one file in .zip, got {n_files}"
-                raise ValueError(msg)
             if n_files == 0:
                 msg = f"No NetCDF file present in webservice response. Request URL: {response.url}"
                 raise ValueError(msg)
 
-            netcdf_filename = next(name for name in zf.namelist() if name.endswith(".nc"))
+            # NetCDF responses from the Delft-FEWS Webservice come zipped. The zipped file
+            #   contains one unique NetCDF file for each requested parameter. For example,
+            #   when requesting 'waterlevel' and 'discharge', we get one zip file with two
+            #   NetCDF files.
+            for netcdf_file_name in (name for name in zf.namelist() if name.endswith(".nc")):
+                # Extract that file in memory
+                with zf.open(netcdf_file_name) as netcdf_file:
+                    netcdf_data = netcdf_file.read()  # bytes of the .nc file
 
-            # Extract that file in memory
-            with zf.open(netcdf_filename) as netcdf_file:
-                netcdf_data = netcdf_file.read()  # bytes of the .nc file
-
-            # Write the NetCDF file to the write dir
-            if unique_prefix is not None:
-                netcdf_path = write_dir / f"{unique_prefix}_{netcdf_filename}"
-            else:
-                netcdf_path = write_dir / netcdf_filename
-            netcdf_path.write_bytes(netcdf_data)
+                # Write the NetCDF file(s) to the write dir
+                if unique_prefix is not None:
+                    netcdf_path = write_dir / f"{unique_prefix}_{netcdf_file_name}"
+                else:
+                    netcdf_path = write_dir / netcdf_file_name
+                netcdf_path.write_bytes(netcdf_data)
         return write_dir
 
     def fetch_data(self) -> Self:
@@ -242,31 +260,40 @@ class FewsWebservice(BaseDatasource):
                 return self
         # Get simulations
         if (
-            self.config.timeseries_kind == TimeseriesKind.simulated_forecast_ensemble
-            and self.config.simulation_retrieval_method
+            self.config.timeseries_kind
+            in [
+                TimeseriesKind.simulated_forecast_ensemble,
+                TimeseriesKind.simulated_forecast_single,
+                TimeseriesKind.simulated_forecast_probabilistic,
+            ]
+            and self.config.forecast_retrieval_method
             == SimulationRetrievalMethod.retrieve_all_forecast_data
         ):
             # Get all forecast reference times relevant to the configured verification
             #   period. Start is located at verification period start minus the maximum
             #   forecast period. End is located at verification period end minus the minimum
             #   forecast period.
-            forecast_reference_times = (
-                self.client.get_netcdf_storage_forecasts_forecast_reference_times(
-                    start_time=(
-                        self.config.verification_period.start - self.config.forecast_periods.max
-                    ),
-                    end_time=(
-                        self.config.verification_period.end - self.config.forecast_periods.min
-                    ),
-                    module_instance_ids=self.config.module_instance_id,
+            if self.config.archive_kind == ArchiveKind.external_storage_archive:
+                forecast_reference_times = (
+                    self.client.get_netcdf_storage_forecasts_forecast_reference_times(
+                        start_time=(
+                            self.config.verification_period.start - self.config.forecast_periods.max
+                        ),
+                        end_time=(
+                            self.config.verification_period.end - self.config.forecast_periods.min
+                        ),
+                        module_instance_ids=self.config.module_instance_id,
+                    )
                 )
-            )
+            else:
+                msg = f"Forecast retrieval via the {ArchiveKind.open_archive} is not yet supported."
+                raise NotImplementedError(msg)
 
             if len(forecast_reference_times) == 0:
                 msg = (
-                    f"No forecasts found between {self.config.verification_period.start}",
-                    f"and {self.config.verification_period.end} and module instance ids",
-                    f"{self.config.module_instance_id}.",
+                    f"No forecasts found between {self.config.verification_period.start} "
+                    f"and {self.config.verification_period.end} and module instance ids "
+                    f"{self.config.module_instance_id}."
                 )
                 raise ValueError(msg)
 
@@ -292,7 +319,9 @@ class FewsWebservice(BaseDatasource):
                             start_forecast_time=min(forecast_reference_times),
                             end_forecast_time=max(forecast_reference_times),
                             external_forecast_times=[forecast_reference_time],
-                            timeseries_type=TimeseriesType.EXTERNAL_FORECASTING,
+                            timeseries_type=TimeseriesType.EXTERNAL_FORECASTING
+                            if self.config.archive_kind == ArchiveKind.external_storage_archive
+                            else None,
                         ),
                     )
 
@@ -343,7 +372,7 @@ class FewsWebservice(BaseDatasource):
                 # Load all downloaded data into one object
                 datasource = FewsNetCDF(
                     FewsNetCDFConfig(
-                        timeseries_kind=TimeseriesKind.simulated_forecast_ensemble,
+                        timeseries_kind=self.config.timeseries_kind,
                         directory=tmpdir,
                         filename_glob="*.nc",
                         kind=DataSourceKind.FEWSNETCDF,
@@ -361,11 +390,17 @@ class FewsWebservice(BaseDatasource):
                 return self
 
         elif (
-            self.config.timeseries_kind == TimeseriesKind.simulated_forecast_ensemble
-            and self.config.simulation_retrieval_method
+            self.config.timeseries_kind
+            in [
+                TimeseriesKind.simulated_forecast_ensemble,
+                TimeseriesKind.simulated_forecast_single,
+                TimeseriesKind.simulated_forecast_probabilistic,
+            ]
+            and self.config.forecast_retrieval_method
             == SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time
         ):
             with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = Path(tmpdir)
                 for fp in self.config.general.forecast_periods.stdlib_timedelta:
                     response = self.client.get_timeseries(
                         location_ids=self.config.location_ids,
@@ -380,7 +415,6 @@ class FewsWebservice(BaseDatasource):
 
                     # Write NetCDF response to disk
                     unique_prefix = str(int(fp.total_seconds() * 1000))
-                    tmpdir_path = Path(tmpdir)
                     self.write_netcdf_response_to_dir(
                         response,
                         write_dir=tmpdir_path,

@@ -15,6 +15,7 @@ from dpyverification.configuration import GeneralInfoConfig
 from dpyverification.configuration.base import IdMappingConfig
 from dpyverification.configuration.default.datasinks import CFCompliantNetCDFConfig
 from dpyverification.configuration.default.datasources import (
+    ArchiveKind,
     FewsWebserviceAuthConfig,
     FewsWebserviceConfig,
 )
@@ -79,6 +80,7 @@ class DummySource(StrEnum):
 
     observation_source = "observation_source"
     simulation_ensemble_source = "simulation_ensemble_source"
+    simulation_single_source = "simulation_single_source"
 
 
 # One forecast every 6 hours
@@ -97,7 +99,7 @@ def xarray_dataset_fews_compliant() -> xr.Dataset:
 
 
 @pytest.fixture()
-def xarray_data_array_observations() -> xr.Dataset:
+def xarray_observed_historical() -> xr.Dataset:
     """Return example observations."""
     # Create observation data
     obs_data = rng.random((len(time), len(stations), 1))
@@ -124,7 +126,7 @@ def xarray_data_array_observations() -> xr.Dataset:
 
 
 @pytest.fixture()
-def xarray_data_array_simulation() -> xr.DataArray:
+def xarray_simulated_forecast_ensemble() -> xr.DataArray:
     """Return example simulations compatible with the internal datamodel.
 
     Uses forecast_period as dimension and coordinates.
@@ -157,6 +159,41 @@ def xarray_data_array_simulation() -> xr.DataArray:
             StandardCoord.z.name: (StandardDim.station, z),
         },
         attrs={"timeseries_kind": TimeseriesKind.simulated_forecast_ensemble},
+    )
+
+
+@pytest.fixture()
+def xarray_simulated_forecast_single() -> xr.DataArray:
+    """Return example simulations compatible with the internal datamodel.
+
+    Uses forecast_period as dimension and coordinates.
+    """
+    data = rng.random(
+        (n_time, n_forecast_period, n_stations, 1),
+    )
+
+    return xr.DataArray(
+        data=data,
+        name=DummySource.simulation_single_source,
+        dims=[
+            StandardDim.time,
+            StandardDim.forecast_period,
+            StandardDim.station,
+            StandardDim.variable,
+        ],
+        coords={
+            StandardCoord.time.name: time,
+            StandardCoord.forecast_period.name: forecast_period,
+            StandardCoord.variable.name: variables,
+            StandardCoord.units.name: (StandardDim.variable, ["dummy_unit"]),
+            StandardCoord.station.name: (StandardDim.station, stations),
+            StandardCoord.lat.name: (StandardDim.station, lat),
+            StandardCoord.lon.name: (StandardDim.station, lon),
+            StandardCoord.x.name: (StandardDim.station, x),
+            StandardCoord.y.name: (StandardDim.station, y),
+            StandardCoord.z.name: (StandardDim.station, z),
+        },
+        attrs={"timeseries_kind": TimeseriesKind.simulated_forecast_single},
     )
 
 
@@ -214,7 +251,7 @@ def general_info_config_fewsnetcdf() -> GeneralInfoConfig:
 
 
 @pytest.fixture()
-def datasource_fewsnetcdf_obs(
+def fews_netcdf_observed_historical(
     general_info_config_fewsnetcdf: GeneralInfoConfig,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
 ) -> FewsNetCDF:
@@ -235,7 +272,7 @@ def datasource_fewsnetcdf_obs(
 
 
 @pytest.fixture()
-def datasource_fewsnetcdf_sim_per_forecast_reference_time(
+def fews_netcdf_simulated_forecast_ensemble_frt(
     general_info_config_fewsnetcdf: GeneralInfoConfig,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
 ) -> FewsNetCDF:
@@ -262,7 +299,7 @@ def fews_webservice_auth_config() -> FewsWebserviceAuthConfig:
 
 
 @pytest.fixture()
-def datasource_fewswebservice_obs(
+def fews_webservice_observed_historical(
     general_info_config_fewsnetcdf: GeneralInfoConfig,
     fews_webservice_auth_config: FewsWebserviceAuthConfig,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
@@ -282,7 +319,7 @@ def datasource_fewswebservice_obs(
 
 
 @pytest.fixture()
-def datasource_fewswebservice_sim_all_forecasts(
+def fews_webservice_simulated_forecast_ensemble_by_forecast_reference_time(
     general_info_config_fewsnetcdf: GeneralInfoConfig,
     fews_webservice_auth_config: FewsWebserviceAuthConfig,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
@@ -295,7 +332,8 @@ def datasource_fewswebservice_sim_all_forecasts(
         parameter_ids=["Q_fs"],
         module_instance_id="SBK3_MaxRTK_ECMWF_ENS",
         ensemble_id="ECMWF_ENS",
-        simulation_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
+        archive_kind=ArchiveKind.external_storage_archive,
+        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
         general=general_info_config_fewsnetcdf,
         auth_config=fews_webservice_auth_config,
         id_mapping=id_mapping_config_fewsnetcdf,
@@ -304,7 +342,7 @@ def datasource_fewswebservice_sim_all_forecasts(
 
 
 @pytest.fixture()
-def datasource_fewswebservice_sim_for_forecast_period(
+def fews_webservice_simulated_forecast_ensemble_by_forecast_period(
     general_info_config_fewsnetcdf: GeneralInfoConfig,
     fews_webservice_auth_config: FewsWebserviceAuthConfig,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
@@ -317,7 +355,8 @@ def datasource_fewswebservice_sim_for_forecast_period(
         parameter_ids=["Q_fs"],
         module_instance_id="SBK3_MaxRTK_ECMWF_ENS",
         ensemble_id="ECMWF_ENS",
-        simulation_retrieval_method=SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time,
+        archive_kind=ArchiveKind.external_storage_archive,
+        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time,
         general=general_info_config_fewsnetcdf,
         auth_config=fews_webservice_auth_config,
         id_mapping=id_mapping_config_fewsnetcdf,
@@ -325,18 +364,65 @@ def datasource_fewswebservice_sim_for_forecast_period(
     return FewsWebservice(config)
 
 
+# Test data from Meuse
+#   - simulated_forecast_single
+#   - simulated_forecast_probabilistic
+
+test_data_meuse_locations = ["H-MS-EIJS"]
+test_data_meuse_parameters = ["waterlevel", "discharge"]
+test_data_meuse_module_instance_ids = {
+    TimeseriesKind.simulated_forecast_single: "fews_riv_ecmwf_hres_sobek3_choozkeiz_bias",
+}
+test_data_meuse_general_info_config = GeneralInfoConfig(
+    verification_period=TimePeriod(
+        start=datetime(2025, 9, 1, tzinfo=timezone.utc),
+        end=datetime(2025, 9, 4, tzinfo=timezone.utc),
+    ),
+    forecast_periods=ForecastPeriods(unit=TimeUnits.DAY, values=[1, 2, 3, 4]),
+    verification_pairs=[
+        VerificationPair(
+            id="fews_riv_ecmwf_hres_sobek3_choozkeiz_bias",
+            obs="observed",
+            sim="fews_riv_ecmwf_hres_sobek3_choozkeiz_bias",
+        ),
+    ],
+)
+
+
 @pytest.fixture()
-def datasource_fewsnetcdf_compliant(
-    datasource_fewsnetcdf_obs: dict[
+def fews_webservice_simulated_forecast_single_by_forecast_reference_time(
+    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+) -> FewsWebservice:
+    """Fewsnetcdf datasource sim config."""
+    config = FewsWebserviceConfig(
+        kind="fewswebservice",
+        timeseries_kind=TimeseriesKind.simulated_forecast_single,
+        source="fews_riv_ecmwf_hres_sobek3_choozkeiz_bias",
+        location_ids=test_data_meuse_locations,
+        parameter_ids=test_data_meuse_parameters,
+        module_instance_id=test_data_meuse_module_instance_ids[
+            TimeseriesKind.simulated_forecast_single
+        ],
+        archive_kind=ArchiveKind.external_storage_archive,
+        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
+        general=test_data_meuse_general_info_config,
+        auth_config=fews_webservice_auth_config,
+    )
+    return FewsWebservice(config)
+
+
+@pytest.fixture()
+def fews_netcdf_compliant_file(
+    fews_netcdf_observed_historical: dict[
         str,
         str | list[str] | dict[str, dict[str, str | list[str]]],
     ],
 ) -> FewsNetCDF:
     """Get a fews netcdf datasource."""
-    config = datasource_fewsnetcdf_obs
+    config = fews_netcdf_observed_historical
     config.station_ids = None
     config.directory = TESTS_DATA_DIR
-    return FewsNetCDF(datasource_fewsnetcdf_obs)
+    return FewsNetCDF(fews_netcdf_observed_historical)
 
 
 @pytest.fixture()
@@ -354,15 +440,15 @@ def input_dataset_dummy_data_forecast_reference_time(
 
 @pytest.fixture()
 def input_dataset_fews_netcdf_data(
-    datasource_fewsnetcdf_obs: FewsNetCDF,
-    datasource_fewsnetcdf_sim_per_forecast_reference_time: FewsNetCDF,
+    fews_netcdf_observed_historical: FewsNetCDF,
+    fews_netcdf_simulated_forecast_ensemble_frt: FewsNetCDF,
     general_info_config_fewsnetcdf: GeneralInfoConfig,
 ) -> InputDataset:
     """Initialize datamodel with observations and forecasts (based on frt)."""
     return InputDataset(
         data=[
-            datasource_fewsnetcdf_obs.get_data().data_array,
-            datasource_fewsnetcdf_sim_per_forecast_reference_time.get_data().data_array,
+            fews_netcdf_observed_historical.get_data().data_array,
+            fews_netcdf_simulated_forecast_ensemble_frt.get_data().data_array,
         ],
         general_config=general_info_config_fewsnetcdf,
     )
