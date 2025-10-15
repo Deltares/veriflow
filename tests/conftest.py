@@ -438,12 +438,10 @@ def fews_netcdf_compliant_file(
 def input_dataset_dummy_data_forecast_reference_time(
     xarray_data_array_observation: xr.DataArray,
     xarray_dataset_simulations_forecast_reference_time: xr.DataArray,
-    testconfig_general_info_input_dataset_from_dummy_data: GeneralInfoConfig,
 ) -> InputDataset:
     """Initialize datamodel with observations and forecasts (based on frt)."""
     return InputDataset(
         data=[xarray_data_array_observation, xarray_dataset_simulations_forecast_reference_time],
-        general_config=testconfig_general_info_input_dataset_from_dummy_data,
     )
 
 
@@ -451,7 +449,6 @@ def input_dataset_dummy_data_forecast_reference_time(
 def input_dataset_fews_netcdf_data(
     fews_netcdf_observed_historical: FewsNetCDF,
     fews_netcdf_simulated_forecast_ensemble_frt: FewsNetCDF,
-    general_info_config_fewsnetcdf: GeneralInfoConfig,
 ) -> InputDataset:
     """Initialize datamodel with observations and forecasts (based on frt)."""
     return InputDataset(
@@ -459,7 +456,6 @@ def input_dataset_fews_netcdf_data(
             fews_netcdf_observed_historical.get_data().data_array,
             fews_netcdf_simulated_forecast_ensemble_frt.get_data().data_array,
         ],
-        general_config=general_info_config_fewsnetcdf,
     )
 
 

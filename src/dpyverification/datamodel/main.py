@@ -6,9 +6,8 @@ from typing import Literal
 
 import xarray as xr
 
-from dpyverification.configuration import GeneralInfoConfig
-from dpyverification.configuration.utils import TimePeriod, VerificationPair
-from dpyverification.constants import ForecastTimeseriesKind, StandardCoord, StandardDim
+from dpyverification.configuration.utils import VerificationPair
+from dpyverification.constants import StandardDim
 from dpyverification.datasources.inputschemas import input_schemas
 
 
@@ -17,44 +16,6 @@ class DatasetKind(Enum):
 
     SIMULATION = "SIMULATION"
     OBSERVATION = "OBSERVATION"
-
-
-def transform_data_array(
-    data_array: xr.DataArray,
-    general_config: GeneralInfoConfig,
-) -> xr.DataArray:
-    """Transform a datasource to be compatible with the internal DataModel."""
-
-    def clip_time_to_verification_period(
-        data_array: xr.DataArray,
-        verification_period: TimePeriod,
-    ) -> xr.DataArray:
-        """Clip the dataset on time dimension to verification period."""
-        return data_array.sel(
-            time=slice(verification_period.start, verification_period.end),
-        )
-
-    # For all datasets, set the station_id as index on station dim
-    #   to ensure automatic alignment based on this coord later on.
-    data_array = data_array.assign_coords(
-        {
-            StandardDim.station: data_array[StandardCoord.station.name].to_numpy(),  # type:ignore[misc]
-        },
-    )
-
-    # Clip any input to be within the verification period
-    data_array = clip_time_to_verification_period(
-        data_array=data_array,
-        verification_period=general_config.verification_period,
-    )
-
-    # Select only relevant forecast periods for simulations
-    if data_array.attrs["timeseries_kind"] in ForecastTimeseriesKind:  # type:ignore[misc]
-        data_array = data_array.sel(
-            forecast_period=general_config.forecast_periods.timedelta64,
-        )
-
-    return data_array
 
 
 def validate_data_array(data_array: xr.DataArray) -> xr.DataArray:
@@ -121,7 +82,6 @@ class InputDataset:
     def __init__(
         self,
         data: Sequence[xr.DataArray],
-        general_config: GeneralInfoConfig,
     ) -> None:
         """Initialize the SimObsDataset.
 
@@ -132,22 +92,14 @@ class InputDataset:
             or observations. The structure (dims, coords) of the array
             must be valid against pre-defined Pydantic schemas in
             :module:`dpyverification.datasources.inputschemas`
-        general_config : GeneralInfoConfig
-            General config for the pipeline. Used to clip data on the defined
-            verification period.
         """
         # Validate input data
         validated_data_arrays = (validate_data_array(data_array) for data_array in data)
 
-        # Transform datasets based on their type
-        transformed_datasets = (
-            transform_data_array(data_array, general_config) for data_array in validated_data_arrays
-        )
-
         # Merge input data with outer join as a first validation
         #   in matching
         dataset = xr.merge(
-            transformed_datasets,
+            validated_data_arrays,
             compat="override",
         )
 
@@ -205,11 +157,11 @@ class InputDataset:
         # Only return time indexes for which both obs and sim are available not nan
         return self.inner_join_on_time(obs, sim)
 
-    def get_timeseries_kinds_for_verification_pair(
+    def get_simulated_timeseries_kind_from_pair(
         self,
         verification_pair: VerificationPair,
-    ) -> tuple[str, str]:
-        """Return the timeseries kinds for a verification pais."""
-        return str(self.dataset[verification_pair.obs].attrs["timeseries_kind"]), str(  # type:ignore[misc]
+    ) -> str:
+        """Return the timeseries kinds for a verification pair."""
+        return str(  # type:ignore[misc]
             self.dataset[verification_pair.sim].attrs["timeseries_kind"],  # type:ignore[misc]
         )

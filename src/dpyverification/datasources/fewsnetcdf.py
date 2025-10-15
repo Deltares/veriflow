@@ -262,6 +262,13 @@ class FewsNetCDF(BaseDatasource):
         # Set the configured timeseries kind as attribute
         da.attrs["timeseries_kind"] = timeseries_kind  # type:ignore[misc]
 
+        # Set the station_id as index on station dim
+        #   to ensure automatic alignment based on this coord later on.
+        da = da.assign_coords(
+            {
+                StandardDim.station: da[StandardCoord.station.name].to_numpy(),  # type:ignore[misc]
+            },
+        )
         # Set the units as auxillary coordinate on new dimension variable
         return da.assign_coords(
             {StandardCoord.units.name: (StandardDim.variable, units)},  # type:ignore[misc]

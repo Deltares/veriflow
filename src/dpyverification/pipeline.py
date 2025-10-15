@@ -95,7 +95,6 @@ def execute_pipeline(
     # Initialize the input dataset
     input_dataset = InputDataset(
         [datasource.data_array for datasource in datasources],
-        config.general,
     )
 
     # Initialize the output dataset
