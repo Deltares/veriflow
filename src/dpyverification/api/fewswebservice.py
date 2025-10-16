@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from enum import StrEnum
+from typing import Union
 
 import requests
 import requests.auth
@@ -22,6 +23,10 @@ class DocumentFormat(StrEnum):
 
     PI_NETCDF = "PI_NETCDF"
     PI_JSON = "PI_JSON"
+
+
+JSONValue = Union[str, int, float, bool, None, "JSONDict", list["JSONValue"]]
+JSONDict = dict[str, JSONValue]
 
 
 class FewsWebserviceClient:
@@ -106,9 +111,9 @@ class FewsWebserviceClient:
                 "Accept-Encoding": "identity",  # Disable automatic gzip/deflate decoding
             }
         else:
-            headers = {}  # type: ignore[unreachable] # yes, unreachable for now
+            headers = {}
 
-        response = self.session.get(url=f"{self.url}/timeseries", params=params, headers=headers)  # type: ignore[arg-type]
+        response = self.session.get(url=f"{self.url}/timeseries", params=params, headers=headers)  # type:ignore[arg-type]
         response.raise_for_status()
         return response
 
@@ -162,15 +167,15 @@ class FewsWebserviceClient:
 
     @staticmethod
     def parse_forecast_reference_times_from_json_headers(
-        json_dict: dict,
+        json_dict: JSONDict,
         module_instance_id: str,
     ) -> list[datetime]:
         """Parse the forecast reference times from timeseries headers."""
 
         def _parse_forecast_date_from_header(
-            header: dict[str, str],
+            header: dict[str, dict[str, dict[str, str]]],
             module_instance_id: str,
-        ) -> datetime:
+        ) -> datetime | None:
             """Parse one element."""
             if "forecastDate" in header:
                 date = header["forecastDate"]["date"]
@@ -179,14 +184,14 @@ class FewsWebserviceClient:
                     return datetime.fromisoformat(f"{date}T{time}")
             return None
 
-        return [
-            _parse_forecast_date_from_header(
-                timeseries["header"],
+        return [  # type:ignore[misc]
+            _parse_forecast_date_from_header(  # type:ignore[misc]
+                timeseries["header"],  # type:ignore[misc, index, call-overload, arg-type]
                 module_instance_id=module_instance_id,
             )
-            for timeseries in json_dict["timeSeries"]
+            for timeseries in json_dict["timeSeries"]  # type:ignore[union-attr]
             if _parse_forecast_date_from_header(
-                timeseries["header"],
+                timeseries["header"],  # type:ignore[misc, index, call-overload, arg-type]
                 module_instance_id=module_instance_id,
             )
             is not None

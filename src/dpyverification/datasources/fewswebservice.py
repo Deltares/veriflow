@@ -4,13 +4,12 @@ import asyncio
 import io
 import tempfile
 import zipfile
-from collections.abc import Awaitable, Generator
+from collections.abc import Awaitable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar, Self, TypeVar
 
-import numpy as np
 import requests
 import xarray as xr
 
@@ -21,13 +20,11 @@ from dpyverification.configuration import (
     SimulationRetrievalMethod,
 )
 from dpyverification.configuration.default.datasources import ArchiveKind
-from dpyverification.constants import DataSourceKind, StandardCoord, StandardDim, TimeseriesKind
+from dpyverification.constants import DataSourceKind, TimeseriesKind
 from dpyverification.datasources.base import BaseDatasource
 from dpyverification.datasources.fewsnetcdf import (
     FewsNetCDF,
-    FewsNetcdfCoord,
     FewsNetCDFKind,
-    Preprocessor,
 )
 
 T = TypeVar("T")
@@ -64,79 +61,6 @@ def run_async_in_compatible_environment(coro: Awaitable[T]) -> T:
         return result
 
 
-def process_forecast_period_netcdf_response(
-    paths: Generator[Path],
-    timeseries_kind: TimeseriesKind,
-    source: str,
-) -> xr.DataArray:
-    """Parse NetCDF responses from get timeseries with leadTimes parameter."""
-
-    def _preprocess(dataset: xr.Dataset) -> xr.Dataset:
-        """
-        Preprocess individual files, set forecast_period based on filename.
-
-        When requesting data for a specific forecast period via the FEWS-Webservice,
-        the actual forecast period used in the request is not available in the
-        response. As a workaround, we prefix with filename with the forecast period
-        in milliseconds, access it via the dataset encoding and set it as a dim/coord
-        on the dataset.
-        """
-        filename = Path(dataset.encoding["source"]).name  # type:ignore[misc]
-        forecast_period_millis = int(filename.split("_")[0])
-        forecast_period = np.timedelta64(forecast_period_millis, "ms")
-
-        # Set the station_name as coord instead of variable
-        if FewsNetcdfCoord.station_names in dataset:
-            dataset = dataset.set_coords(FewsNetcdfCoord.station_names)
-
-        # Now assign forecast period as coordinate
-        return dataset.assign_coords(
-            {
-                StandardCoord.forecast_period.name: (
-                    StandardDim.forecast_period,
-                    [forecast_period],
-                ),  # type:ignore[misc]
-            },
-        )
-
-    with xr.open_mfdataset(
-        paths,  # type:ignore[arg-type] # generator is acceptable argument
-        preprocess=_preprocess,
-        coords="minimal",
-        compat="override",
-    ) as dataset:
-        dataset.load()
-
-    # Sort forecast_period index
-    dataset = dataset.sortby(StandardDim.forecast_period)
-    # Decode byte-string coords
-    dataset = Preprocessor.convert_byte_string_coord_to_utf8(
-        dataset,
-        coords=[FewsNetcdfCoord.station_id],
-    )
-
-    # Rename dims/coords to internal definitions
-    dataset = Preprocessor.rename_dims_coords_to_internal(
-        dataset,
-    )
-
-    # On resulting object, assign forecast_reference_time as coordinate
-    dataset = dataset.assign_coords(
-        {  # type:ignore[misc]
-            StandardDim.forecast_reference_time: (  # type:ignore[misc]
-                (StandardDim.time, StandardDim.forecast_period),
-                (dataset[StandardDim.time] - dataset[StandardDim.forecast_period]).to_numpy(),  # type:ignore[misc]
-            ),
-        },
-    )
-
-    return FewsNetCDF.convert_to_data_array_and_set_variable_and_units_coords(
-        dataset=dataset,
-        source=source,
-        timeseries_kind=timeseries_kind,
-    )
-
-
 class FewsWebservice(BaseDatasource):
     """For downloading data using a Delft-FEWS webservice."""
 
@@ -151,6 +75,7 @@ class FewsWebservice(BaseDatasource):
         TimeseriesKind.observed_historical,
         TimeseriesKind.simulated_forecast_ensemble,
         TimeseriesKind.simulated_forecast_single,
+        TimeseriesKind.simulated_forecast_probabilistic,
     }
 
     # Annotate the correct type, otherwise mypy will infer from baseclass
@@ -280,6 +205,8 @@ class FewsWebservice(BaseDatasource):
                     end_time=end,
                     module_instance_ids=self.config.module_instance_id,
                 )
+
+            # Standard Open Archive
             else:
                 response = self.client.get_timeseries(
                     location_ids=self.config.location_ids,
@@ -292,7 +219,7 @@ class FewsWebservice(BaseDatasource):
                 )
                 forecast_reference_times = (
                     self.client.parse_forecast_reference_times_from_json_headers(
-                        response.json(),
+                        response.json(),  # type:ignore[misc]
                         module_instance_id=self.config.module_instance_id,
                     )
                 )
@@ -333,6 +260,8 @@ class FewsWebservice(BaseDatasource):
                             else None,
                         ),
                     )
+
+                    response.raise_for_status()
 
                     # Write NetCDF response to disk
                     unique_prefix = forecast_reference_time.strftime(
@@ -434,11 +363,21 @@ class FewsWebservice(BaseDatasource):
                     )
 
                 # After this, the context manager will be closed and tmpdir deleted
-                self.data_array = process_forecast_period_netcdf_response(
-                    tmpdir_path.rglob("*.nc"),
-                    timeseries_kind=self.config.timeseries_kind,
-                    source=self.config.source,
+                datasource = FewsNetCDF(
+                    FewsNetCDFConfig(
+                        kind=DataSourceKind.FEWSNETCDF,
+                        timeseries_kind=self.config.timeseries_kind,
+                        directory=tmpdir,
+                        filename_glob="*.nc",
+                        general=self.config.general,
+                        netcdf_kind=FewsNetCDFKind.simulated_forecast_per_forecast_period,
+                        id_mapping=self.config.id_mapping,
+                        source=self.config.source,
+                    ),
                 )
+
+                # Assign to self
+                self.data_array = datasource.get_data().data_array
 
                 return self
 

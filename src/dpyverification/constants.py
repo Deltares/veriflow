@@ -52,6 +52,21 @@ class ScoreKind(StrEnum):
 
     rank_histogram = "rank_histogram"
     crps_for_ensemble = "crps_for_ensemble"
+    crps_cdf = "crps_cdf"
+    continuous_scores = "continuous_scores"
+
+
+@unique
+class SupportedContinuousScore(StrEnum):
+    """Supported continuous scores."""
+
+    additive_bias = "additive_bias"
+    mean_error = "mean_error"
+    mae = "mae"
+    mse = "mse"
+    rmse = "rmse"
+    nse = "nse"
+    kge = "kge"
 
 
 @unique
@@ -81,6 +96,7 @@ class StandardDim(StrEnum):
     forecast_period = "forecast_period"
     source = "source"
     variable = "variable"
+    threshold = "threshold"
 
 
 class StandardCoord:

@@ -34,14 +34,14 @@ class OutputDataset:
     def __init__(
         self,
     ) -> None:
-        self.scores: dict[str, xr.DataArray] = {}
+        self.scores: xr.Dataset = xr.Dataset()
 
-    def add_score(self, kind: str, score: xr.DataArray) -> None:
+    def add_score(self, score: xr.DataArray) -> None:
         """Add a score to the scores list."""
-        if kind in self.scores:
+        if score.name in self.scores:
             msg = f"Cannot add score to OutputDataset. Score ({score}) is already present."
             raise ValueError(msg)
-        self.scores[kind] = score
+        self.scores[score.name] = score
 
     def _get_score(self, kind: str) -> xr.DataArray:
         try:
@@ -59,16 +59,15 @@ class OutputDataset:
         input_dataset: xr.Dataset | None = None,
     ) -> xr.Dataset:
         """Get the output dataset."""
-        scores_selection: list[xr.DataArray] = (
-            list(self.scores.values())
-            if scores == "all"
-            else [self._get_score(kind) for kind in scores]
+        scores_selection: xr.Dataset = (
+            self.scores[scores] if isinstance(scores, list) else self.scores
         )
 
-        if input_dataset:
-            scores_selection.append(input_dataset)  # type:ignore[arg-type] # it's ok to add a dataset to this list, merge will convert all inputs to datasets
-
-        return xr.merge(scores_selection, combine_attrs="drop")
+        return (
+            xr.merge([scores_selection, input_dataset], combine_attrs="drop")  # type:ignore[misc]
+            if input_dataset is not None
+            else scores_selection
+        )
 
 
 class InputDataset:
@@ -162,6 +161,6 @@ class InputDataset:
         verification_pair: VerificationPair,
     ) -> str:
         """Return the timeseries kinds for a verification pair."""
-        return str(  # type:ignore[misc]
+        return str(
             self.dataset[verification_pair.sim].attrs["timeseries_kind"],  # type:ignore[misc]
         )

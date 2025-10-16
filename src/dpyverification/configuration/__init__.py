@@ -12,6 +12,7 @@ from dpyverification.configuration.default.datasources import (
     SimulationRetrievalMethod,
 )
 from dpyverification.configuration.default.scores import (
+    CrpsCDFConfig,
     CrpsForEnsembleConfig,
     RankHistogramConfig,
 )

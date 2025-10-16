@@ -130,6 +130,11 @@ class ForecastPeriodCoord(BaseModel):
     dtype: AllowedDTypeTimeDelta
 
 
+class ThresholdCoord(BaseModel):
+    dims: Annotated[tuple[str, ...], AfterValidator(check_dims({StandardDim.threshold}))]
+    dtype: AllowedDTypeFloat
+
+
 class BaseSimulationCoords(BaseCoords):
     forecast_period: ForecastPeriodCoord
     realization: RealizationCoord
@@ -211,6 +216,7 @@ class SimulatedForecastEnsemble(Base):
 
 class SimulatedForecastProbabilisticCoords(BaseCoords):
     forecast_period: ForecastPeriodCoord
+    threshold: ThresholdCoord
 
 
 class SimulatedForecastProbabilistic(Base):
@@ -223,7 +229,7 @@ class SimulatedForecastProbabilistic(Base):
                     StandardDim.time,
                     StandardDim.station,
                     StandardDim.forecast_period,
-                    StandardDim.realization,
+                    StandardDim.threshold,
                 },
             ),
         ),

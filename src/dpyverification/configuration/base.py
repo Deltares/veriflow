@@ -285,8 +285,8 @@ class Config(BaseModel):
     @staticmethod
     def write_yaml_schema(output_path: Path) -> None:
         """Generate a YAML schema from the Pydantic model."""
-        schema = Config.model_json_schema()
+        schema = Config.model_json_schema()  # type:ignore[misc]
         output_path.write_text(
-            yaml.safe_dump(schema, sort_keys=False),
+            yaml.safe_dump(schema, sort_keys=False),  # type:ignore[misc]
             encoding="utf-8",
         )

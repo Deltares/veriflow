@@ -107,8 +107,12 @@ def execute_pipeline(
             kind=score_config.kind,
         )
         score = score_kind.from_config(score_config.model_dump())  # type: ignore[misc] # Allow Any
-        result = score.validate_and_compute(input_dataset)
-        output_dataset.add_score(kind=score.kind, score=result)
+        results = score.validate_and_compute(input_dataset)
+        if isinstance(results, xr.DataArray):  # type: ignore[misc]
+            output_dataset.add_score(results)
+        if isinstance(results, tuple):
+            for result in results:
+                output_dataset.add_score(result)
 
     # Write data for each datasink if not None
     if config.datasinks is not None:

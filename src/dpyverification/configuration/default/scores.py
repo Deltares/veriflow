@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from pydantic import Field, RootModel
 
 from dpyverification.configuration.base import BaseScoreConfig
-from dpyverification.constants import ScoreKind, StandardDim
+from dpyverification.constants import ScoreKind, StandardDim, SupportedContinuousScore
 
 
 class ComputableDim(StrEnum):
@@ -62,7 +62,10 @@ class RankHistogramConfig(BaseScoreConfig):
 
 
 class CrpsForEnsembleConfig(BaseScoreConfig):
-    """A crps for ensemble config element."""
+    """A crps for ensemble config element.
+
+    For reference, see: See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble
+    """
 
     kind: Literal[ScoreKind.crps_for_ensemble]
     method: Annotated[
@@ -70,9 +73,33 @@ class CrpsForEnsembleConfig(BaseScoreConfig):
         Field(
             description=(
                 "Method to compute the cumulative distribution function from an ensemble."
-                "See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble"
             ),
             default="ecdf",
         ),
     ]
     reduce_dims: ReduceDimsWithDefault
+
+
+class CrpsCDFConfig(BaseScoreConfig):
+    """A crps for ensemble config element.
+
+    For reference, see: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_cdf
+    """
+
+    kind: Literal[ScoreKind.crps_cdf]
+    reduce_dims: ReduceDimsWithDefault
+    integration_method: Annotated[
+        Literal["exact", "trapz"],
+        Field(
+            description="The method of integration. 'exact' computes the exact integral, "
+            "'trapz' uses a trapezoidal rule and is an approximation of the CRPS.",
+        ),
+    ] = "exact"
+
+
+class ContinuousScoresConfig(BaseScoreConfig):
+    """Configure multiple continuous scores."""
+
+    kind: Literal[ScoreKind.continuous_scores]
+    reduce_dims: ReduceDimsWithDefault
+    scores: list[SupportedContinuousScore]
