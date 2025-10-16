@@ -20,12 +20,12 @@ Next, you should tell Poetry to use a correct python installation (only if pytho
 poetry env use PATH_TO_THE_PYTHON_EXECUTABLE
 poetry install
 poetry run pytest
+pre-commit install # Optional
 ```
 
-When you contribute to DPyVerification, automated tools will be run to make sure your code is suitable to be merged. All of these are included in the pytest checks. However, it may be useful during development to run them separately to automatically fix problems. And to integrate them in your development environment. 
+When you contribute to DPyVerification, automated tools will be run to make sure your code is suitable to be merged. All of these are included in the pytest checks. However, it may be useful during development to run them separately to automatically fix problems. And to integrate them in your development environment.
 
 Tools that are included are ruff for formatting, ruff for linting, mypy for type checking.
 
 TODO: info on how to run these manually, including autofix options
 TODO: actually include these in the pytest suite, so no need for pre-commit for now.
-TODO: Later on, might want to also support pre-commit, for auto-fixing things without need for dev manual action. Create github issue for this.
