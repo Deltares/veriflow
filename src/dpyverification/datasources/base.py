@@ -10,7 +10,10 @@ import xarray as xr
 
 from dpyverification.base import Base
 from dpyverification.configuration.base import BaseDatasourceConfig
-from dpyverification.constants import ForecastTimeseriesKind, TimeseriesKind
+from dpyverification.constants import (
+    FORECAST_TIMESERIES_KINDS,
+    TimeseriesKind,
+)
 
 
 class BaseDatasource(Base):
@@ -80,11 +83,11 @@ class BaseDatasource(Base):
 
         # Select only relevant time stamps
         self.data_array = self.data_array.sel(
-            time=slice(self.config.verification_period.start, self.config.verification_period.end),
+            time=slice(self.config.verification_period.start, self.config.verification_period.end),  # type:ignore[misc]
         )
 
         # Select only relevant forecast periods for simulations
-        if self.data_array.attrs["timeseries_kind"] in ForecastTimeseriesKind:  # type:ignore[misc]
+        if self.data_array.attrs["timeseries_kind"] in FORECAST_TIMESERIES_KINDS:  # type:ignore[misc]
             self.data_array = self.data_array.sel(
                 forecast_period=self.config.forecast_periods.timedelta64,
             )

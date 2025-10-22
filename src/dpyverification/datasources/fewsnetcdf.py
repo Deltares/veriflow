@@ -188,17 +188,28 @@ class Preprocessor:
 
 def create_cdf_data_array_from_probabilistic_forecast(
     sim: xr.DataArray,
-    decimal_resolution: float = 0.1,
+    threshold_resampling_step_size: float = 0.1,
 ) -> xr.DataArray:
     """Create a cdf data array from Delft-FEWS NetCDF simulations.
 
-    Takes a standard Delft-FEWS NetCDF with 'realization' dimension.
-    It's assumed the coordinates along the realization dimension contain
-    probabilities of exceedance (quantiles) (i.e. [0.01, 0.02, ..., 0.99]).
-    It is also assumed that the data in the array contains non-decreasing values of a
-    continuous variable along those probabilities. From these assumptions, this function
-    creates a new threshold dimension with specified decimal resolution that can be shared
-    between multiple forecasts.
+    Verification metrics for CDFs may require a 'threshold' dimension to represent an array of
+    thresholds of a continuous variable (like the crps_for_cdf function in the scores package).
+    Here, the actual data variable represents probabilities of (non)-exceedance for the defined
+    thresholds represented by the thresholds coordinate along the threshold dimension.
+
+    In Delft-FEWS, however, such a datamodel is not available. Many users therefore use a standard
+    FEWS NetCDF for ensembles, and use the realization dimension to represent probabilities (i.e.
+    0.01, 0.02, ... 0.99) and the data variable (i.e. discharge) to represent the thresholds.
+
+    This function converts a standard Delft-FEWS NetCDF to the internal input data structure.
+    Because Delft-FEWS NetCDFs always only represent one forecast, the discretization of
+    of probabilities and thresholds is always relative to the range of values found in one
+    specific forecast (i.e. with discharges between 100-200). Because the input to this function
+    is a set of FEWS NetCDFs, we need to resample the thresholds so that we can keep an accurate
+    representation of each individual forecast CDF in a set of forecasts, but not completely blow
+    up the matrix. Given the min and max value found in the dataset (with multiple forecasts)
+    and threshold_resampling_step_size, we will create a new coordinate for the threshold dimension.
+
 
     Parameters
     ----------
@@ -206,8 +217,10 @@ def create_cdf_data_array_from_probabilistic_forecast(
         The simulation with a realization dimension.
     preserve_dims : list[str] | None, optional
         Dimensions to preserve in the output, by default None
-    decimal_resolution : float, optional
-        Resolution of the threshold dimension, by default 0.1
+    threshold_resampling_step_size : float, optional
+        Set the step size of the interpolation of the threshold coordinate. The step size will be
+        used to create a range of values from the minium to the maximum value of the continuous
+        variable.
 
     Returns
     -------
@@ -219,40 +232,48 @@ def create_cdf_data_array_from_probabilistic_forecast(
     def check_non_decreasing_and_not_nan(arr: NDArray) -> None:
         """Check an array in non-decreasing and does not contain any NaN."""
         if np.isnan(arr).any():  # type:ignore[misc]
-            msg = "NaN values found in input cdf."
+            msg = "NaN values found in input CDF."
             raise ValueError(msg)
         # Check for non-decreasing order
-        if not np.all(arr[:-1] <= arr[1:]):  # type:ignore[misc]
-            msg = "Decreasing values found in input cdf."
+        if not (arr[:-1] <= arr[1:]).all():  # type:ignore[misc]
+            msg = "Decreasing values found in input CDF."
             raise ValueError(msg)
 
     if StandardDim.realization not in sim.dims:
-        msg = "No realization dimension found in input cdf."
+        msg = "No realization dimension found in input CDF."
         raise ValueError(msg)
 
     realization_index = sim[StandardDim.realization].to_numpy()  # type:ignore[misc]
     check_non_decreasing_and_not_nan(realization_index)  # type:ignore[misc]
 
     # Get the min / max probabilities
-    realization_min: float = float(realization_index[0]) * 0.01  # type:ignore[misc]
-    realization_max: float = float(realization_index[-1]) * 0.01  # type:ignore[misc]
+    min_probability: float = float(realization_index[0])  # type:ignore[misc]
+    max_probability: float = float(realization_index[-1])  # type:ignore[misc]
+
+    # Probabilities should be between 0-1. However, in FEWS NetCDFs, users may define
+    #   a different scale, such as between 0-100. Scale any given array to the desired
+    #   range, by finding base 10 logarithm and taking the ceiling, so we always scale by
+    #   an integer.
+    scaling_factor: int = 10 ** np.ceil(np.log10(max_probability))  # type:ignore[misc]
+    min_probability = min_probability / scaling_factor  # i.e. 99 > 0.99 and 0.99 > 0.99
+    max_probability = max_probability / scaling_factor
 
     # Get the min / max values
     vmin = float(sim.min())
     vmax = float(sim.max())
 
     # Define the steps and threshold index, for new shared coordinate
-    nsteps = int(np.ceil((vmax - vmin) / decimal_resolution)) + 1  # type:ignore[misc]
+    nsteps = int(np.ceil((vmax - vmin) / threshold_resampling_step_size)) + 1  # type:ignore[misc]
     thresholds = np.linspace(vmin, vmax, nsteps)  # type:ignore[misc]
 
-    def interpolate_cdf(cdf: NDArray) -> NDArray:
+    def interpolate_cdf(cdf: NDArray[np.floating]) -> NDArray:
         # If all NaN, return a NaN array
         if np.all(np.isnan(cdf)):  # type:ignore[misc]
             return np.full_like(thresholds, np.nan, dtype=float)  # type:ignore[misc]
 
         # If non all are Nan, require all not Nan and non-decreasing
         check_non_decreasing_and_not_nan(cdf)  # type:ignore[misc]
-        probs = np.linspace(realization_min, realization_max, len(cdf))  # type:ignore[misc]
+        probs = np.linspace(min_probability, max_probability, len(cdf))  # type:ignore[misc]
         return np.interp(thresholds, cdf, probs)  # type:ignore[misc]
 
     result: xr.DataArray = xr.apply_ufunc(
@@ -261,7 +282,6 @@ def create_cdf_data_array_from_probabilistic_forecast(
         input_core_dims=[["realization"]],  # type:ignore[misc]
         output_core_dims=[["threshold"]],  # type:ignore[misc]
         vectorize=True,
-        dask="parallelized" if sim.chunks else None,  # type:ignore[arg-type]
         output_sizes={"threshold": len(thresholds)},  # type:ignore[misc]
     )
 
@@ -285,14 +305,20 @@ def parse_forecast_period_netcdf_files(
 
         When requesting data for a specific forecast period via the FEWS-Webservice,
         the actual forecast period used in the request is not available in the
-        response. As a workaround, we prefix with filename with the forecast period
+        response. As a workaround, we prefix the filename with the forecast period
         in milliseconds, access it via the dataset encoding and set it as a dim/coord
         on the dataset.
         """
         filename = Path(dataset.encoding["source"]).name  # type:ignore[misc]
 
-        forecast_period_millis = int(filename.split("_")[0])
-        forecast_period = np.timedelta64(forecast_period_millis, "ms")
+        forecast_period_millis = filename.split("_")[0]
+        if not forecast_period_millis.isalnum():
+            msg = "Filename prefix is expected to be a numeric representing the forecast period"
+            "(lead time) in milliseconds. The provided prefix '{forecast_period_millis}' is is not"
+            "numeric and cannot be converted to a valid forecast period."
+            raise ValueError(msg)
+
+        forecast_period = np.timedelta64(int(forecast_period_millis), "ms")
 
         # Set the station_name as coord instead of variable
         if FewsNetcdfCoord.station_names in dataset:

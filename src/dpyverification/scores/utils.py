@@ -37,7 +37,7 @@ def set_data_array_attributes(
     return da.assign_attrs(union)
 
 
-def reassign_station_auxiliary_coords(
+def assign_station_auxiliary_coords(
     result: xr.DataArray,
     sim: xr.DataArray,
 ) -> xr.DataArray:

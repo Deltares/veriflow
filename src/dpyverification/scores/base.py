@@ -1,6 +1,7 @@
 """An abstract implementation of a calculation."""
 
 from abc import abstractmethod
+from collections.abc import Iterable
 from typing import ClassVar
 
 import xarray as xr
@@ -25,13 +26,13 @@ class BaseScore(Base):
     def compute(
         self,
         input_dataset: InputDataset,
-    ) -> xr.DataArray | tuple[xr.DataArray, ...]:
+    ) -> xr.DataArray | Iterable[xr.DataArray]:
         """Abstract calculation."""
 
     def validate_and_compute(
         self,
         input_dataset: InputDataset,
-    ) -> xr.DataArray | tuple[xr.DataArray, ...]:
+    ) -> xr.DataArray | Iterable[xr.DataArray]:
         """Validate and compute."""
         for pair in self.config.verification_pairs:
             kind = input_dataset.get_simulated_timeseries_kind_from_pair(pair)

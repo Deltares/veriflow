@@ -1,12 +1,13 @@
 """Specification of a pipeline that will collect data and run verification functions on the data."""
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import TypeVar
 
 import xarray as xr
 
 from dpyverification.configuration import Config, ConfigFile
-from dpyverification.configuration.file import ConfigType
+from dpyverification.configuration.file import ConfigKind
 from dpyverification.datamodel import InputDataset, OutputDataset
 from dpyverification.datasinks.base import BaseDatasink
 from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
@@ -49,12 +50,33 @@ def merge_user_and_default_items(
 
 
 def execute_pipeline(
-    config: tuple[Path, ConfigType] | Config,
+    config: tuple[Path, ConfigKind] | Config,
     user_datasources: list[type[BaseDatasource]] | None = None,
     user_scores: list[type[BaseScore]] | None = None,
     user_datasinks: list[type[BaseDatasink]] | None = None,
 ) -> xr.Dataset:
-    """Execute a pipeline as defined in the configfile."""
+    """Execute a verification pipeline as defined in the configuration.
+
+    Parameters
+    ----------
+    config : tuple[Path, ConfigKind] | Config
+        When using a configuration file, provide a tuple with the path and kind
+        of configuration file. For now, only 'yaml' is supported.
+    user_datasources : list[type[BaseDatasource]] | None, optional
+        Option to plug-in a user-implementation of a DataSource., by default None
+    user_scores : list[type[BaseScore]] | None, optional
+        Option to plug-in a user-implementation of a Score., by default None
+    user_datasinks : list[type[BaseDatasink]] | None, optional
+        Option to plug-in a user-implementation of a DataSink., by default None
+
+    Returns
+    -------
+    xr.Dataset
+        The output dataset containing the results of the verification pipeline. In addition to the
+        option of writing the output to a file or service, the output of the verification pipeline
+        can also be assigned back to a Python variable for further inspection in an interactive
+        Python environment.
+    """
     # Get the available sources, scores and sinks
     available_datasources = merge_user_and_default_items(
         DEFAULT_DATASOURCES,
@@ -98,7 +120,7 @@ def execute_pipeline(
     )
 
     # Initialize the output dataset
-    output_dataset = OutputDataset()
+    output_dataset = OutputDataset(input_dataset=input_dataset)
 
     # Add score results to the output dataset
     for score_config in config.scores:
@@ -110,9 +132,9 @@ def execute_pipeline(
         results = score.validate_and_compute(input_dataset)
         if isinstance(results, xr.DataArray):  # type: ignore[misc]
             output_dataset.add_score(results)
-        if isinstance(results, tuple):
-            for result in results:
-                output_dataset.add_score(result)
+        elif isinstance(results, Iterable):
+            for result in results:  # type: ignore[misc]
+                output_dataset.add_score(result)  # type: ignore[misc]
 
     # Write data for each datasink if not None
     if config.datasinks is not None:
@@ -123,7 +145,7 @@ def execute_pipeline(
             )
             datasink = sink_kind.from_config(datasink_config.model_dump())  # type: ignore[misc] # Allow Any
             datasink.write_data(
-                output_dataset.get_output_dataset(input_dataset=input_dataset.dataset),
+                output_dataset.get_output_dataset(),
             )
 
     # Return the output dataset by default

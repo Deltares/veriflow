@@ -17,7 +17,7 @@ from dpyverification.api.fewswebservice import DocumentFormat, FewsWebserviceCli
 from dpyverification.configuration import (
     FewsNetCDFConfig,
     FewsWebserviceConfig,
-    SimulationRetrievalMethod,
+    ForecastRetrievalMethod,
 )
 from dpyverification.configuration.default.datasources import ArchiveKind
 from dpyverification.constants import DataSourceKind, TimeseriesKind
@@ -102,7 +102,7 @@ class FewsWebservice(BaseDatasource):
         write_dir: Path,
         unique_prefix: str | None = None,
     ) -> Path:
-        """Unzip a file and write the first NetCDF to a directory.
+        """Unzip a file and write the NetCDF file(s) to a directory.
 
         Optional parameter unique_prefix is used only when using the leadTime
         parameter in the request. In this case, the Delft-FEWS webservice response
@@ -190,7 +190,7 @@ class FewsWebservice(BaseDatasource):
                 TimeseriesKind.simulated_forecast_probabilistic,
             ]
             and self.config.forecast_retrieval_method
-            == SimulationRetrievalMethod.retrieve_all_forecast_data
+            == ForecastRetrievalMethod.retrieve_all_forecast_data
         ):
             # Get all forecast reference times relevant to the configured verification
             #   period. Start is located at verification period start minus the maximum
@@ -335,7 +335,7 @@ class FewsWebservice(BaseDatasource):
                 TimeseriesKind.simulated_forecast_probabilistic,
             ]
             and self.config.forecast_retrieval_method
-            == SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time
+            == ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
         ):
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir_path = Path(tmpdir)
@@ -354,7 +354,8 @@ class FewsWebservice(BaseDatasource):
                         else None,
                     )
 
-                    # Write NetCDF response to disk
+                    # Write NetCDF response to disk, prefix with the forecast period
+                    #   (lead time) in milliseconds.
                     unique_prefix = str(int(fp.total_seconds() * 1000))
                     self.write_netcdf_response_to_dir(
                         response,

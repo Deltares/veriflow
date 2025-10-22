@@ -44,7 +44,7 @@ class ContinuousScores(BaseScore):
     def compute(
         self,
         data: InputDataset,
-    ) -> tuple[xr.DataArray, ...]:
+    ) -> list[xr.DataArray]:
         """Compute the CRPS for an ensemble of forecasts and observations."""
         results = []
         for score in self.config.scores:
@@ -57,4 +57,4 @@ class ContinuousScores(BaseScore):
                     preserve_dims=self.config.reduce_dims.inverse,
                 ),
             )
-        return tuple(results)
+        return list(results)

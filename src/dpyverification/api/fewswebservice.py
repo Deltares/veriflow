@@ -40,8 +40,10 @@ class FewsWebserviceClient:
         if username is not None and password is not None:
             self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
         elif username is None and password is not None or username is not None and password is None:
-            msg = f"Authorization of {FewsWebserviceClient.__name__} requires a valid username and"
-            "password, or no username and password at all. Got only one username or password."
+            msg = (
+                f"Authorization of {FewsWebserviceClient.__name__} requires either both a ",
+                "username and password, or no username and password.",
+            )
             raise ValueError(msg)
 
     def format_datetime(self, time: datetime | None) -> str | None:
@@ -50,7 +52,7 @@ class FewsWebserviceClient:
             return time.strftime(self.datetime_format)
         return time
 
-    def format_timedelta(self, td: timedelta | None) -> int | None:
+    def timedelta_to_milliseconds(self, td: timedelta | None) -> int | None:
         """Format datetime to string."""
         if isinstance(td, timedelta):
             return int(td.total_seconds() * 1000)  # milliseconds
@@ -95,7 +97,7 @@ class FewsWebserviceClient:
             "endTime": self.format_datetime(end_time),
             "startForecastTime": self.format_datetime(start_forecast_time),
             "endForecastTime": self.format_datetime(end_forecast_time),
-            "leadTime": self.format_timedelta(lead_time),
+            "leadTime": self.timedelta_to_milliseconds(lead_time),
             "ensembleId": ensemble_id,
             "ensembleMemberId": ensemble_member_id,
             "forecastCount": forecast_count,
@@ -184,15 +186,12 @@ class FewsWebserviceClient:
                     return datetime.fromisoformat(f"{date}T{time}")
             return None
 
-        return [  # type:ignore[misc]
-            _parse_forecast_date_from_header(  # type:ignore[misc]
+        forecast_dates: list[datetime] = []
+        for timeseries in json_dict["timeSeries"]:  # type:ignore[union-attr, misc]
+            forecast_date = _parse_forecast_date_from_header(
                 timeseries["header"],  # type:ignore[misc, index, call-overload, arg-type]
                 module_instance_id=module_instance_id,
             )
-            for timeseries in json_dict["timeSeries"]  # type:ignore[union-attr]
-            if _parse_forecast_date_from_header(
-                timeseries["header"],  # type:ignore[misc, index, call-overload, arg-type]
-                module_instance_id=module_instance_id,
-            )
-            is not None
-        ]
+            if forecast_date is not None:
+                forecast_dates.append(forecast_date)
+        return forecast_dates

@@ -16,8 +16,8 @@ from dpyverification.datamodel import InputDataset
 from dpyverification.scores.base import BaseScore
 from dpyverification.scores.utils import (
     ScoreFunc,
+    assign_station_auxiliary_coords,
     loop_verification_pairs,
-    reassign_station_auxiliary_coords,
 )
 
 
@@ -104,7 +104,7 @@ class RankHistogram(BaseScore):
                 member_dim=StandardDim.realization.value,
                 dim=dims,
             )
-            return reassign_station_auxiliary_coords(result, sim)
+            return assign_station_auxiliary_coords(result, sim)
 
         return loop_verification_pairs(_rank_histogram)(  # type: ignore[arg-type]
             data,

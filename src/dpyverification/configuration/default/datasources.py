@@ -3,13 +3,12 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from dpyverification.configuration.base import BaseDatasourceConfig
 from dpyverification.configuration.utils import (
     FewsWebserviceAuthConfig,
     LocalFiles,
-    Source,
 )
 from dpyverification.constants import DataSourceKind
 
@@ -22,7 +21,7 @@ class ArchiveKind(StrEnum):
 
 
 class FewsNetCDFKind(StrEnum):
-    """List of kinds of FEWS NetCDFs."""
+    """FEWS NetCDF kind."""
 
     observation = "observation"
     simulated_forecast_per_forecast_reference_time = (
@@ -31,11 +30,18 @@ class FewsNetCDFKind(StrEnum):
     simulated_forecast_per_forecast_period = "simulated_forecast_per_forecast_period"
 
 
-class SimulationRetrievalMethod(StrEnum):
+class ForecastRetrievalMethod(StrEnum):
     """Retrieval methods for simulations."""
 
     retrieve_all_forecast_data = "retrieve_all_forecast_data"
     retrieve_forecast_data_per_lead_time = "retrieve_forecast_data_per_lead_time"
+
+
+FewsWebserviceVersionString = Annotated[
+    str,
+    StringConstraints(pattern=r"^\d{4}\.(0[1-2])$"),
+    Field(description="Please specify the version as 'YYYY.01' or 'YYYY.02"),
+]
 
 
 class FewsWebserviceVersion(BaseModel):
@@ -64,32 +70,28 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
     ensemble_id: Annotated[str, Field(min_length=1)] | None = None
     qualifier_ids: Annotated[list[str], Field(min_length=1)] | None = None
     export_id_map: Annotated[str, Field(min_length=1)] | None = None
+    webservice_version: FewsWebserviceVersionString
     archive_kind: Annotated[
         ArchiveKind,
         Field(
             description="Archive kind. Defaults to a Delft-FEWS Open Archive, "
-            "which is the Delft-FEWS standard and is most used.",
+            "which is the Delft-FEWS standard.",
         ),
     ] = ArchiveKind.open_archive
-    webservice_version: FewsWebserviceVersion = FewsWebserviceVersion(year=2025, subversion=1)
     forecast_retrieval_method: (
         Annotated[
-            SimulationRetrievalMethod,
+            ForecastRetrievalMethod,
             Field(
-                default=SimulationRetrievalMethod.retrieve_all_forecast_data,
+                default=ForecastRetrievalMethod.retrieve_all_forecast_data,
                 description="Since Delft-FEWS 2025.01, the Delft-FEWS Webservice can"
-                "retrieve forecasts for specific lead times. This avoid having to retrieve all "
-                "forecast data outside of the configured lead times (forecast periods) for the "
-                "verification pipeline. Note: this method is not yet implemented, so defaults to"
-                "retrieving all forecast data.",
+                "retrieve forecasts for specific forecast periods (lead times). This avoid having "
+                "to retrieve all forecast data outside of the configured forecast periods "
+                "(lead times) for the verification pipeline. If not provided, the method will be "
+                "automatically determined based on the configured webservice version.",
             ),
         ]
         | None
     ) = None
-    source: Annotated[
-        Source,
-        Field(description="If not provided, source will be equal to module_instance_id."),
-    ] = ""
     max_workers_in_thread_pool: Annotated[
         int,
         Field(
@@ -100,11 +102,31 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
         ),
     ] = 2
 
+    @property
+    def webservice_supports_lead_time_in_get_timeseries(self) -> bool:
+        """Wether or not the leadTime parameter is supported.
+
+        This determines the forecast retrieval method.
+        """
+        implementation_year = 2025
+        webservice_version_year = int(self.webservice_version.split(".")[0])
+        return webservice_version_year >= implementation_year
+
     @model_validator(mode="after")
-    def set_source_equal_to_module_instance_id_if_none(self) -> "FewsWebserviceConfig":
-        """By default, set source equal to module instance id."""
-        if self.source == "":
-            self.source = self.module_instance_id
+    def set_forecast_retrieval_method_based_on_version_if_none(self) -> "FewsWebserviceConfig":
+        """Automatically set the forecast retrieval method based on the webservice version."""
+        if (
+            self.webservice_supports_lead_time_in_get_timeseries
+            and self.forecast_retrieval_method is None
+        ):
+            self.forecast_retrieval_method = (
+                ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
+            )
+        elif (
+            self.forecast_retrieval_method is None
+            and not self.webservice_supports_lead_time_in_get_timeseries
+        ):
+            self.forecast_retrieval_method = ForecastRetrievalMethod.retrieve_all_forecast_data
         return self
 
 

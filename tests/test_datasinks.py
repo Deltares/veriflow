@@ -15,13 +15,11 @@ def test_write_data_cf_compliant_netcdf_no_scores(
 ) -> None:
     """Test writing data in cf-compliant NetCDF."""
     # Initialize output dataset
-    output_dataset = OutputDataset()
+    output_dataset = OutputDataset(input_dataset_fews_netcdf_simulated_forecast_ensemble)
 
     # Write data from the output dataset
     datasink_cf_compliant_netcdf.write_data(
-        output_dataset.get_output_dataset(
-            input_dataset=input_dataset_fews_netcdf_simulated_forecast_ensemble.dataset,
-        ),
+        output_dataset.get_output_dataset(),
     )
     assert (tmp_path / "test.nc").exists()
 
@@ -34,7 +32,7 @@ def test_write_data_cf_compliant_netcdf_crps(
 ) -> None:
     """Test writing data in cf-compliant NetCDF."""
     # Initialize output dataset
-    output_dataset = OutputDataset()
+    output_dataset = OutputDataset(input_dataset_fews_netcdf_simulated_forecast_ensemble)
 
     # Add a crps computation to the output dataset
     score = CrpsForEnsemble(score_config_crps)
@@ -46,8 +44,6 @@ def test_write_data_cf_compliant_netcdf_crps(
 
     # Write the data
     datasink_cf_compliant_netcdf.write_data(
-        output_dataset.get_output_dataset(
-            input_dataset=input_dataset_fews_netcdf_simulated_forecast_ensemble.dataset,
-        ),
+        output_dataset.get_output_dataset(),
     )
     assert (tmp_path / "test.nc").exists()

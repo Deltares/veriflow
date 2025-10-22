@@ -43,7 +43,7 @@ from dpyverification.constants import (
 from dpyverification.datamodel.main import InputDataset
 from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
-from dpyverification.datasources.fewswebservice import FewsWebservice, SimulationRetrievalMethod
+from dpyverification.datasources.fewswebservice import FewsWebservice, ForecastRetrievalMethod
 
 TESTS_DATA_DIR = Path(__file__).parent / "data"
 
@@ -315,7 +315,7 @@ def fews_webservice_simulated_forecast_ensemble_frt(
         module_instance_id="SBK3_MaxRTK_ECMWF_ENS",
         ensemble_id="ECMWF_ENS",
         archive_kind=ArchiveKind.external_storage_archive,
-        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
+        forecast_retrieval_method=ForecastRetrievalMethod.retrieve_all_forecast_data,
         general=test_data_general_info_config_ensemble,
         auth_config=fews_webservice_auth_config,
         id_mapping=id_mapping_config_fewsnetcdf,
@@ -337,7 +337,7 @@ def fews_webservice_simulated_forecast_ensemble_fp(
         module_instance_id="SBK3_MaxRTK_ECMWF_ENS",
         ensemble_id="ECMWF_ENS",
         archive_kind=ArchiveKind.external_storage_archive,
-        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time,
+        forecast_retrieval_method=ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time,
         general=test_data_general_info_config_ensemble,
         auth_config=fews_webservice_auth_config,
         id_mapping=id_mapping_config_fewsnetcdf,
@@ -359,7 +359,7 @@ def fews_webservice_simulated_forecast_single_frt(
             TimeseriesKind.simulated_forecast_single
         ],
         archive_kind=ArchiveKind.external_storage_archive,
-        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
+        forecast_retrieval_method=ForecastRetrievalMethod.retrieve_all_forecast_data,
         general=test_data_general_info_config_single.model_dump(),
         auth_config=fews_webservice_auth_config,
     )
@@ -375,7 +375,7 @@ def fews_webservice_simulated_forecast_single_fp(
         fews_webservice_simulated_forecast_single_frt,
     )
     instance.config.forecast_retrieval_method = (
-        SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time
+        ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
     )
     return instance
 
@@ -395,7 +395,7 @@ def fews_webservice_simulated_forecast_probabilistic_frt(
         ],
         ensemble_id="ensembleQR",
         archive_kind=ArchiveKind.external_storage_archive,
-        forecast_retrieval_method=SimulationRetrievalMethod.retrieve_all_forecast_data,
+        forecast_retrieval_method=ForecastRetrievalMethod.retrieve_all_forecast_data,
         general=test_data_general_info_config_probabilistic.model_dump(),
         auth_config=fews_webservice_auth_config,
     )
@@ -411,7 +411,7 @@ def fews_webservice_simulated_forecast_probabilistic_fp(
         fews_webservice_simulated_forecast_probabilistic_frt,
     )
     instance.config.forecast_retrieval_method = (
-        SimulationRetrievalMethod.retrieve_forecast_data_per_lead_time
+        ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
     )
     return instance
 

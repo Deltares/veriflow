@@ -62,7 +62,7 @@ class RankHistogramConfig(BaseScoreConfig):
 
 
 class CrpsForEnsembleConfig(BaseScoreConfig):
-    """A crps for ensemble config element.
+    """Configuration for CRPS for ensemble.
 
     For reference, see: See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble
     """
@@ -81,7 +81,7 @@ class CrpsForEnsembleConfig(BaseScoreConfig):
 
 
 class CrpsCDFConfig(BaseScoreConfig):
-    """A crps for ensemble config element.
+    """Configuration for CRPS for CDF.
 
     For reference, see: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_cdf
     """

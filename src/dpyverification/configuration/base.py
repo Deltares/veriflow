@@ -84,15 +84,13 @@ class GeneralInfoConfig(BaseModel):
 class IdMap(RootModel[dict[str, dict[str, str]]]):
     """Mapping from internal IDs to external IDs per data source."""
 
-    def check_source_defined(self, source: str) -> None:
-        """Check a source is defined in the IdMap."""
+    def get_external_to_internal_mapping(self, source: str) -> dict[str, str]:
+        """Return external → internal mapping for this data source."""
+        # Check that the source is defined in the IdMap
         if not any(source in inner for inner in self.root.values()):
             msg = f"No IdMapping found for source: {source}"
             raise ValueError(msg)
 
-    def get_external_to_internal_mapping(self, source: str) -> dict[str, str]:
-        """Return external → internal mapping for this data source."""
-        self.check_source_defined(source)
         return {v[source]: k for k, v in self.root.items()}
 
 
@@ -184,7 +182,7 @@ class BaseDatasourceConfig(BaseConfig):
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
-    id_mapping: SkipJsonSchema[IdMappingConfig] | None = None  # Do not serialize to json schema
+    id_mapping: SkipJsonSchema[IdMappingConfig] | None = None
 
     @property
     def forecast_periods(self) -> ForecastPeriods:
@@ -233,8 +231,7 @@ class BaseScoreConfig(BaseConfig):
         Field(
             description="Optional field to filter verification_pairs from the general "
             "configuration, by providing a list of verification pair ids from the general config. "
-            "Only the pair ids will be used in the computation of "
-            "this score.",
+            "Only the pair ids will be used in the computation of this score.",
         ),
     ] = None
 
@@ -260,15 +257,16 @@ class BaseScoreConfig(BaseConfig):
     def filter_verification_pairs_valid(self) -> Self:
         """Check provided filter for verification pairs contains valid ids."""
         valid_pair_ids: Generator[str] = (pair.id for pair in self.general.verification_pairs)
-        if self.filter_verification_pairs is not None:
-            for pair_id in self.filter_verification_pairs:
-                if pair_id not in valid_pair_ids:
-                    msg = (
-                        f"Pair id '{pair_id}' in filter_verification_pairs is not present in "
-                        "the general configuration for verification_pairs. "
-                        "Please make sure ids match exactly."
-                    )
-                    raise ValueError(msg)
+        if self.filter_verification_pairs is None:
+            return self
+        for pair_id in self.filter_verification_pairs:
+            if pair_id not in valid_pair_ids:
+                msg = (
+                    f"Pair id '{pair_id}' in filter_verification_pairs is not present in "
+                    "the general configuration for verification_pairs. "
+                    "Please make sure ids match exactly."
+                )
+                raise ValueError(msg)
         return self
 
 

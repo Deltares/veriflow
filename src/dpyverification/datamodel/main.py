@@ -1,13 +1,13 @@
 """Module with the dpyverification internal DataModel."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable
 from enum import Enum
 from typing import Literal
 
 import xarray as xr
 
 from dpyverification.configuration.utils import VerificationPair
-from dpyverification.constants import StandardDim
+from dpyverification.constants import StandardDim, TimeseriesKind
 from dpyverification.datasources.inputschemas import input_schemas
 
 
@@ -18,56 +18,10 @@ class DatasetKind(Enum):
     OBSERVATION = "OBSERVATION"
 
 
-def validate_data_array(data_array: xr.DataArray) -> xr.DataArray:
+def validate_data_array(data_array: xr.DataArray) -> None:
     """Validate a datasource by validating the data to a Pydantic schema."""
     schema = input_schemas[data_array.attrs["timeseries_kind"]]  # type:ignore[misc]
     schema.model_validate(data_array.to_dict(data=False))  # type:ignore[misc]
-    return data_array
-
-
-class OutputDataset:
-    """The internal output dataset.
-
-    Contains input data, results from verification scores and metadata.
-    """
-
-    def __init__(
-        self,
-    ) -> None:
-        self.scores: xr.Dataset = xr.Dataset()
-
-    def add_score(self, score: xr.DataArray) -> None:
-        """Add a score to the scores list."""
-        if score.name in self.scores:
-            msg = f"Cannot add score to OutputDataset. Score ({score}) is already present."
-            raise ValueError(msg)
-        self.scores[score.name] = score
-
-    def _get_score(self, kind: str) -> xr.DataArray:
-        try:
-            return self.scores[kind]
-        except KeyError as e:
-            msg = (
-                f"Score kind ({kind}) not added to OutputDataset.",
-                f"Available scores: ({self.scores.keys()})",
-            )
-            raise KeyError(msg) from e
-
-    def get_output_dataset(
-        self,
-        scores: list[str] | Literal["all"] = "all",
-        input_dataset: xr.Dataset | None = None,
-    ) -> xr.Dataset:
-        """Get the output dataset."""
-        scores_selection: xr.Dataset = (
-            self.scores[scores] if isinstance(scores, list) else self.scores
-        )
-
-        return (
-            xr.merge([scores_selection, input_dataset], combine_attrs="drop")  # type:ignore[misc]
-            if input_dataset is not None
-            else scores_selection
-        )
 
 
 class InputDataset:
@@ -80,7 +34,7 @@ class InputDataset:
 
     def __init__(
         self,
-        data: Sequence[xr.DataArray],
+        data: Iterable[xr.DataArray],
     ) -> None:
         """Initialize the SimObsDataset.
 
@@ -93,20 +47,22 @@ class InputDataset:
             :module:`dpyverification.datasources.inputschemas`
         """
         # Validate input data
-        validated_data_arrays = (validate_data_array(data_array) for data_array in data)
+        for data_array in data:
+            validate_data_array(data_array)
 
         # Merge input data with outer join as a first validation
         #   in matching
         dataset = xr.merge(
-            validated_data_arrays,
+            data,
             compat="override",
         )
 
-        # Empty attrs on the dataset level, while keeping attrs on individual variables
-        #   in the dataset, that have the required 'timeseries_kind' attr.
+        # The xarray.merge leaves the attributes of an arbitrary xr.DataArray as global attrs. We
+        # clear the attribute dict to keep the internal global attrs clean.
         dataset.attrs.clear()  # type:ignore[misc]
 
-        # Re-order shared dims in order
+        # Because we merged multiple xr.DataArrays, from different sources into one xr.Dataset,
+        #   transpose the xr.Dataset so that all dimensions of the data variables are aligned.
         self.dataset = dataset.transpose("variable", "time", "station", ...)
 
     @staticmethod
@@ -159,8 +115,56 @@ class InputDataset:
     def get_simulated_timeseries_kind_from_pair(
         self,
         verification_pair: VerificationPair,
-    ) -> str:
+    ) -> TimeseriesKind:
         """Return the timeseries kinds for a verification pair."""
-        return str(
+        return TimeseriesKind(
             self.dataset[verification_pair.sim].attrs["timeseries_kind"],  # type:ignore[misc]
+        )
+
+
+class OutputDataset:
+    """The internal output dataset.
+
+    Contains input data, results from verification scores and metadata.
+    """
+
+    def __init__(
+        self,
+        input_dataset: InputDataset,
+    ) -> None:
+        self.input_dataset = input_dataset
+        self.scores: xr.Dataset = xr.Dataset()
+
+    def add_score(self, score: xr.DataArray) -> None:
+        """Add a score to the scores list."""
+        if score.name in self.scores:
+            msg = f"Cannot add score to OutputDataset. Score ({score}) is already present."
+            raise ValueError(msg)
+        self.scores[score.name] = score
+
+    def _get_score(self, kind: str) -> xr.DataArray:
+        try:
+            return self.scores[kind]
+        except KeyError as e:
+            msg = (
+                f"Score kind ({kind}) not added to OutputDataset.",
+                f"Available scores: ({self.scores.keys()})",
+            )
+            raise KeyError(msg) from e
+
+    def get_output_dataset(
+        self,
+        scores: list[str] | Literal["all"] = "all",
+        *,
+        include_input_dataset: bool = True,
+    ) -> xr.Dataset:
+        """Get the output dataset."""
+        scores_selection: xr.Dataset = (
+            self.scores[scores] if isinstance(scores, list) else self.scores
+        )
+
+        return (
+            xr.merge([scores_selection, self.input_dataset.dataset], combine_attrs="drop")  # type:ignore[misc]
+            if include_input_dataset
+            else scores_selection
         )
