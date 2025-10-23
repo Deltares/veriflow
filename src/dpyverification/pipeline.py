@@ -13,6 +13,7 @@ from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
 from dpyverification.datasources.base import BaseDatasource
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF
 from dpyverification.datasources.fewswebservice import FewsWebservice
+from dpyverification.datasources.internal_dataset import InternalDataset
 from dpyverification.scores.base import BaseScore
 from dpyverification.scores.probabilistic import CrpsForEnsemble, RankHistogram
 
@@ -21,6 +22,7 @@ TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore)
 DEFAULT_DATASOURCES: list[type[BaseDatasource]] = [
     FewsNetCDF,
     FewsWebservice,
+    InternalDataset,
 ]
 DEFAULT_SCORES: list[type[BaseScore]] = [RankHistogram, CrpsForEnsemble]
 DEFAULT_DATASINKS: list[type[BaseDatasink]] = [CFCompliantNetCDF]

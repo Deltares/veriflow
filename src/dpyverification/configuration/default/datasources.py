@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 from dpyverification.configuration.base import BaseDatasourceConfig
 from dpyverification.configuration.utils import (
     FewsWebserviceAuthConfig,
+    LocalFile,
     LocalFiles,
     Source,
 )
@@ -115,3 +116,7 @@ class FewsNetCDFConfig(BaseDatasourceConfig, LocalFiles):
     netcdf_kind: FewsNetCDFKind
     station_ids: Annotated[list[str], Field(min_length=1)] | None = None
     parameter_ids: Annotated[list[str], Field(min_length=1)] | None = None
+
+
+class InternalDatasetConfig(BaseDatasourceConfig, LocalFile):
+    """Configuration for a compliant dataset."""

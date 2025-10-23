@@ -38,6 +38,13 @@ class TimeseriesKind(StrEnum):
     simulated_forecast_probabilistic = "simulated_forecast_probabilistic"
 
 
+FORECAST_TIMESERIES_KIND = (
+    TimeseriesKind.simulated_forecast_single,
+    TimeseriesKind.simulated_forecast_probabilistic,
+    TimeseriesKind.simulated_forecast_ensemble,
+)
+
+
 class ForecastTimeseriesKind(StrEnum):
     """Enumeration of forecast timeseries kinds."""
 
