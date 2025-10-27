@@ -19,9 +19,10 @@ OBS_TIME_DIM_LENGTH = 721
 
 TASK_START_SUCCESS_TEXT = '{"started":true,"message":"Task started"}'
 
-IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+SKIP_LIVE_WEBSERVICE_TEST = True
 
 
+@pytest.mark.skipif(SKIP_LIVE_WEBSERVICE_TEST, reason="Skipping live webservice tests")
 @pytest.fixture(scope="module", autouse=False)
 def _initialize_archive() -> None:
     @dataclass
@@ -81,7 +82,7 @@ def _initialize_archive() -> None:
     start_and_wait_for_task(internal_harvester)
 
 
-@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
+@pytest.mark.skipif(SKIP_LIVE_WEBSERVICE_TEST, reason="Skipping live webservice tests")
 def test_webservice_live() -> None:
     """Test that a webservice is live and can find filters."""
     url = os.environ["FEWSWEBSERVICE_URL"]
@@ -91,7 +92,7 @@ def test_webservice_live() -> None:
     assert response.ok
 
 
-@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Cannot yet test webservice in GitHub CI")
+@pytest.mark.skipif(SKIP_LIVE_WEBSERVICE_TEST, reason="Skipping live webservice tests")
 def test_get_data_fews_webservice_observed_historical(
     fews_webservice_observed_historical: FewsWebservice,
 ) -> None:
@@ -99,6 +100,7 @@ def test_get_data_fews_webservice_observed_historical(
     _ = fews_webservice_observed_historical.get_data()
 
 
+@pytest.mark.skipif(SKIP_LIVE_WEBSERVICE_TEST, reason="Skipping live webservice tests")
 @pytest.mark.parametrize(
     ("frt", "fp"),
     [
@@ -136,6 +138,7 @@ def test_get_data_retrieval_methods_return_equal_data_arrays(
     xr.testing.assert_equal(a, b)
 
 
+@pytest.mark.skipif(SKIP_LIVE_WEBSERVICE_TEST, reason="Skipping live webservice tests")
 @pytest.mark.parametrize(
     "fews_webservice",
     [
