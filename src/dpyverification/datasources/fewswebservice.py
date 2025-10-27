@@ -244,22 +244,38 @@ class FewsWebservice(BaseDatasource):
                     write_dir: Path,
                 ) -> None:
                     """Run get_timeseries in loop and write responses to NetCDF."""
-                    response = await loop.run_in_executor(
-                        executor,
-                        lambda: client.get_timeseries(
-                            location_ids=config.location_ids,
-                            parameter_ids=config.parameter_ids,
-                            module_instance_ids=config.module_instance_id,
-                            ensemble_id=config.ensemble_id,
-                            start_forecast_time=min(forecast_reference_times),
-                            end_forecast_time=max(forecast_reference_times),
-                            external_forecast_times=[forecast_reference_time],
-                            export_id_map=config.export_id_map,
-                            timeseries_type=TimeseriesType.EXTERNAL_FORECASTING
-                            if self.config.archive_kind == ArchiveKind.external_storage_archive
-                            else None,
-                        ),
-                    )
+                    # In the open archive, we get one forecast, by querying the exact forecast
+                    #   reference time for both start_forecast_time and end_forecast_time.
+                    if config.archive_kind == ArchiveKind.open_archive:
+                        response = await loop.run_in_executor(
+                            executor,
+                            lambda: client.get_timeseries(
+                                location_ids=config.location_ids,
+                                parameter_ids=config.parameter_ids,
+                                module_instance_ids=config.module_instance_id,
+                                ensemble_id=config.ensemble_id,
+                                start_forecast_time=forecast_reference_time,
+                                end_forecast_time=forecast_reference_time,
+                                export_id_map=config.export_id_map,
+                            ),
+                        )
+
+                    # External storage archive
+                    else:
+                        response = await loop.run_in_executor(
+                            executor,
+                            lambda: client.get_timeseries(
+                                location_ids=config.location_ids,
+                                parameter_ids=config.parameter_ids,
+                                module_instance_ids=config.module_instance_id,
+                                ensemble_id=config.ensemble_id,
+                                start_forecast_time=min(forecast_reference_times),
+                                end_forecast_time=max(forecast_reference_times),
+                                external_forecast_times=[forecast_reference_time],
+                                export_id_map=config.export_id_map,
+                                timeseries_type=TimeseriesType.EXTERNAL_FORECASTING,
+                            ),
+                        )
 
                     response.raise_for_status()
 
@@ -383,5 +399,5 @@ class FewsWebservice(BaseDatasource):
                 return self
 
         # Other simobs kinds are not supported (yet)
-        msg3 = f"Simobskind {self.timeseries_kind} not implemented yet."
+        msg3 = f"Timeseries kind {self.timeseries_kind} not implemented yet."
         raise NotImplementedError(msg3)
