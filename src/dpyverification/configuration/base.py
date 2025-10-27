@@ -24,8 +24,9 @@ To generate a yaml / json file with the json representation of this schema:
 # ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
 from collections.abc import Generator, Sequence
+from functools import reduce
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Self, TypeVar
 
 import xarray as xr
 import yaml
@@ -270,6 +271,9 @@ class BaseScoreConfig(BaseConfig):
         return self
 
 
+TItem = TypeVar("TItem", bound=BaseDatasourceConfig | BaseDatasinkConfig | BaseScoreConfig)
+
+
 class Config(BaseModel):
     """Config object for running the verification pipeline."""
 
@@ -281,9 +285,95 @@ class Config(BaseModel):
     id_mapping: IdMappingConfig | None = None
 
     @staticmethod
-    def write_yaml_schema(output_path: Path) -> None:
-        """Generate a YAML schema from the Pydantic model."""
-        schema = Config.model_json_schema()  # type:ignore[misc]
+    def write_schema(
+        output_path: Path,
+        user_datasources_config: list[type[BaseDatasourceConfig]] | None = None,
+        users_scores_config: list[type[BaseScoreConfig]] | None = None,
+        user_datasinks_config: list[type[BaseDatasinkConfig]] | None = None,
+    ) -> None:
+        """Generate a YAML schema from the Pydantic model.
+
+        By default, will write the schema for all default implementations of datasources, scores and
+        datasinks. If you're using user-implementations of any of these, you can provide these
+        classes to the function. This function will then add your user-implementation to the schema,
+        together with the default implementations. As a result, YAML language support tools will be
+        able to support both default and user-implementations. For example, by using the YAML
+        extension in VSCode, using CTRL+SPACE will automatically suggest fields, based on the
+        schema for both the default and user implementations.
+
+
+        Parameters
+        ----------
+        output_path : Path
+            Where to write the schema.
+        user_datasources_config : list[type[BaseDatasourceConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
+        users_scores_config : list[type[BaseScoreConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
+        user_datasink_config : list[type[BaseDatasinkConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
+
+        """
+        from dpyverification.configuration.default.datasinks import CFCompliantNetCDFConfig
+        from dpyverification.configuration.default.datasources import (
+            FewsNetCDFConfig,
+            FewsWebserviceConfig,
+        )
+        from dpyverification.configuration.default.scores import (
+            ContinuousScoresConfig,
+            CrpsCDFConfig,
+            CrpsForEnsembleConfig,
+            RankHistogramConfig,
+        )
+
+        default_datasources_config = [FewsNetCDFConfig, FewsWebserviceConfig]
+        default_scores_config = [
+            CrpsForEnsembleConfig,
+            RankHistogramConfig,
+            CrpsCDFConfig,
+            ContinuousScoresConfig,
+        ]
+        default_datasinks_config = [CFCompliantNetCDFConfig]
+
+        def create_config_union(
+            models: list[type[TItem]],
+        ) -> type:
+            union_type = reduce(lambda a, b: a | b, models)  # type:ignore[misc, return-value, arg-type]
+            return Annotated[union_type, Field(discriminator="kind")]  # type:ignore[misc, return-value]
+
+        merged_datasource_models = (
+            default_datasources_config + user_datasources_config
+            if user_datasources_config is not None
+            else default_datasources_config
+        )
+
+        merged_scores_models = (
+            default_scores_config + users_scores_config
+            if users_scores_config is not None
+            else default_scores_config
+        )
+        merged_datasinks_models = (
+            default_datasinks_config + user_datasinks_config
+            if user_datasinks_config is not None
+            else default_datasinks_config
+        )
+
+        CombinedDataSourceConfig = create_config_union(  # noqa: N806
+            merged_datasource_models,  # type:ignore[arg-type]
+        )
+        CombinedScoreConfig = create_config_union(  # noqa: N806
+            merged_scores_models,  # type:ignore[arg-type]
+        )
+        CombinedDatasinkConfig = create_config_union(  # noqa: N806
+            merged_datasinks_models,  # type:ignore[arg-type]
+        )
+
+        class ConfigSchema(Config):
+            datasources: CombinedDataSourceConfig  # type:ignore[valid-type]
+            scores: CombinedScoreConfig  # type:ignore[valid-type]
+            datasinks: CombinedDatasinkConfig  # type:ignore[valid-type]
+
+        schema = ConfigSchema.model_json_schema()  # type:ignore[misc]
         output_path.write_text(
             yaml.safe_dump(schema, sort_keys=False),  # type:ignore[misc]
             encoding="utf-8",

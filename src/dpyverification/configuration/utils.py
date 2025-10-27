@@ -61,14 +61,14 @@ class ForecastPeriods(BaseModel):
 
     unit: TimeUnits
     values: Annotated[
-        list[int],
+        list[int] | Range,
         BeforeValidator(lambda v: v.to_list() if isinstance(v, Range) else v),
     ]
 
     @property
     def timedelta64(self) -> list[np.timedelta64]:
         """As numpy timedelta64."""
-        return [np.timedelta64(v, self.unit) for v in self.values]
+        return [np.timedelta64(v, self.unit) for v in self.values]  # type:ignore[arg-type] # BeforeValidator takes care of conversion to list
 
     @property
     def stdlib_timedelta(self) -> list[timedelta]:
@@ -77,7 +77,7 @@ class ForecastPeriods(BaseModel):
         def convert_to_timedelta(value: int) -> timedelta:
             return np.timedelta64(value, self.unit).astype(timedelta)  # type: ignore[no-any-return, misc]
 
-        return [convert_to_timedelta(v) for v in self.values]
+        return [convert_to_timedelta(v) for v in self.values]  # type:ignore[arg-type]
 
     @property
     def max(self) -> timedelta:

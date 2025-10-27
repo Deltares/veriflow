@@ -82,4 +82,4 @@ def test_single_continuous_scores(
     result = ContinuousScores(score_config_continuous).compute(
         data=input_dataset,
     )
-    assert isinstance(result, tuple)
+    assert isinstance(result, list)

@@ -83,7 +83,7 @@ class BaseDatasource(Base):
 
         # Select only relevant time stamps
         self.data_array = self.data_array.sel(
-            time=slice(self.config.verification_period.start, self.config.verification_period.end),  # type:ignore[misc]
+            time=slice(self.config.verification_period.start, self.config.verification_period.end),
         )
 
         # Select only relevant forecast periods for simulations

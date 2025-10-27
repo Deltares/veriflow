@@ -3,9 +3,11 @@
 from collections.abc import Generator
 from copy import deepcopy
 from pathlib import Path
+from typing import Literal
 
 import pytest
 import xarray as xr
+import yaml
 from dpyverification.configuration import Config
 from dpyverification.configuration.base import IdMap, IdMappingConfig
 from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
@@ -15,6 +17,7 @@ from dpyverification.configuration.utils import (
     Range,
     TimeUnits,
 )
+from pydantic import BaseModel
 
 
 @pytest.fixture()
@@ -41,7 +44,7 @@ def test_schema_jsonable(tmp_path: Path) -> None:
     """
     tmpfile = tmp_path / "config.json"
 
-    Config.write_yaml_schema(tmpfile)
+    Config.write_schema(tmpfile)
 
     assert tmpfile.exists()
 
@@ -49,6 +52,42 @@ def test_schema_jsonable(tmp_path: Path) -> None:
     #   https://github.com/Deltares-research/DPyVerification/issues/37
     #   When adding documentation, can add the json schema in the doc. Then, also compare the
     #   version in the documentation with the current version as per this test.
+
+
+def test_schema_dump_with_user_models(tmp_path: Path) -> None:
+    """Check that the schema for our config is jsonable.
+
+    This so we can be sure it will generate correctly for the documentation of our configuration.
+    """
+    tmpfile = tmp_path / "config.json"
+
+    class UserDatasourceConfig(BaseModel):
+        kind: Literal["userdatasource"]
+        some_other_property: list[int]
+
+    class UserScoreconfig(BaseModel):
+        kind: Literal["userscore"]
+        some_other_property: list[int]
+
+    class UserDataSinkConfig(BaseModel):
+        kind: Literal["userdatasink"]
+        some_other_property: list[int]
+
+    Config.write_schema(
+        tmpfile,
+        user_datasources_config=[UserDatasourceConfig],  # type:ignore[list-item]
+        users_scores_config=[UserScoreconfig],  # type:ignore[list-item]
+        user_datasinks_config=[UserDataSinkConfig],  # type:ignore[list-item]
+    )
+    assert tmpfile.exists()
+
+    with tmpfile.open("r", encoding="utf-8") as f:
+        schema = yaml.safe_load(f)  # type:ignore[misc]
+
+        # Check that the user-provided configuration is part of the schema
+        assert "userdatasource" in schema["properties"]["datasources"]["discriminator"]["mapping"]  # type:ignore[misc]
+        assert "userscore" in schema["properties"]["scores"]["discriminator"]["mapping"]  # type:ignore[misc]
+        assert "userdatasink" in schema["properties"]["datasinks"]["discriminator"]["mapping"]  # type:ignore[misc]
 
 
 def test_forecast_period_config() -> None:
