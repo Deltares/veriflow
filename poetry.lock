@@ -1134,25 +1134,25 @@ test = ["Cython", "array-api-strict (>=2.0)", "asv", "gmpy2", "hypothesis (>=6.3
 
 [[package]]
 name = "scores"
-version = "2.0.0"
+version = "2.3.0"
 description = "Scores is a Python package containing mathematical functions for the verification, evaluation and optimisation of forecasts, predictions or models."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "scores-2.0.0-py3-none-any.whl", hash = "sha256:ec011ac3ef207aecc1c5f2ea233f3074e3fb2e6ecf69613c4ddb58da45767a16"},
-    {file = "scores-2.0.0.tar.gz", hash = "sha256:18a52eba9eb6de968de575a770b0ae62208423a983fbb0d031cba74b75172e69"},
+    {file = "scores-2.3.0-py3-none-any.whl", hash = "sha256:5411b3de2532626a311b33b492f8917bf3fa8c6f7cb663d0a6a0d5a0dd5a5366"},
+    {file = "scores-2.3.0.tar.gz", hash = "sha256:28890897c16dad02e105a483c79a48454e6f844ed06ecbbb4cd45e3d20b3de84"},
 ]
 
 [package.dependencies]
 bottleneck = ">=1.3,<2.0"
 pandas = ">=2.0,<3.0"
 scipy = ">=1.13,<2.0"
-xarray = ">=2024.1,<2025.0"
+xarray = ">=2024.1"
 
 [package.extras]
-all = ["bandit (==1.7.8)", "black (==24.1.0)", "dask", "gcsfs", "h5netcdf", "jupyterlab", "matplotlib", "mypy (==1.13.0)", "nbmake", "pandas-stubs", "plotly", "pre-commit", "pylint (==3.3.1)", "pytest", "pytest-cov", "pytest-watch", "rasterio", "rioxarray", "zarr"]
-dev = ["bandit (==1.7.8)", "black (==24.1.0)", "dask", "h5netcdf", "mypy (==1.13.0)", "nbmake", "pandas-stubs", "pre-commit", "pylint (==3.3.1)", "pytest", "pytest-cov", "pytest-watch"]
+all = ["bandit (==1.8.0)", "black (==24.10.0)", "dask", "gcsfs", "h5netcdf", "jupyterlab", "matplotlib", "mypy (==1.13.0)", "nbmake", "pandas-stubs", "plotly", "pre-commit", "pylint (==3.3.1)", "pytest", "pytest-cov", "pytest-watch", "rasterio", "rioxarray", "zarr"]
+dev = ["bandit (==1.8.0)", "black (==24.10.0)", "dask", "h5netcdf", "mypy (==1.13.0)", "nbmake", "pandas-stubs", "pre-commit", "pylint (==3.3.1)", "pytest", "pytest-cov", "pytest-watch"]
 maintainer = ["build", "hatch", "ipywidgets", "myst-parser", "nbsphinx", "pandoc", "pip-tools", "sphinx", "sphinx-book-theme", "sphinx-gallery", "twine"]
 tutorial = ["dask", "gcsfs", "h5netcdf", "jupyterlab", "matplotlib", "plotly", "rasterio", "rioxarray", "zarr"]
 
