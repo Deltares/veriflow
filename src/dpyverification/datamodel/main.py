@@ -1,19 +1,14 @@
 """Module with the dpyverification internal DataModel."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable
 from enum import Enum
 from typing import Literal
 
 import xarray as xr
-from pydantic import BaseModel, ValidationError
 
-from dpyverification.configuration import GeneralInfoConfig
-from dpyverification.configuration.utils import TimePeriod, VerificationPair
-from dpyverification.constants import StandardCoord, StandardDim
-from dpyverification.datasources.inputschemas import (
-    Observation,
-    Simulation,
-)
+from dpyverification.configuration.utils import VerificationPair
+from dpyverification.constants import StandardDim, TimeseriesKind
+from dpyverification.datasources.inputschemas import input_schemas
 
 
 class DatasetKind(Enum):
@@ -23,123 +18,13 @@ class DatasetKind(Enum):
     OBSERVATION = "OBSERVATION"
 
 
-def transform_data_array(
-    data_array: xr.DataArray,
-    kind: DatasetKind,
-    general_config: GeneralInfoConfig,
-) -> xr.DataArray:
-    """Transform a datasource to be compatible with the internal DataModel."""
-
-    def clip_time_to_verification_period(
-        data_array: xr.DataArray,
-        verification_period: TimePeriod,
-    ) -> xr.DataArray:
-        """Clip the dataset on time dimension to verification period."""
-        return data_array.sel(
-            time=slice(verification_period.start, verification_period.end),
-        )
-
-    # For all datasets, set the station_id as index on station dim
-    #   to ensure automatic alignment based on this coord later on.
-    data_array = data_array.assign_coords(
-        {
-            StandardDim.station: data_array[StandardCoord.station.name].to_numpy(),  # type:ignore[misc]
-        },
-    )
-
-    # Clip any input to be within the verification period
-    data_array = clip_time_to_verification_period(
-        data_array=data_array,
-        verification_period=general_config.verification_period,
-    )
-
-    # Select only relevant forecast periods for simulations
-    if kind == DatasetKind.SIMULATION:
-        data_array = data_array.sel(
-            forecast_period=general_config.forecast_periods.timedelta64,
-        )
-
-    return data_array
-
-
-def validate_data_array(data_array: xr.DataArray) -> tuple[xr.DataArray, DatasetKind]:
+def validate_data_array(data_array: xr.DataArray) -> None:
     """Validate a datasource by validating the data to a Pydantic schema."""
-    schemas: dict[type[BaseModel], DatasetKind] = {
-        Observation: DatasetKind.OBSERVATION,
-        Simulation: DatasetKind.SIMULATION,
-    }
-
-    def attempt_validation(
-        schema: type[BaseModel],
-        data_array: xr.DataArray,
-    ) -> bool:
-        """Validate and return True when successful, else False."""
-        try:
-            schema.model_validate(data_array.to_dict(data=False))  # type:ignore[misc]
-            return True  # noqa: TRY300
-        except ValidationError:
-            return False
-
-    for schema, kind in schemas.items():
-        if attempt_validation(schema=schema, data_array=data_array):
-            return data_array, kind
-    msg = f"Invalid dataset {data_array}."
-    raise ValidationError(msg)
+    schema = input_schemas[data_array.attrs["timeseries_kind"]]  # type:ignore[misc]
+    schema.model_validate(data_array.to_dict(data=False))  # type:ignore[misc]
 
 
-class OutputDataset:
-    """The internal output dataset.
-
-    Contains input data, results from verification scores and metadata.
-    """
-
-    def __init__(
-        self,
-        obs: xr.DataArray,
-        sim: xr.DataArray,
-    ) -> None:
-        self.obs: xr.DataArray = obs
-        self.sim: xr.DataArray = sim
-        self.scores: dict[str, xr.DataArray] = {}
-
-    def add_score(self, kind: str, score: xr.DataArray) -> None:
-        """Add a score to the scores list."""
-        if kind in self.scores:
-            msg = f"Cannot add score to OutputDataset. Score ({score}) is already present."
-            raise ValueError(msg)
-        self.scores[kind] = score
-
-    def _get_score(self, kind: str) -> xr.DataArray:
-        try:
-            return self.scores[kind]
-        except KeyError as e:
-            msg = (
-                f"Score kind ({kind}) not added to OutputDataset.",
-                f"Available scores: ({self.scores.keys()})",
-            )
-            raise KeyError(msg) from e
-
-    def get_output_dataset(
-        self,
-        scores: list[str] | Literal["all"] = "all",
-        *,
-        include_simobs: bool = True,
-    ) -> xr.Dataset:
-        """Get the output dataset."""
-        scores_selection = (
-            list(self.scores.values())
-            if scores == "all"
-            else [self._get_score(kind) for kind in scores]
-        )
-
-        if include_simobs:
-            scores_selection.append(self.obs)
-            scores_selection.append(self.sim)
-
-        return xr.merge(scores_selection, combine_attrs="drop")
-
-
-class SimObsDataset:
+class InputDataset:
     """
     Class containing simulations and observations.
 
@@ -149,8 +34,7 @@ class SimObsDataset:
 
     def __init__(
         self,
-        data: Sequence[xr.DataArray],
-        general_config: GeneralInfoConfig,
+        data: Iterable[xr.DataArray],
     ) -> None:
         """Initialize the SimObsDataset.
 
@@ -161,32 +45,25 @@ class SimObsDataset:
             or observations. The structure (dims, coords) of the array
             must be valid against pre-defined Pydantic schemas in
             :module:`dpyverification.datasources.inputschemas`
-        general_config : GeneralInfoConfig
-            General config for the pipeline. Used to clip data on the defined
-            verification period.
         """
         # Validate input data
-        validated_data_arrays = (validate_data_array(dataset) for dataset in data)
-
-        # Transform datasets based on their type
-        transformed_datasets = (
-            transform_data_array(data_array, simulation_kind, general_config)
-            for data_array, simulation_kind in validated_data_arrays
-        )
+        for data_array in data:
+            validate_data_array(data_array)
 
         # Merge input data with outer join as a first validation
         #   in matching
         dataset = xr.merge(
-            transformed_datasets,
+            data,
             compat="override",
         )
 
-        # Re-order shared dims in order
-        dataset = dataset.transpose("source", "variable", "time", "station", ...)
+        # The xarray.merge leaves the attributes of an arbitrary xr.DataArray as global attrs. We
+        # clear the attribute dict to keep the internal global attrs clean.
+        dataset.attrs.clear()  # type:ignore[misc]
 
-        # Now assign obs and sim separately, to minimize memory on source dim
-        self.obs = dataset["observations"]
-        self.sim = dataset["simulations"]
+        # Because we merged multiple xr.DataArrays, from different sources into one xr.Dataset,
+        #   transpose the xr.Dataset so that all dimensions of the data variables are aligned.
+        self.dataset = dataset.transpose("variable", "time", "station", ...)
 
     @staticmethod
     def inner_join_on_time(
@@ -229,12 +106,65 @@ class SimObsDataset:
         verification_pair: VerificationPair,
     ) -> tuple[xr.DataArray, xr.DataArray]:
         """Return observations and simulations for a given verification pair."""
-        obs = self.obs.sel(
-            source=verification_pair.source.obs,
-        )
-        sim = self.sim.sel(
-            source=verification_pair.source.sim,
-        )
+        obs = self.dataset[verification_pair.obs]
+        sim = self.dataset[verification_pair.sim]
 
         # Only return time indexes for which both obs and sim are available not nan
         return self.inner_join_on_time(obs, sim)
+
+    def get_simulated_timeseries_kind_from_pair(
+        self,
+        verification_pair: VerificationPair,
+    ) -> TimeseriesKind:
+        """Return the timeseries kinds for a verification pair."""
+        return TimeseriesKind(
+            self.dataset[verification_pair.sim].attrs["timeseries_kind"],  # type:ignore[misc]
+        )
+
+
+class OutputDataset:
+    """The internal output dataset.
+
+    Contains input data, results from verification scores and metadata.
+    """
+
+    def __init__(
+        self,
+        input_dataset: InputDataset,
+    ) -> None:
+        self.input_dataset = input_dataset
+        self.scores: xr.Dataset = xr.Dataset()
+
+    def add_score(self, score: xr.DataArray) -> None:
+        """Add a score to the scores list."""
+        if score.name in self.scores:
+            msg = f"Cannot add score to OutputDataset. Score ({score}) is already present."
+            raise ValueError(msg)
+        self.scores[score.name] = score
+
+    def _get_score(self, kind: str) -> xr.DataArray:
+        try:
+            return self.scores[kind]
+        except KeyError as e:
+            msg = (
+                f"Score kind ({kind}) not added to OutputDataset.",
+                f"Available scores: ({self.scores.keys()})",
+            )
+            raise KeyError(msg) from e
+
+    def get_output_dataset(
+        self,
+        scores: list[str] | Literal["all"] = "all",
+        *,
+        include_input_dataset: bool = True,
+    ) -> xr.Dataset:
+        """Get the output dataset."""
+        scores_selection: xr.Dataset = (
+            self.scores[scores] if isinstance(scores, list) else self.scores
+        )
+
+        return (
+            xr.merge([scores_selection, self.input_dataset.dataset], combine_attrs="drop")  # type:ignore[misc]
+            if include_input_dataset
+            else scores_selection
+        )

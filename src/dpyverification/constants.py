@@ -28,12 +28,21 @@ class DataSinkKind(StrEnum):
 
 
 @unique
-class SimObsKind(StrEnum):
-    """Enumeration of the supported types of input data."""
+class TimeseriesKind(StrEnum):
+    """Input timeseries data kind."""
 
-    sim = "sim"
-    obs = "obs"
-    combined = "combined"
+    observed_historical = "observed_historical"
+    simulated_historical = "simulated_historical"
+    simulated_forecast_single = "simulated_forecast_single"
+    simulated_forecast_ensemble = "simulated_forecast_ensemble"
+    simulated_forecast_probabilistic = "simulated_forecast_probabilistic"
+
+
+FORECAST_TIMESERIES_KINDS = (
+    TimeseriesKind.simulated_forecast_single,
+    TimeseriesKind.simulated_forecast_ensemble,
+    TimeseriesKind.simulated_forecast_probabilistic,
+)
 
 
 @unique
@@ -42,6 +51,21 @@ class ScoreKind(StrEnum):
 
     rank_histogram = "rank_histogram"
     crps_for_ensemble = "crps_for_ensemble"
+    crps_cdf = "crps_cdf"
+    continuous_scores = "continuous_scores"
+
+
+@unique
+class SupportedContinuousScore(StrEnum):
+    """Supported continuous scores."""
+
+    additive_bias = "additive_bias"
+    mean_error = "mean_error"
+    mae = "mae"
+    mse = "mse"
+    rmse = "rmse"
+    nse = "nse"
+    kge = "kge"
 
 
 @unique
@@ -71,6 +95,7 @@ class StandardDim(StrEnum):
     forecast_period = "forecast_period"
     source = "source"
     variable = "variable"
+    threshold = "threshold"
 
 
 class StandardCoord:

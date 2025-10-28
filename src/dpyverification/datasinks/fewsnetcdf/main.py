@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Hashable
 
 
-class FewsNetcdfFileSink(BaseDatasink):
+class FewsNetCDFFileSink(BaseDatasink):
     """For writing data to a fews netcdf file."""
 
     kind = "fewsnetcdf"

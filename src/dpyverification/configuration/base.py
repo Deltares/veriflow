@@ -23,17 +23,19 @@ To generate a yaml / json file with the json representation of this schema:
 # ruff: noqa: D101 Do not require class docstrings for the classes in this file
 # ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
+from functools import reduce
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Self, TypeVar
 
 import xarray as xr
-from pydantic import BaseModel, ConfigDict, Field, RootModel
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
-from dpyverification.constants import StandardDim
+from dpyverification.constants import StandardDim, TimeseriesKind
 
-from .utils import ForecastPeriods, TimePeriod, VerificationPair
+from .utils import ForecastPeriods, Source, TimePeriod, VerificationPair
 
 
 class GeneralInfoConfig(BaseModel):
@@ -69,13 +71,28 @@ class GeneralInfoConfig(BaseModel):
         ),
     ] = Path("./.verification_cache")
 
+    def get_verification_pair(self, pair_id: str) -> VerificationPair:
+        """Get one verification_pair by its id."""
+        for pair in self.verification_pairs:
+            if pair.id == pair_id:
+                return pair
+        # At runtime, the following statement should be unreachable, because
+        #   we already validated all pair_ids are present during config initialization.
+        msg = f"Pair with id '{pair_id}' not found in general verification_pairs configuration."
+        raise ValueError(msg)
+
 
 class IdMap(RootModel[dict[str, dict[str, str]]]):
     """Mapping from internal IDs to external IDs per data source."""
 
-    def get_external_to_internal_mapping(self, data_source: str) -> dict[str, str]:
+    def get_external_to_internal_mapping(self, source: str) -> dict[str, str]:
         """Return external → internal mapping for this data source."""
-        return {v[data_source]: k for k, v in self.root.items()}
+        # Check that the source is defined in the IdMap
+        if not any(source in inner for inner in self.root.values()):
+            msg = f"No IdMapping found for source: {source}"
+            raise ValueError(msg)
+
+        return {v[source]: k for k, v in self.root.items()}
 
 
 class IdMappingConfig(BaseModel):
@@ -99,42 +116,35 @@ class IdMappingConfig(BaseModel):
     ] = None
 
     def rename_data_array(self, data_array: xr.DataArray) -> xr.DataArray:
-        subsets = []
+        source = str(data_array.name)
 
-        # Iterate over sources. Each source may have its own unique mapping.
-        for source in data_array[StandardDim.source].to_numpy():  # type:ignore[misc]
-            subset = data_array.sel({StandardDim.source: source})  # type:ignore[misc]
-
-            # Re-assign variable coordinates
-            if self.variable is not None:
-                subset = subset.assign_coords(
-                    {  # type:ignore[misc]
-                        StandardDim.variable: (  # type:ignore[misc]
-                            StandardDim.variable,
-                            subset[StandardDim.variable]  # type:ignore[misc]
-                            .to_series()
-                            .replace(self.variable.get_external_to_internal_mapping(source))  # type:ignore[misc]
-                            .to_numpy(),
-                        ),
-                    },
-                )
-            # Re-assign station coordinates
-            if self.station is not None:
-                subset = subset.assign_coords(
-                    {  # type:ignore[misc]
-                        StandardDim.station: (  # type:ignore[misc]
-                            StandardDim.station,
-                            subset[StandardDim.station]  # type:ignore[misc]
-                            .to_series()
-                            .replace(self.station.get_external_to_internal_mapping(source))  # type:ignore[misc]
-                            .to_numpy(),
-                        ),
-                    },
-                )
-            subsets.append(subset)
-
-        # Return the fully renamed dataset
-        return xr.concat(subsets, dim=StandardDim.source)
+        # Re-assign variable coordinates, if mapping is provided for source
+        if self.variable is not None:
+            data_array = data_array.assign_coords(
+                {  # type:ignore[misc]
+                    StandardDim.variable: (  # type:ignore[misc]
+                        StandardDim.variable,
+                        data_array[StandardDim.variable]  # type:ignore[misc]
+                        .to_series()
+                        .replace(self.variable.get_external_to_internal_mapping(source))
+                        .to_numpy(),
+                    ),
+                },
+            )
+        # Re-assign station coordinates, if mapping is provided for source
+        if self.station is not None:
+            data_array = data_array.assign_coords(
+                {  # type:ignore[misc]
+                    StandardDim.station: (  # type:ignore[misc]
+                        StandardDim.station,
+                        data_array[StandardDim.station]  # type:ignore[misc]
+                        .to_series()
+                        .replace(self.station.get_external_to_internal_mapping(source))
+                        .to_numpy(),
+                    ),
+                },
+            )
+        return data_array
 
 
 class BaseConfig(BaseModel):
@@ -166,16 +176,14 @@ class BaseDatasourceConfig(BaseConfig):
     this base class.
     """
 
-    simobskind: str
+    source: Source
+    timeseries_kind: TimeseriesKind
     general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
     # config is propagated from the general config section in the main config. This will prevent
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
-    id_mapping: SkipJsonSchema[IdMappingConfig]  # Do not serialize to json schema, since general
-    # config is propagated from the general config section in the main config. This will prevent
-    # users that use the json-schema for making config having to explicitly set a duplicate general
-    # configuration section for each datasource.
+    id_mapping: SkipJsonSchema[IdMappingConfig] | None = None
 
     @property
     def forecast_periods(self) -> ForecastPeriods:
@@ -219,14 +227,51 @@ class BaseScoreConfig(BaseConfig):
     # users that use the json-schema for making config having to explicitly set a duplicate general
     # configuration section for each datasource.
 
+    filter_verification_pairs: Annotated[
+        list[str] | None,
+        Field(
+            description="Optional field to filter verification_pairs from the general "
+            "configuration, by providing a list of verification pair ids from the general config. "
+            "Only the pair ids will be used in the computation of this score.",
+        ),
+    ] = None
+
     @property
     def verification_pairs(self) -> list[VerificationPair]:
-        """The configured variable pairs from general config."""
-        return self.general.verification_pairs
+        """The configured variable pairs.
+
+        If the verification_pairs element is configured for the score, filter only these ids
+        from the verification_pairs defined in general config.
+        """
+        if self.filter_verification_pairs is None:
+            return self.general.verification_pairs
+        return [
+            self.general.get_verification_pair(pair_id)
+            for pair_id in self.filter_verification_pairs
+        ]
 
     @property
     def forecast_periods(self) -> ForecastPeriods:
         return self.general.forecast_periods
+
+    @model_validator(mode="after")
+    def filter_verification_pairs_valid(self) -> Self:
+        """Check provided filter for verification pairs contains valid ids."""
+        valid_pair_ids: Generator[str] = (pair.id for pair in self.general.verification_pairs)
+        if self.filter_verification_pairs is None:
+            return self
+        for pair_id in self.filter_verification_pairs:
+            if pair_id not in valid_pair_ids:
+                msg = (
+                    f"Pair id '{pair_id}' in filter_verification_pairs is not present in "
+                    "the general configuration for verification_pairs. "
+                    "Please make sure ids match exactly."
+                )
+                raise ValueError(msg)
+        return self
+
+
+TItem = TypeVar("TItem", bound=BaseDatasourceConfig | BaseDatasinkConfig | BaseScoreConfig)
 
 
 class Config(BaseModel):
@@ -238,3 +283,98 @@ class Config(BaseModel):
     scores: Annotated[Sequence[BaseScoreConfig], Field(min_length=1)]
     datasinks: Annotated[Sequence[BaseDatasinkConfig] | None, Field(min_length=1)] = None
     id_mapping: IdMappingConfig | None = None
+
+    @staticmethod
+    def write_schema(
+        output_path: Path,
+        user_datasources_config: list[type[BaseDatasourceConfig]] | None = None,
+        users_scores_config: list[type[BaseScoreConfig]] | None = None,
+        user_datasinks_config: list[type[BaseDatasinkConfig]] | None = None,
+    ) -> None:
+        """Generate a YAML schema from the Pydantic model.
+
+        By default, will write the schema for all default implementations of datasources, scores and
+        datasinks. If you're using user-implementations of any of these, you can provide these
+        classes to the function. This function will then add your user-implementation to the schema,
+        together with the default implementations. As a result, YAML language support tools will be
+        able to support both default and user-implementations. For example, by using the YAML
+        extension in VSCode, using CTRL+SPACE will automatically suggest fields, based on the
+        schema for both the default and user implementations.
+
+
+        Parameters
+        ----------
+        output_path : Path
+            Where to write the schema.
+        user_datasources_config : list[type[BaseDatasourceConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
+        users_scores_config : list[type[BaseScoreConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
+        user_datasink_config : list[type[BaseDatasinkConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
+
+        """
+        from dpyverification.configuration.default.datasinks import CFCompliantNetCDFConfig
+        from dpyverification.configuration.default.datasources import (
+            FewsNetCDFConfig,
+            FewsWebserviceConfig,
+        )
+        from dpyverification.configuration.default.scores import (
+            ContinuousScoresConfig,
+            CrpsCDFConfig,
+            CrpsForEnsembleConfig,
+            RankHistogramConfig,
+        )
+
+        default_datasources_config = [FewsNetCDFConfig, FewsWebserviceConfig]
+        default_scores_config = [
+            CrpsForEnsembleConfig,
+            RankHistogramConfig,
+            CrpsCDFConfig,
+            ContinuousScoresConfig,
+        ]
+        default_datasinks_config = [CFCompliantNetCDFConfig]
+
+        def create_config_union(
+            models: list[type[TItem]],
+        ) -> type:
+            union_type = reduce(lambda a, b: a | b, models)  # type:ignore[misc, return-value, arg-type]
+            return Annotated[union_type, Field(discriminator="kind")]  # type:ignore[misc, return-value]
+
+        merged_datasource_models = (
+            default_datasources_config + user_datasources_config
+            if user_datasources_config is not None
+            else default_datasources_config
+        )
+
+        merged_scores_models = (
+            default_scores_config + users_scores_config
+            if users_scores_config is not None
+            else default_scores_config
+        )
+        merged_datasinks_models = (
+            default_datasinks_config + user_datasinks_config
+            if user_datasinks_config is not None
+            else default_datasinks_config
+        )
+
+        CombinedDataSourceConfig = create_config_union(  # noqa: N806
+            merged_datasource_models,  # type:ignore[arg-type]
+        )
+        CombinedScoreConfig = create_config_union(  # noqa: N806
+            merged_scores_models,  # type:ignore[arg-type]
+        )
+        CombinedDatasinkConfig = create_config_union(  # noqa: N806
+            merged_datasinks_models,  # type:ignore[arg-type]
+        )
+
+        class ConfigSchema(Config):
+            datasources: CombinedDataSourceConfig  # type:ignore[valid-type]
+            scores: CombinedScoreConfig  # type:ignore[valid-type]
+            datasinks: CombinedDatasinkConfig  # type:ignore[valid-type]
+
+        schema = ConfigSchema.model_json_schema()  # type:ignore[misc]
+        output_path.write_text(
+            yaml.safe_dump(schema, sort_keys=False),  # type:ignore[misc]
+            encoding="utf-8",
+        )

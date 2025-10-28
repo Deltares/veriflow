@@ -1,19 +1,23 @@
 """Test the main module of the dpyverification.configuration package."""
 
 from collections.abc import Generator
+from copy import deepcopy
 from pathlib import Path
+from typing import Literal
 
 import pytest
 import xarray as xr
 import yaml
 from dpyverification.configuration import Config
 from dpyverification.configuration.base import IdMap, IdMappingConfig
+from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
 from dpyverification.configuration.utils import (
     FewsWebserviceAuthConfig,
     ForecastPeriods,
     Range,
     TimeUnits,
 )
+from pydantic import BaseModel
 
 
 @pytest.fixture()
@@ -39,10 +43,8 @@ def test_schema_jsonable(tmp_path: Path) -> None:
     This so we can be sure it will generate correctly for the documentation of our configuration.
     """
     tmpfile = tmp_path / "config.json"
-    assert not tmpfile.exists()
 
-    with tmpfile.open(mode="w") as myfile:
-        yaml.dump(Config.model_json_schema(), myfile)  # type: ignore[misc] # model_json_schema output has Any
+    Config.write_schema(tmpfile)
 
     assert tmpfile.exists()
 
@@ -52,10 +54,49 @@ def test_schema_jsonable(tmp_path: Path) -> None:
     #   version in the documentation with the current version as per this test.
 
 
+def test_schema_dump_with_user_models(tmp_path: Path) -> None:
+    """Check that the schema for our config is jsonable.
+
+    This so we can be sure it will generate correctly for the documentation of our configuration.
+    """
+    tmpfile = tmp_path / "config.json"
+
+    class UserDatasourceConfig(BaseModel):
+        kind: Literal["userdatasource"]
+        some_other_property: list[int]
+
+    class UserScoreconfig(BaseModel):
+        kind: Literal["userscore"]
+        some_other_property: list[int]
+
+    class UserDataSinkConfig(BaseModel):
+        kind: Literal["userdatasink"]
+        some_other_property: list[int]
+
+    Config.write_schema(
+        tmpfile,
+        user_datasources_config=[UserDatasourceConfig],  # type:ignore[list-item]
+        users_scores_config=[UserScoreconfig],  # type:ignore[list-item]
+        user_datasinks_config=[UserDataSinkConfig],  # type:ignore[list-item]
+    )
+    assert tmpfile.exists()
+
+    with tmpfile.open("r", encoding="utf-8") as f:
+        schema = yaml.safe_load(f)  # type:ignore[misc]
+
+        # Check that the user-provided configuration is part of the schema
+        assert "userdatasource" in schema["properties"]["datasources"]["discriminator"]["mapping"]  # type:ignore[misc]
+        assert "userscore" in schema["properties"]["scores"]["discriminator"]["mapping"]  # type:ignore[misc]
+        assert "userdatasink" in schema["properties"]["datasinks"]["discriminator"]["mapping"]  # type:ignore[misc]
+
+
 def test_forecast_period_config() -> None:
     """Check forecast periods config identical when using list or range."""
     list_instance = ForecastPeriods(unit=TimeUnits.HOUR, values=[1, 2, 3])
-    range_instance = ForecastPeriods(unit=TimeUnits.HOUR, values=Range(start=1, end=3, step=1))
+    range_instance = ForecastPeriods(
+        unit=TimeUnits.HOUR,
+        values=Range(start=1, end=3, step=1).to_list(),
+    )
     assert list_instance == range_instance
     assert list_instance.timedelta64 == range_instance.timedelta64
     assert list_instance.stdlib_timedelta == range_instance.stdlib_timedelta
@@ -69,8 +110,31 @@ def test_single_id_map_get_mapping() -> None:
     assert config.get_external_to_internal_mapping("sourceA") == {"extId1": "intId1"}
 
 
-def test_id_mapping_rename_dataset(xarray_data_array_observation: xr.DataArray) -> None:
+def test_id_mapping_rename_dataset(xarray_observed_historical: xr.DataArray) -> None:
     """Test partial renaming of stations on dummy dataset."""
-    config = IdMappingConfig(station=IdMap({"newstation1": {"obs_source_0": "station0"}}))
-    new_da = config.rename_data_array(xarray_data_array_observation)
+    config = IdMappingConfig(
+        station=IdMap({"newstation1": {"observation_source": "station0"}}),
+    )
+    new_da = config.rename_data_array(xarray_observed_historical)
     assert next(iter(new_da.station.to_numpy())) == "newstation1"  # type:ignore[misc]
+
+
+def test_id_mapping_rename_dataset_fails_on_invalid_source(
+    xarray_observed_historical: xr.DataArray,
+) -> None:
+    """Test partial renaming of stations on dummy dataset."""
+    config = IdMappingConfig(
+        station=IdMap({"newstation1": {"invalid_observation_source": "station0"}}),
+    )
+    with pytest.raises(ValueError, match="No IdMapping found for source"):
+        config.rename_data_array(xarray_observed_historical)
+
+
+def test_score_config_with_invalid_pair_reference(
+    score_config_crps: CrpsForEnsembleConfig,
+) -> None:
+    """Test CRPS."""
+    modified_config = deepcopy(score_config_crps.model_dump())  # type:ignore[misc]
+    modified_config["filter_verification_pairs"] = ["invalid_id"]  # type:ignore[misc]
+    with pytest.raises(ValueError, match="Pair id"):
+        _ = CrpsForEnsembleConfig(**modified_config)  # type:ignore[misc]

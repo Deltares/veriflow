@@ -6,18 +6,29 @@ from pathlib import Path
 from typing import Annotated
 
 import numpy as np
-from pydantic import AnyUrl, BaseModel, Field, SecretStr, field_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    BeforeValidator,
+    Field,
+    SecretStr,
+    StringConstraints,
+    field_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dpyverification.constants import TimeUnits
 
 Source = Annotated[
     str,
+    StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9_]*$", min_length=1),
     Field(
         min_length=1,
-        description="Source name. Indicates the origin of the data. "
-        "For simulations this may refer to the model that produced the data "
-        "or simply 'observed' for observed data.",
+        description="The source indicates the origin of the data. For simulated data this may, for "
+        "example, refer to the model that produced the data. For observation this may, for "
+        "example, be simply 'observed' or 'my_validated_observations_database'. The source should "
+        "start with a letter, consists of only letters, digits and underscores. Spaces or "
+        "punctuation are disallowed.",
     ),
 ]
 
@@ -25,7 +36,10 @@ Variable = Annotated[
     str,
     Field(
         min_length=1,
-        description="Variable name. References a physical variable to be verified.",
+        description="The variable name references a physical variable to be verified. Must match "
+        "the variable definition in the datasource. IdMapping can be set in the general config, to "
+        "map external variables to an internal definition. This is needed when you want to verify "
+        "data from different sources, where the variable definition is not equal.",
     ),
 ]
 
@@ -46,20 +60,15 @@ class ForecastPeriods(BaseModel):
     """A forecast periods config element."""
 
     unit: TimeUnits
-    values: list[int] | Range
-
-    @field_validator("values", mode="after")
-    @classmethod
-    def expand_range(cls, v: list[int] | Range) -> list[int]:
-        """Make a list from provided range."""
-        if isinstance(v, Range):
-            return v.to_list()
-        return v  # already a list[int]
+    values: Annotated[
+        list[int] | Range,
+        BeforeValidator(lambda v: v.to_list() if isinstance(v, Range) else v),
+    ]
 
     @property
     def timedelta64(self) -> list[np.timedelta64]:
         """As numpy timedelta64."""
-        return [np.timedelta64(v, self.unit) for v in self.values]  # type:ignore[arg-type]
+        return [np.timedelta64(v, self.unit) for v in self.values]  # type:ignore[arg-type] # BeforeValidator takes care of conversion to list
 
     @property
     def stdlib_timedelta(self) -> list[timedelta]:
@@ -122,22 +131,22 @@ class TimePeriod(BaseModel):
         return np.datetime64(self.end)
 
 
-class Pair(BaseModel):
-    """A pair with keys obs and sim."""
-
-    obs: str
-    sim: str
-
-
 class VerificationPair(BaseModel):
-    """A selection of data."""
+    """
+    Configuration for a verification pair.
+
+    Should consist of an id and reference to a source for
+    observations and simulations. The id can be any arbitrary string, and the obs and sim fields
+    should contain an exact reference to a configured source in the datasource configuration.
+    """
 
     id: str
-    source: Pair
+    obs: Source
+    sim: Source
 
 
 class LocalFile(BaseModel):
-    """A local file config element."""
+    """Configuration pointing to a local file."""
 
     directory: str
     filename: str

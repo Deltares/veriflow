@@ -9,13 +9,13 @@ general:
 datasources: [
   {
     kind: "fewsnetcdf",
-    simobskind: "obs",
+    timeseries_kind: "observed_historical",
     directory: "iets",
     filename: "anders",
   },
   {
     kind: "fewsnetcdf",
-    simobskind: "sim",
+    timeseries_kind: "simulated_forecast_ensemble",
     directory: "twee",
     filename: "drie",
   },
