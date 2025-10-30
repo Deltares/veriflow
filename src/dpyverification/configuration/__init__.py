@@ -15,8 +15,8 @@ from dpyverification.configuration.default.datasources import (
     FewsNetCDFConfig,
     FewsWebserviceConfig,
     InternalDatasetConfig,
-    SimulationRetrievalMethod,
     ForecastRetrievalMethod,
+    InternalDatasetConfig,
 )
 from dpyverification.configuration.default.scores import (
     CrpsCDFConfig,
