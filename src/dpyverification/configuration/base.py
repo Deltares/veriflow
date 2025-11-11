@@ -23,13 +23,13 @@ To generate a yaml / json file with the json representation of this schema:
 # ruff: noqa: D101 Do not require class docstrings for the classes in this file
 # ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
+import json
 from collections.abc import Generator, Sequence
 from functools import reduce
 from pathlib import Path
 from typing import Annotated, Self, TypeVar
 
 import xarray as xr
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
@@ -339,7 +339,7 @@ class Config(BaseModel):
             models: list[type[TItem]],
         ) -> type:
             union_type = reduce(lambda a, b: a | b, models)  # type:ignore[misc, return-value, arg-type]
-            return Annotated[union_type, Field(discriminator="kind")]  # type:ignore[misc, return-value]
+            return list[Annotated[union_type, Field(discriminator="kind")]]  # type:ignore[misc, return-value]
 
         merged_datasource_models = (
             default_datasources_config + user_datasources_config
@@ -374,7 +374,7 @@ class Config(BaseModel):
             datasinks: CombinedDatasinkConfig  # type:ignore[valid-type]
 
         schema = ConfigSchema.model_json_schema()  # type:ignore[misc]
-        output_path.write_text(
-            yaml.safe_dump(schema, sort_keys=False),  # type:ignore[misc]
-            encoding="utf-8",
-        )
+
+        # Write the schema to file
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(schema, f, indent=2, ensure_ascii=False)
