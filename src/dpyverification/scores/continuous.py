@@ -32,7 +32,7 @@ score_funcs: dict[SupportedContinuousScore, Callable] = {
 class ContinuousScores(BaseScore):
     """Implementation for CRPS for probabilistic forecasts, expressed as cdf."""
 
-    kind = "continuous_score"
+    kind = "continuous_scores"
     config_class = ContinuousScoresConfig
     supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
         TimeseriesKind.simulated_forecast_single,
