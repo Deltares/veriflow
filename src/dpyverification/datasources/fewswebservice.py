@@ -29,6 +29,8 @@ from dpyverification.datasources.fewsnetcdf import (
 
 T = TypeVar("T")
 
+FORECAST_COUNT_WHEN_SEARCHING_FOR_FORECAST_REFERENCE_TIMES = 1000000
+
 
 def run_async_in_compatible_environment(coro: Awaitable[T]) -> T:
     """Run an async coroutine in a way that works in both normal Python and Jupyter environments.
@@ -216,6 +218,7 @@ class FewsWebservice(BaseDatasource):
                     start_forecast_time=start,
                     end_forecast_time=end,
                     document_format=DocumentFormat.PI_JSON,
+                    forecast_count=FORECAST_COUNT_WHEN_SEARCHING_FOR_FORECAST_REFERENCE_TIMES,
                 )
                 forecast_reference_times = (
                     self.client.parse_forecast_reference_times_from_json_headers(
