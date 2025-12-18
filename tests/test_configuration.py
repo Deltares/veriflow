@@ -85,9 +85,15 @@ def test_schema_dump_with_user_models(tmp_path: Path) -> None:
         schema = yaml.safe_load(f)  # type:ignore[misc]
 
         # Check that the user-provided configuration is part of the schema
-        assert "userdatasource" in schema["properties"]["datasources"]["discriminator"]["mapping"]  # type:ignore[misc]
-        assert "userscore" in schema["properties"]["scores"]["discriminator"]["mapping"]  # type:ignore[misc]
-        assert "userdatasink" in schema["properties"]["datasinks"]["discriminator"]["mapping"]  # type:ignore[misc]
+        assert (
+            "userdatasource"
+            in schema["properties"]["datasources"]["items"]["discriminator"]["mapping"]  # type:ignore[misc]
+        )
+        assert "userscore" in schema["properties"]["scores"]["items"]["discriminator"]["mapping"]  # type:ignore[misc]
+        assert (
+            "userdatasink"
+            in schema["properties"]["datasinks"]["anyOf"][0]["items"]["discriminator"]["mapping"]  # type:ignore[misc]
+        )
 
 
 def test_forecast_period_config() -> None:

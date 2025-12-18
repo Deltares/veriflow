@@ -74,12 +74,12 @@ class BaseDatasource(Base):
         # Go fetch and cache
         self.fetch_data()
 
+        # Make sure the name of the array is set to the configured source
+        self.data_array.name = self.config.source
+
         # Apply re-naming based on configured id mapping, if not None
         if self.config.id_mapping is not None:
             self.data_array = self.config.id_mapping.rename_data_array(self.data_array)
-
-        # Make sure the name of the array is set to the configured source
-        self.data_array.name = self.config.source
 
         # Select only relevant time stamps
         self.data_array = self.data_array.sel(

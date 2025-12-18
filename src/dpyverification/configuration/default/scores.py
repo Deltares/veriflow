@@ -42,7 +42,7 @@ class ReduceDims(RootModel[list[ComputableDim]]):
 
 ReduceDimsWithDefault = Annotated[
     ReduceDims,
-    Field(default_factory=lambda: ReduceDims([ComputableDim.time])),
+    Field(default_factory=lambda: ReduceDims([])),
 ]
 
 

@@ -65,6 +65,14 @@ class ForecastPeriods(BaseModel):
         BeforeValidator(lambda v: v.to_list() if isinstance(v, Range) else v),
     ]
 
+    @field_validator("values", mode="after")
+    @classmethod
+    def convert_range_to_list(cls, v: Range | list[int]) -> list[int]:
+        """Convert range to list."""
+        if isinstance(v, Range):
+            return v.to_list()
+        return v
+
     @property
     def timedelta64(self) -> list[np.timedelta64]:
         """As numpy timedelta64."""

@@ -59,7 +59,8 @@ class ConfigFile:
             score.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
 
         # Propagate the general config to sinks
-        for sink in yamlcontent["datasinks"]:
-            sink.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
+        if "datasinks" in yamlcontent:
+            for sink in yamlcontent["datasinks"]:
+                sink.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
 
         self.content = Config(**yamlcontent)  # type: ignore[arg-type] # The derived type based on the hardcoded dict is not correct, but that is expected for now

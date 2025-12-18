@@ -1,5 +1,6 @@
 """A python interface to the Delft-FEWS Webservices."""
 
+import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Union
@@ -7,6 +8,8 @@ from typing import Union
 import requests
 import requests.auth
 from pydantic_core import Url
+
+logger = logging.getLogger(__name__)
 
 
 class TimeseriesType(StrEnum):
@@ -117,6 +120,10 @@ class FewsWebserviceClient:
 
         response = self.session.get(url=f"{self.url}/timeseries", params=params, headers=headers)  # type:ignore[arg-type]
         response.raise_for_status()
+
+        msg = f"Download successful from URL: {response.url}"
+        logger.info(msg)
+
         return response
 
     def get_netcdf_storage_forecast_reference_times(
