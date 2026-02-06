@@ -42,7 +42,7 @@ class FewsWebserviceClient:
         self.session = requests.Session()
         if username is not None and password is not None:
             self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
-        elif username is None and password is not None or username is not None and password is None:
+        elif not (username is None and password is None):
             msg = (
                 f"Authorization of {FewsWebserviceClient.__name__} requires either both a ",
                 "username and password, or no username and password.",
