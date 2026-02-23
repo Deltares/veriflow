@@ -196,7 +196,7 @@ class BaseTimeseriesDatasourceConfig(BaseConfig):
 
     source: Source
     timeseries_kind: TimeseriesKind
-    timestep: TimeUnits = TimeUnits.HOUR
+    time_step: TimeUnits = TimeUnits.HOUR
     general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
     # config is propagated from the general config section in the main config. This will prevent
     # users that use the json-schema for making config having to explicitly set a duplicate general
