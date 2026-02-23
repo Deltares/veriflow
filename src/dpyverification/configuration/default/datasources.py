@@ -109,20 +109,18 @@ class FewsWebserviceConfig(BaseTimeseriesDatasourceConfig):
         return webservice_version_year >= implementation_year
 
     @model_validator(mode="after")
-    def set_forecast_retrieval_method_based_on_version_if_none(self) -> "FewsWebserviceConfig":
-        """Automatically set the forecast retrieval method based on the webservice version."""
+    def validate_forecast_retrieval_method(self) -> "FewsWebserviceConfig":
+        """Validate that the configures retrieval method is compatible with the webservice."""
         if (
-            self.webservice_supports_lead_time_in_get_timeseries
-            and self.forecast_retrieval_method is None
+            not self.webservice_supports_lead_time_in_get_timeseries
+            and self.forecast_retrieval_method
+            == ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
         ):
-            self.forecast_retrieval_method = (
-                ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
+            msg = (
+                f"Configured forecast retrieval method {self.forecast_retrieval_method} is not "
+                f"compatible with the configured webservice version {self.webservice_version}. "
             )
-        elif (
-            self.forecast_retrieval_method is None
-            and not self.webservice_supports_lead_time_in_get_timeseries
-        ):
-            self.forecast_retrieval_method = ForecastRetrievalMethod.retrieve_all_forecast_data
+            raise ValueError(msg)
         return self
 
 
