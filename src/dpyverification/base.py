@@ -9,7 +9,7 @@ from dpyverification.configuration.config import BaseConfig
 class Base(ABC):
     """Abstract base class for datasources, scores and datasinks.
 
-    All defitions of datasources, scores and datasinks should inherit
+    All definitions of datasources, scores and datasinks should inherit
     from the base class. It ensures classes have attributes 'kind' and
     'schema', that allow the pipeline to find the correct classes, based
     on a user-provided configuration for 'kind'. In addition, this base-class

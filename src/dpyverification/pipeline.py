@@ -43,7 +43,7 @@ def find_matching_kind_in_list(
     items: list[type[TItem]],
     kind: str,
 ) -> type[TItem]:
-    """Return a datasource, calcuation or datasink of a given kind."""
+    """Return a datasource, calculation or datasink of a given kind."""
     for item in items:
         if kind == item.kind:
             return item
