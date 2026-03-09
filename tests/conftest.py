@@ -47,10 +47,10 @@ from dpyverification.constants import (
     StandardDim,
 )
 from dpyverification.datamodel.main import InputDataset
-from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
+from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
 from dpyverification.datasources.fewswebservice import FewsWebservice, ForecastRetrievalMethod
-from dpyverification.datasources.thresholds import CsvFile
+from dpyverification.datasources.thresholds import ThresholdCsv
 
 TESTS_DATA_DIR = Path(__file__).parent / "data"
 
@@ -763,7 +763,7 @@ def xarray_thresholds(
     dummy_threshold_df: pd.DataFrame,
     general_info_config_single: GeneralInfoConfig,
     tmp_path: Path,
-) -> CsvFile:
+) -> ThresholdCsv:
     """Get threshold datasource from csv file."""
     file_path = tmp_path / "thresholds.csv"
     dummy_threshold_df.to_csv(file_path, index=False)
@@ -778,4 +778,4 @@ def xarray_thresholds(
         variables=["variable_1"],
         thresholds=["warn_1"],
     )
-    return CsvFile(config).fetch_data().data_array
+    return ThresholdCsv(config).fetch_data().data_array

@@ -1,4 +1,11 @@
-"""Module for continuous scores."""
+"""
+Continuous verification scores.
+
+For verification of non-probabilistic (deterministic) forecasts, and historical simulations of
+continuous variables.
+
+For reference, see: https://scores.readthedocs.io/en/stable/included.html#continuous.
+"""
 
 from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar
@@ -28,6 +35,11 @@ score_funcs: dict[SupportedContinuousScore, Callable] = {
     SupportedContinuousScore.rmse: rmse,  # type:ignore[misc]
     SupportedContinuousScore.mean_error: mean_error,  # type:ignore[misc]
 }
+
+__all__ = [
+    "ContinuousScores",
+    "ContinuousScoresConfig",
+]
 
 
 class ContinuousScores(BaseScore):

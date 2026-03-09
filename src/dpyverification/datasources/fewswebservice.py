@@ -28,6 +28,11 @@ from dpyverification.datasources.fewsnetcdf import (
     FewsNetCDFKind,
 )
 
+__all__ = [
+    "FewsWebservice",
+    "FewsWebserviceConfig",
+]
+
 T = TypeVar("T")
 
 FORECAST_COUNT_WHEN_SEARCHING_FOR_FORECAST_REFERENCE_TIMES = 1000000

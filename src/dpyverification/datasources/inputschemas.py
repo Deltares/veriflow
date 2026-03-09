@@ -21,7 +21,6 @@ On the following input datasets:
 """
 
 # TODO(jb): remove mypy ignore errors  # noqa: FIX002, TD003
-
 # mypy: ignore-errors
 # ruff: noqa: D101
 
@@ -174,11 +173,9 @@ CFCompliantName = Annotated[
     str,
     Field(
         pattern=r"^[A-Za-z][A-Za-z0-9_]*$",
-        description=(
-            "It is required that variable, dimension, attribute and group names",
-            "begin with a letter and be composed of letters, digits, and underscores.",
-            "(https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#_naming_conventions)",
-        ),
+        description="It is required that variable, dimension, attribute and group names"
+        "begin with a letter and be composed of letters, digits, and underscores."
+        "(https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#_naming_conventions)",
     ),
 ]
 
@@ -225,6 +222,10 @@ class SimulatedForecastSingle(Base):
                     StandardDim.station,
                 },
             ),
+        ),
+        Field(
+            description="Tuple of dimensions. Must contain: variable, forecast_reference_time, "
+            "forecast_period and station.",
         ),
     ]
     coords: SimulatedForecastSingleCoords

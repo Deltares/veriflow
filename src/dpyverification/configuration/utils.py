@@ -104,19 +104,15 @@ class TimePeriod(BaseModel):
     start: Annotated[
         datetime,
         Field(
-            description=(
-                "YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], ",
-                "see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
-            ),
+            description="YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], "
+            "see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
         ),
     ]
     end: Annotated[
         datetime,
         Field(
-            description=(
-                "YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], ",
-                "see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
-            ),
+            description="YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], "
+            "see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
         ),
     ]
 
@@ -188,7 +184,7 @@ class LocalFile(BaseModel):
 
 
 class LocalFiles(BaseModel):
-    """Config for multiple local files using Path.glob()."""
+    """Config for multiple local files using pathlib.Path.glob."""
 
     directory: str
     filename_glob: Annotated[

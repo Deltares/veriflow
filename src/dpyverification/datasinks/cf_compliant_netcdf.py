@@ -11,6 +11,11 @@ from dpyverification.configuration import (
 from dpyverification.constants import NAME, VERSION
 from dpyverification.datasinks.base import BaseDatasink
 
+__all__ = [
+    "CFCompliantNetCDF",
+    "CFCompliantNetCDFConfig",
+]
+
 
 class CFCompliantNetCDF(BaseDatasink):
     """For writing data to a fews netcdf file."""

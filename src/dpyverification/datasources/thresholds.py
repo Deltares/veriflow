@@ -10,8 +10,13 @@ from dpyverification.configuration.default.datasources import ThresholdCsvConfig
 from dpyverification.constants import StandardDim
 from dpyverification.datasources.base import BaseDatasource
 
+__all__ = [
+    "ThresholdCsv",
+    "ThresholdCsvConfig",
+]
 
-class CsvFile(BaseDatasource):
+
+class ThresholdCsv(BaseDatasource):
     """Parse thresholds from a csv file."""
 
     kind: str = ""

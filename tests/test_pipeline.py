@@ -5,7 +5,7 @@ from pytest_lazy_fixtures import lf
 
 from dpyverification.configuration.default.scores import BaseScoreConfig
 from dpyverification.configuration.file import Config
-from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
+from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF
 from dpyverification.pipeline import execute_pipeline
 

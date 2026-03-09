@@ -7,6 +7,11 @@ import xarray as xr
 from dpyverification.base import Base
 from dpyverification.configuration.config import BaseDatasinkConfig
 
+__all__ = [
+    "BaseDatasink",
+    "BaseDatasinkConfig",
+]
+
 
 class BaseDatasink(Base):
     """Class to inherit from, defines the required methods and attributes."""

@@ -15,6 +15,11 @@ from dpyverification.configuration.config import (
 from dpyverification.configuration.utils import TimePeriod
 from dpyverification.constants import FORECAST_DATA_TYPES, DataType, StandardDim
 
+__all__ = [
+    "BaseDatasource",
+    "BaseDatasourceConfig",
+]
+
 
 class BaseDatasource(Base):
     """Class to inherit from, defines the required methods and attributes."""

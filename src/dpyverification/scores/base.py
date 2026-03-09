@@ -9,6 +9,8 @@ from dpyverification.base import Base
 from dpyverification.configuration.config import BaseScoreConfig
 from dpyverification.constants import DataType
 
+__all__ = ["BaseScore", "BaseScoreConfig"]
+
 
 class BaseScore(Base):
     """An abstract calculation class."""

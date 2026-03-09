@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
 from dpyverification.datamodel.main import InputDataset, OutputDataset
-from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
+from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from dpyverification.scores.probabilistic import CrpsForEnsemble
 
 

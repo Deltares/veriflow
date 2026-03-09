@@ -1,25 +1,22 @@
 # DPyVerification
 
 
-### A verification pipeline, that integrates the full verification process
-
-
+A verification pipeline, that integrates the full verification process
 - 📥 Fetching observations and simulations
 - 🧮 Compting metrics
 - 📝 Writing results
 
-### Key features
+## Key features
 - ✅ Full control over the verification pipeline via configuration
 - ✅ Native integration with [Delft-FEWS](https://oss.deltares.nl/web/delft-fews) 
 - ✅ Builds on [Scores](https://scores.readthedocs.io/en/stable/) for computation of scores
 - ✅ Extendable with your own (private) datasources, scores and datasinks
 - ✅ Optimized internal datamodel for efficient computation
 
-### Technical features
+## Technical features
 - ✅ Builds on [Xarray](https://docs.xarray.dev/en/stable/#) for handling multidimensional data. 
 - ✅ Supports [Zarr](https://zarr.dev/) for cloud-friendly data storage
 - ✅ Supports [Dask](https://www.dask.org/) for parallel and lazy computation
-
 
 
 ## 🤔 Why this package?

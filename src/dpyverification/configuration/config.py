@@ -4,6 +4,9 @@ This definition is used both as the schema for the configuration yaml file, and 
 the dpyverification configuration object.
 
 To generate a yaml / json file with the json representation of this schema:
+
+.. code-block:: python
+
     import pathlib
     import yaml
     from dpyverification.configuration import Config
@@ -55,19 +58,17 @@ class GeneralInfoConfig(BaseModel):
     forecast_periods: Annotated[
         ForecastPeriods,
         Field(
-            "A set of forecast periods for which to evaluate of the verification scores. "
-            "A forecast period is the timedelta between the forecast reference time of a forecast "
-            "(t0, analysis_time, initialization time) and the valid time (time, observed time) "
-            "and is also known as: lead time or forecast horizon)",
+            description="A set of forecast periods for which to evaluate of the verification "
+            "scores. A forecast period is the timedelta between the forecast reference time of "
+            "a forecast (t0, analysis_time, initialization time) and the valid time "
+            "(time, observed time) and is also known as: lead time or forecast horizon)",
         ),
     ]
     cache_dir: Annotated[
         Path,
         Field(
-            description=(
-                "Path pointing to a cache directory. ",
-                "Will be automatically created if it doesn't yet exist.",
-            ),
+            description="Path pointing to a cache directory. "
+            "Will be automatically created if it doesn't yet exist.",
         ),
     ] = Path("./.verification_cache")
 

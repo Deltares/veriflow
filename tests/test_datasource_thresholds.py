@@ -7,7 +7,7 @@ import pandas as pd
 from dpyverification.configuration.config import GeneralInfoConfig
 from dpyverification.configuration.default.datasources import ThresholdCsvConfig
 from dpyverification.constants import DataSourceKind, DataType
-from dpyverification.datasources.thresholds import CsvFile
+from dpyverification.datasources.thresholds import ThresholdCsv
 
 
 def test_fetch_thresholds_from_csv(
@@ -29,5 +29,5 @@ def test_fetch_thresholds_from_csv(
         variables=["variable_1"],
         thresholds=["warn_1"],
     )
-    instance = CsvFile(config)
+    instance = ThresholdCsv(config)
     instance.fetch_data()

@@ -63,7 +63,8 @@ def test_mypy() -> None:
     tomldir = pathlib.Path(__file__).parent.parent
     tomlfile = tomldir / "pyproject.toml"
     assert tomlfile.exists()
-    stdout, stderr, exitcode = api.run([str(tomldir), "--config-file", str(tomlfile)])
+    stdout, stderr, exitcode = api.run(["--config-file", str(tomlfile)])
+
     if stderr:
         raise RuntimeError("Error while running mypy through pytest:\n" + stderr)
     if exitcode:
