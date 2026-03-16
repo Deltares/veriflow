@@ -132,8 +132,8 @@ class CategoricalScoresConfig(BaseScoreConfig, ReduceDimsForecast):
     events: Annotated[
         list[ThresholdOperator],
         Field(
-            description="List of events. An event is a combination of a threshold and an operator. "
-            "Events are used to compute the 2x2 contingency tables can categorical scores.",
+            description="A list of event definitions. For each event, a categorical score will be "
+            "computed.",
         ),
     ]
     return_contingency_table: Annotated[
