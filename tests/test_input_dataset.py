@@ -1,6 +1,5 @@
 """Test the dpyverification.datamodel package."""
 
-import pytest
 import xarray as xr
 
 from dpyverification.datamodel.main import InputDataset
@@ -61,7 +60,6 @@ def test_init_input_dataset_fewsnetcdf(
     )
 
 
-@pytest.mark.skip
 def test_init_input_dataset_thresholds(
     xarray_thresholds: xr.DataArray,
 ) -> None:

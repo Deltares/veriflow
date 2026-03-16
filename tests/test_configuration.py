@@ -22,7 +22,7 @@ from dpyverification.configuration.utils import (
 from dpyverification.constants import VERSION
 
 
-@pytest.fixture  # type:ignore[misc]
+@pytest.fixture  # type:ignore[misc] # has type overloaded function
 def _mock_env(monkeypatch: Generator[pytest.MonkeyPatch, None, None]) -> None:
     """Create a mock environment for testing secret env vars."""
     monkeypatch.setenv("FEWSWEBSERVICE_URL", "https://fixture_url.test")  # type: ignore  # noqa: PGH003

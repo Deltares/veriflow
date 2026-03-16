@@ -116,7 +116,6 @@ class RealizationCoord(BaseModel):
 
 class ThresholdCoord(BaseModel):
     dims: Annotated[tuple[str, ...], AfterValidator(check_dims({StandardDim.threshold}))]
-    dtype: AllowedDTypeFloat
 
 
 class BaseCoords(BaseModel):
@@ -161,12 +160,6 @@ class ThresholdCoords(BaseModel):
     station: StationCoord
     station_name: StationCoord | None = None  # Optional station name coordinate
     variable: VariableCoord
-    units: UnitsCoord
-    lat: XYZCoord  # Always required lat, lon
-    lon: XYZCoord
-    x: XYZCoord | None = None  # Optional x, y, z
-    y: XYZCoord | None = None
-    z: XYZCoord | None = None
     threshold: ThresholdCoord
 
 
@@ -279,7 +272,7 @@ class Thresholds(Base):
             ),
         ),
     ]
-    coords: SimulatedForecastProbabilisticCoords
+    coords: ThresholdCoords
 
 
 # All input schemas, keyed by the corresponding data type
@@ -289,4 +282,5 @@ INPUT_SCHEMAS: dict[DataType, BaseModel] = {
     DataType.simulated_forecast_single: SimulatedForecastSingle,
     DataType.simulated_forecast_ensemble: SimulatedForecastEnsemble,
     DataType.simulated_forecast_probabilistic: SimulatedForecastProbabilistic,
+    DataType.threshold: Thresholds,
 }
