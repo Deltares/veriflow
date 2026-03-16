@@ -87,9 +87,10 @@ class FewsWebserviceClient:
         external_forecast_times: list[datetime | None] | None = None,
         export_id_map: str | None = None,
         timeseries_type: TimeseriesType | None = None,
-        show_thresholds: bool | None = None,  # noqa: FBT001
         document_format: DocumentFormat = DocumentFormat.PI_NETCDF,
-        only_headers: bool | None = None,  # noqa: FBT001
+        *,
+        show_thresholds: bool | None = None,
+        only_headers: bool | None = None,
     ) -> requests.Response:
         """Get a timeseries from the Delft-FEWS webservice."""
         params = {
