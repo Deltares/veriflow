@@ -12,7 +12,7 @@ from dpyverification.constants import (
     DataType,
     StandardDim,
 )
-from dpyverification.datasources.inputschemas import input_schemas
+from dpyverification.datasources.inputschemas import INPUT_SCHEMAS
 
 
 @xr.register_dataarray_accessor("verification")  # type:ignore[no-untyped-call, misc]
@@ -53,7 +53,7 @@ class InputDataArrayExtension:
 
     def validate(self) -> None:
         """Validate the data according to schema."""
-        schema = input_schemas[self.data_type]  # type:ignore[index] # str is compatible with StrEnum index
+        schema = INPUT_SCHEMAS[self.data_type]  # type:ignore[index] # str is compatible with StrEnum index
 
         try:
             schema.model_validate(self._obj.to_dict(data=False))  # type:ignore[misc]

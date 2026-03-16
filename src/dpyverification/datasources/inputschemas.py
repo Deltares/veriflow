@@ -283,7 +283,7 @@ class Thresholds(Base):
 
 
 # All input schemas, keyed by the corresponding data type
-input_schemas: dict[DataType, BaseModel] = {
+INPUT_SCHEMAS: dict[DataType, BaseModel] = {
     DataType.observed_historical: ObservedHistorical,
     DataType.simulated_historical: SimulatedHistorical,
     DataType.simulated_forecast_single: SimulatedForecastSingle,
