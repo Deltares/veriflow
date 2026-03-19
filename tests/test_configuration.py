@@ -1,5 +1,6 @@
 """Test the main module of the dpyverification.configuration package."""
 
+import sys
 from collections.abc import Generator
 from copy import deepcopy
 from pathlib import Path
@@ -39,6 +40,10 @@ def test_auth_config_from_fixture() -> None:
     assert config.password.get_secret_value() == "fixture_pass"
 
 
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="Schema export is currently validated on Windows only.",
+)
 def test_schema_up_to_date(tmp_path: Path) -> None:
     """Check that the schema for our config is up to date."""
     file_path_schema = (
