@@ -1,8 +1,6 @@
-=========================
+
 Pipeline
-=========================
+-------------------------
+.. autofunction:: dpyverification.pipeline.execute_pipeline
 
-.. autosummary::
-   :toctree: _generated
 
-   dpyverification.pipeline

@@ -1,8 +1,8 @@
-=========================
+
 Datamodel
 =========================
+.. toctree::
+   :maxdepth: 2
 
-.. autosummary::
-   :toctree: _generated
-
-   dpyverification.datamodel.main
+   datamodel.main
+   datamodel.inputschemas

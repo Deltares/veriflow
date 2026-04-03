@@ -1,4 +1,3 @@
-=========================
 API
 =========================
 
@@ -6,8 +5,6 @@ API
    :maxdepth: 3
 
    api/pipeline
-   api/datasources
-   api/scores
-   api/datasinks
+   api/configuration
    api/datamodel
    api/constants

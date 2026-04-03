@@ -1,8 +1,6 @@
 Gallery
 =======
 
-Note: work in progress... 
-
 .. toctree::
    :maxdepth: 2
 

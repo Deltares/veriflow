@@ -1,9 +1,7 @@
 import os
 import sys
-from dpyverification.constants import VERSION
 
 sys.path.insert(0, os.path.abspath("../../src"))
-
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -13,9 +11,9 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "dpyverification"
-copyright = "2026, Deltares"
+copyright = "2026, Jurian Beunk"
 author = "Jurian Beunk"
-release = VERSION
+release = "0.1.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -25,8 +23,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",  # Google/NumPy docstrings
     "sphinx.ext.viewcode",
-    "sphinx.ext.todo",
-    "sphinx.ext.githubpages",
+    "sphinxcontrib.autodoc_pydantic",  # For nicely rendering Pydantic models
     "sphinx.ext.intersphinx",
     "sphinx_design",
     "myst_parser",  # Markdown support
@@ -44,7 +41,6 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pydantic": ("https://docs.pydantic.dev/latest/", None),
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
-    "scores": ("https://scores.readthedocs.io/en/stable/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -60,16 +56,15 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
-    # "switcher": {
-    #     "json_url": "_static/versions.json",  # see below
-    #     "version_match": "current",
-    # },
-    "navigation_depth": 3,
+    "switcher": {
+        "json_url": "_static/versions.json",  # see below
+        "version_match": "current",
+    },
+    "navigation_depth": 2,
 }
 
 # Autodoc
 autosummary_generate = True
-autosummary_ignore_module_all = False
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_typehints_format = "short"
@@ -77,11 +72,18 @@ autodoc_default_options = {
     "exclude-members": "model_config",
     "members": True,
     "undoc-members": True,  # show StrEnum members from constants
+    # "show-inheritance": True, # shows 'bases' in docs
 }
 
+# Autodoc Pytantic
+# autodoc_default_options = {"inherited-members": "BaseModel"}
+autodoc_pydantic_model_show_json = True
+autodoc_pydantic_model_show_config_summary = True
+autodoc_pydantic_model_hide_reused_validator = False
+autodoc_pydantic_model_members = True
 
 # nbshpinx
 nb_execution_mode = "off"  # or "auto"
-nbsphinx_execute = "always"  # options: 'auto', 'always', 'never'
+nbsphinx_execute = "auto"  # options: 'auto', 'always', 'never'
 nbsphinx_kernel_name = "python3"  # kernel to use for notebook execution
 nbsphinx_timeout = 600  # seconds per notebook
