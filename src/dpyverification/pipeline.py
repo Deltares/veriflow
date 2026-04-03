@@ -69,11 +69,40 @@ def execute_pipeline(
 
     Returns
     -------
-    xr.Dataset
+    OutputDataset
         The output dataset containing the results of the verification pipeline. In addition to the
         option of writing the output to a file or service, the output of the verification pipeline
         can also be assigned back to a Python variable for further inspection in an interactive
         Python environment.
+
+    Examples
+    --------
+    Using a YAML file:
+
+    .. code-block:: python
+
+        from dpyverification import execute_pipeline
+        from dpyverification.configuration import Config
+        from pathlib import Path
+
+        path_to_config = Path("./config.yaml)
+        output_dataset = execute_pipeline((path_to_config, "yaml"))
+
+
+    Using Python objects directly:
+
+    .. code-block:: python
+
+        from dpyverification import execute_pipeline
+        from dpyverification.configuration import Config, GeneralInfoConfig
+
+        config = Config(
+            general=GeneralInfoConfig(log_level="INFO"),
+            # ... other sub-models here ...
+        )
+
+        output_dataset = execute_pipeline(config)
+
     """
     # Get the available sources, scores and sinks
     available_datasources = merge_user_and_default_items(
