@@ -6,9 +6,9 @@
 
 
 A verification pipeline, that integrates the full verification process
-- 📥 Fetch data
-- 🧮 Compute metrics
-- 📝 Write results
+- 📥 Fetching data
+- 🧮 Computing scores
+- 📝 Writing results
 
 ## Key features
 - ✅ Full control over the verification pipeline via configuration
