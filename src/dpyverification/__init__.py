@@ -24,7 +24,7 @@ from .datasources import (
     FewsWebservice,
     FewsWebserviceConfig,
 )
-from .pipeline import execute_pipeline
+from .pipeline import run_pipeline
 from .scores.base import BaseScore, BaseScoreConfig
 from .scores.categorical import CategoricalScores, CategoricalScoresConfig
 from .scores.continuous import ContinuousScores, ContinuousScoresConfig

@@ -49,7 +49,7 @@ def merge_user_and_default_items(
     return list(default_items) + list(user_items)
 
 
-def execute_pipeline(
+def run_pipeline(
     config: tuple[Path, ConfigKind] | Config,
     user_datasources: list[type[BaseDatasource]] | None = None,
     user_scores: list[type[BaseScore] | type[BaseCategoricalScore]] | None = None,

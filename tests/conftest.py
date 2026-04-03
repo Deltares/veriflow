@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+import yaml
 
 from dpyverification.configuration import GeneralInfoConfig
 from dpyverification.configuration.base import IdMappingConfig
@@ -862,3 +863,61 @@ def xarray_thresholds(
     instance = Csv(config)
     instance.fetch_data()
     return instance
+
+
+@pytest.fixture
+def cli_dummy_pipeline_config_yaml(tmp_path: Path) -> Path:
+    """dummy_pipeline_config_yaml based on an in-memory dummy Config object."""
+    general = GeneralInfoConfig(
+        verification_period=VerificationPeriod(
+            start=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            end=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        ),
+        forecast_periods=ForecastPeriods(unit=TimeUnits.DAY, values=[1, 2]),
+        verification_pairs=[
+            VerificationPair(
+                id="pair1",
+                obs="observed",
+                sim="simulated",
+            ),
+        ],
+    )
+
+    datasource_config = ThresholdCsvConfig(
+        import_adapter=DataSourceKind.THRESHOLD_CSV,
+        source="threshold_source",
+        data_type=DataType.threshold,
+        general=general,
+        directory=tmp_path,
+        filename="thresholds.csv",
+        stations=["station_1"],
+        variables=["variable_1"],
+        thresholds=["warn_1"],
+    )
+
+    score_config = CrpsForEnsembleConfig(
+        score_adapter=ScoreKind.crps_for_ensemble,
+        general=general,
+        method="ecdf",
+    )
+
+    datasink_config = CFCompliantNetCDFConfig(
+        export_adapter=DataSinkKind.cf_compliant_netcdf,
+        directory=tmp_path,
+        filename="results.nc",
+        institution="Dummy Institution",
+        general=general,
+    )
+
+    config_obj = Config(
+        fileversion="0.1.0",
+        general=general,
+        datasources=[datasource_config],
+        scores=[score_config],
+        datasinks=[datasink_config],
+    )
+
+    data = config_obj.model_dump(mode="json")
+    destination = tmp_path / "config.yaml"
+    destination.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    return destination

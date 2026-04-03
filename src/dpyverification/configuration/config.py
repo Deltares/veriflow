@@ -66,6 +66,8 @@ TItem = TypeVar(
 class Config(BaseModel):
     """Config object for running the verification pipeline."""
 
+    model_config = ConfigDict(validate_assignment=True)
+
     fileversion: str
     general: GeneralInfoConfig
     datasources: Annotated[Sequence[BaseDatasourceConfig], Field(min_length=1)]

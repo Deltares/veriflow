@@ -16,7 +16,7 @@ from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from dpyverification.datasources.csv import Csv
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF
 from dpyverification.datasources.netcdf import NetCDF
-from dpyverification.pipeline import execute_pipeline
+from dpyverification.pipeline import run_pipeline
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,7 @@ def test_pipeline_fewsnetcdf(
         scores=[score_config],
         datasinks=[datasink_cf_compliant_netcdf.config],
     )
-    _ = execute_pipeline(config)
+    _ = run_pipeline(config)
 
 
 def test_pipeline_xarray_categorical_scores(
