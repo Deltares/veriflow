@@ -123,6 +123,7 @@ class ThresholdOperator(BaseModel):
 class CategoricalScoresConfig(BaseCategoricalScoreConfig, ReduceDimsForecast):
     """Config to compute categorical scores, based on an event definition."""
 
+    score_adapter: Literal[ScoreKind.categorical_scores]
     scores: Annotated[
         list[SupportedCategoricalScores],
         Field(
