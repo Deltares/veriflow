@@ -475,7 +475,6 @@
     },
     "FewsWebserviceConfig": {
       "additionalProperties": true,
-      "description": "A fews webservice input config element.",
       "properties": {
         "import_adapter": {
           "const": "fewswebservice",
