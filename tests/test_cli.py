@@ -117,6 +117,7 @@ def test_cli_run_with_invalid_overrides(
             cli_option_value,
         ],
         catch_exceptions=True,
+        color=False,
     )
 
     assert result.exit_code == expected_exit_code
