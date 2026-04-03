@@ -1,14 +1,14 @@
-[![Tests](https://github.com/Deltares-research/DPyVerification/actions/workflows/ci.yml/badge.svg)](https://github.com/Deltares-research/DPyVerification/actions/workflows/ci.yml)
-[![Docs](https://github.com/Deltares-research/DPyVerification/actions/workflows/docs.yml/badge.svg)](https://github.com/Deltares-research/DPyVerification/actions/workflows/docs.yml)
-[![codecov](https://codecov.io/gh/Deltares-research/DPyVerification//branch/main/graph/badge.svg)](https://codecov.io/gh/Deltares-research/DPyVerification)
+[![Tests](https://github.com/Deltares/scoreflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Deltares/scoreflow/actions/workflows/ci.yml)
+[![Docs](https://github.com/Deltares/scoreflow/actions/workflows/docs.yml/badge.svg)](https://github.com/Deltares/scoreflow/actions/workflows/docs.yml)
+[![codecov](https://codecov.io/gh/Deltares/scoreflow//branch/main/graph/badge.svg)](https://codecov.io/gh/Deltares-research/DPyVerification)
 
-# DPyVerification
+# Scoreflow
 
 
 A verification pipeline, that integrates the full verification process
-- 📥 Fetch data
-- 🧮 Compute metrics
-- 📝 Write results
+- 📥 Fetching data
+- 🧮 Computing scores
+- 📝 Writing results
 
 ## Key features
 - ✅ Full control over the verification pipeline via configuration

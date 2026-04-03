@@ -1,4 +1,4 @@
-name: Build and deploy documentation
+name: Build and deploy docs
 
 on:
   push:
@@ -39,17 +39,17 @@ jobs:
         run: uv run make -C docs html
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs/build/html
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only deploy on push to main branch
+    if: github.ref == 'refs/heads/main' # Deploy on push to main or manual dispatch from main
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -58,5 +58,5 @@ jobs:
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 

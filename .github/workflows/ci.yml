@@ -1,4 +1,4 @@
-name: DPyVerification CI
+name: CI
 # Note that this workflow is referenced by name in other workflows,
 #   any name change thus needs to be propagated.
 
