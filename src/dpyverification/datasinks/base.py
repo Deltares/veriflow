@@ -5,7 +5,7 @@ from abc import abstractmethod
 import xarray as xr
 
 from dpyverification.base import Base
-from dpyverification.configuration.config import BaseDatasinkConfig
+from dpyverification.configuration.base import BaseDatasinkConfig
 
 
 class BaseDatasink(Base):

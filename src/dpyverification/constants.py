@@ -18,6 +18,8 @@ class DataSourceKind(StrEnum):
 
     FEWSNETCDF = "fewsnetcdf"
     FEWSWEBSERVICE = "fewswebservice"
+    CSV = "csv"
+    NETCDF = "netcdf"
 
 
 class DataSinkKind(StrEnum):
@@ -28,7 +30,7 @@ class DataSinkKind(StrEnum):
 
 
 @unique
-class TimeseriesKind(StrEnum):
+class DataType(StrEnum):
     """Input timeseries data kind."""
 
     observed_historical = "observed_historical"
@@ -36,16 +38,17 @@ class TimeseriesKind(StrEnum):
     simulated_forecast_single = "simulated_forecast_single"
     simulated_forecast_ensemble = "simulated_forecast_ensemble"
     simulated_forecast_probabilistic = "simulated_forecast_probabilistic"
+    threshold = "threshold"
 
 
-FORECAST_TIMESERIES_KINDS = (
-    TimeseriesKind.simulated_forecast_single,
-    TimeseriesKind.simulated_forecast_ensemble,
-    TimeseriesKind.simulated_forecast_probabilistic,
+FORECAST_DATA_TYPES = (
+    DataType.simulated_forecast_single,
+    DataType.simulated_forecast_ensemble,
+    DataType.simulated_forecast_probabilistic,
 )
-HISTORICAL_TIMESERIES_KINDS = (
-    TimeseriesKind.observed_historical,
-    TimeseriesKind.simulated_historical,
+HISTORICAL_DATA_TYPES = (
+    DataType.observed_historical,
+    DataType.simulated_historical,
 )
 
 
@@ -57,6 +60,7 @@ class ScoreKind(StrEnum):
     crps_for_ensemble = "crps_for_ensemble"
     crps_cdf = "crps_cdf"
     continuous_scores = "continuous_scores"
+    categorical_scores = "categorical_scores"
 
 
 @unique
@@ -72,17 +76,59 @@ class SupportedContinuousScore(StrEnum):
     kge = "kge"
 
 
+class SupportedCategoricalScores(StrEnum):
+    """The supported categorical scores.
+
+    Explicitly excluded scores
+    - gilberts_skill_score              (identical to equitable_threat_score)
+    - threat_score                      (identical to critical_success_index)
+    - heidke_skill_score                (identical to cohens_kappa)
+    - frequency_bias                    (identical to bias score)
+    - fraction_correct                  (identical to accuracy)
+    - hanssen_and_kuipers_discriminant  (identical to peirce_skill_score)
+    - true_skill_statistic              (identical to peirce_skill_score)
+    - yules_q                           (identical to odds_ratio_skill_score)
+    - positive_predictive_value         (identical to precision)
+    - success_ratio                     (identical to precision)
+    - probability_of_detection          (identical to hit_rate)
+    - true_positive_rate                (identical to hit rate)
+    - sensitivity                       (identical to hit rate)
+    - recall                            (identical to hit rate)
+    - true_negative_rate                (identical to specificity)
+    - probability of false detection    (identical to false alarm rate)
+    """
+
+    accuracy = "accuracy"
+    base_rate = "base_rate"
+    bias_score = "bias_score"
+    cohens_kappa = "cohens_kappa"
+    critical_success_index = "critical_success_index"
+    equitable_threat_score = "equitable_threat_score"
+    f1_score = "f1_score"
+    false_alarm_rate = "false_alarm_rate"
+    false_alarm_ratio = "false_alarm_ratio"
+    forecast_rate = "forecast_rate"
+    peirce_skill_score = "peirce_skill_score"
+    hit_rate = "hit_rate"
+    negative_predictive_value = "negative_predictive_value"
+    odds_ratio = "odds_ratio"
+    odds_ratio_skill_score = "odds_ratio_skill_score"
+    precision = "precision"
+    specificity = "specificity"
+    symmetric_extremal_dependence_index = "symmetric_extremal_dependence_index"
+
+
 @unique
 class TimeUnits(StrEnum):
     """Time unit strings, compatible with numpy datetime64 and timedelta64."""
 
-    YEAR = "Y"
-    MONTH = "M"
-    WEEK = "W"
-    DAY = "D"
-    HOUR = "h"
-    MINUTE = "m"
-    SECOND = "s"
+    year = "Y"
+    month = "M"
+    week = "W"
+    day = "D"
+    hour = "h"
+    minute = "m"
+    second = "s"
 
 
 class StandardDim(StrEnum):

@@ -5,9 +5,7 @@ from typing import TYPE_CHECKING
 
 import xarray as xr
 
-from dpyverification.configuration import (
-    FewsNetCDFOutputConfig,
-)
+from dpyverification.configuration.default.datasinks import FewsNetCDFOutputConfig
 from dpyverification.constants import (
     StandardAttribute,
     StandardCoord,

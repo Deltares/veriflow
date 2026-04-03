@@ -5,7 +5,7 @@ from typing import Protocol
 
 import xarray as xr
 
-from dpyverification.configuration.config import BaseConfig
+from dpyverification.configuration.base import BaseConfig
 from dpyverification.constants import StandardDim
 
 

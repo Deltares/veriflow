@@ -5,9 +5,7 @@ from pathlib import Path
 
 import xarray as xr
 
-from dpyverification.configuration import (
-    CFCompliantNetCDFConfig,
-)
+from dpyverification.configuration.default.datasinks import CFCompliantNetCDFConfig
 from dpyverification.constants import NAME, VERSION
 from dpyverification.datasinks.base import BaseDatasink
 

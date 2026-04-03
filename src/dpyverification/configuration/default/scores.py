@@ -1,11 +1,30 @@
 """A module for default implementation of scores."""
 
+from enum import Enum
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, RootModel
 
-from dpyverification.configuration.config import BaseScoreConfig
-from dpyverification.constants import ScoreKind, StandardDim, SupportedContinuousScore
+from dpyverification.configuration.base import (
+    BaseCategoricalScoreConfig,
+    BaseEvent,
+    BaseScoreConfig,
+)
+from dpyverification.constants import (
+    ScoreKind,
+    StandardDim,
+    SupportedCategoricalScores,
+    SupportedContinuousScore,
+)
+
+
+class EventOperator(Enum):
+    """Event operators."""
+
+    GREATER_THAN = "greater_than"
+    LESS_THAN = "less_than"
+    GREATER_THAN_OR_EQUAL_TO = "greater_than_or_equal_to"
+    LESS_THAN_OR_EQUAL_TO = "less_than_or_equal_to"
 
 
 class ReduceDimsForecast(BaseModel):
@@ -48,7 +67,7 @@ class IdMap(RootModel[dict[str, dict[str, str]]]):
 class RankHistogramConfig(BaseScoreConfig, ReduceDimsForecast):
     """A rank histogram config element."""
 
-    kind: Literal[ScoreKind.rank_histogram]
+    score_adapter: Literal[ScoreKind.rank_histogram]
 
 
 class CrpsForEnsembleConfig(BaseScoreConfig, ReduceDimsForecast):
@@ -57,7 +76,7 @@ class CrpsForEnsembleConfig(BaseScoreConfig, ReduceDimsForecast):
     For reference, see: See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble
     """
 
-    kind: Literal[ScoreKind.crps_for_ensemble]
+    score_adapter: Literal[ScoreKind.crps_for_ensemble]
     method: Annotated[
         Literal["ecdf", "fair"],
         Field(
@@ -75,7 +94,7 @@ class CrpsCDFConfig(BaseScoreConfig, ReduceDimsForecast):
     For reference, see: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_cdf
     """
 
-    kind: Literal[ScoreKind.crps_cdf]
+    score_adapter: Literal[ScoreKind.crps_cdf]
     integration_method: Annotated[
         Literal["exact", "trapz"],
         Field(
@@ -88,5 +107,46 @@ class CrpsCDFConfig(BaseScoreConfig, ReduceDimsForecast):
 class ContinuousScoresConfig(BaseScoreConfig, ReduceDimsForecast):
     """Configure multiple continuous scores."""
 
-    kind: Literal[ScoreKind.continuous_scores]
+    score_adapter: Literal[ScoreKind.continuous_scores]
     scores: list[SupportedContinuousScore]
+
+
+class ThresholdEvent(BaseEvent):
+    """An event definition for a threshold."""
+
+    threshold: Annotated[
+        str,
+        Field(description="Threshold id to use in event definition."),
+    ]
+    operator: Annotated[
+        EventOperator,
+        Field(description="The operator to use for creating the events."),
+    ]
+
+
+class CategoricalScoresConfig(BaseCategoricalScoreConfig, ReduceDimsForecast):
+    """Config to compute categorical scores, based on an event definition."""
+
+    score_adapter: Literal[ScoreKind.categorical_scores]
+    scores: Annotated[
+        list[SupportedCategoricalScores],
+        Field(
+            description="For reference, see: https://scores.readthedocs.io/en/stable/api.html#module-scores.categorical.",
+        ),
+    ]
+    events: Annotated[
+        list[ThresholdEvent],
+        Field(
+            description="A list of threshold event definitions. For each event, a categorical "
+            "score will be computed. A threshold event is defined by a threshold and an operator. "
+            "The threshold is a string that corresponds to a threshold id defined in the "
+            "configuration. The operator defines how the threshold is applied to the data to "
+            "create the event. For example, if the threshold is '10' and the operator is "
+            "'greater_than', the event will be created by applying the operator to the data "
+            "and the threshold, i.e. data > 10. ",
+        ),
+    ]
+    return_contingency_table: Annotated[
+        bool,
+        Field(description="Whether to return the contingency table in the output."),
+    ] = True

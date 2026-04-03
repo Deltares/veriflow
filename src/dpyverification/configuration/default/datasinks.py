@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from dpyverification.configuration.config import BaseDatasinkConfig
+from dpyverification.configuration.base import BaseDatasinkConfig
 from dpyverification.configuration.utils import LocalFile
 from dpyverification.constants import NAME, DataSinkKind
 
@@ -38,10 +38,10 @@ class BaseCFCompliantConfig(LocalFile, BaseDatasinkConfig):
 class FewsNetCDFOutputConfig(BaseCFCompliantConfig):
     """A fews NetCDF output config element."""
 
-    kind: Literal[DataSinkKind.fews_netcdf]
+    export_adapter: Literal[DataSinkKind.fews_netcdf]
 
 
 class CFCompliantNetCDFConfig(BaseCFCompliantConfig):
     """A cf-compliant NetCDF output config element."""
 
-    kind: Literal[DataSinkKind.cf_compliant_netcdf]
+    export_adapter: Literal[DataSinkKind.cf_compliant_netcdf]

@@ -2,42 +2,34 @@
 
 import logging
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from cftime import CFWarning  # type:ignore[import-untyped]
 from xarray import SerializationWarning
 
-from dpyverification.configuration import Config, ConfigFile
-from dpyverification.configuration.file import ConfigKind
+from dpyverification.configuration.config import Config
+from dpyverification.configuration.file import ConfigFile, ConfigKind
 from dpyverification.datamodel import InputDataset, OutputDataset
+from dpyverification.datasinks import DEFAULT_DATASINKS
 from dpyverification.datasinks.base import BaseDatasink
-from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
+from dpyverification.datasources import DEFAULT_DATASOURCES
 from dpyverification.datasources.base import BaseDatasource
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF
-from dpyverification.datasources.fewswebservice import FewsWebservice
-from dpyverification.scores.base import BaseScore
-from dpyverification.scores.continuous import ContinuousScores
-from dpyverification.scores.probabilistic import CrpsForEnsemble, RankHistogram
+from dpyverification.scores import DEFAULT_SCORES
+from dpyverification.scores.base import BaseCategoricalScore, BaseScore
 
 logger = logging.getLogger(__name__)
 
 
-TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore)
-
-DEFAULT_DATASOURCES: list[type[BaseDatasource]] = [
-    FewsNetCDF,
-    FewsWebservice,
-]
-DEFAULT_SCORES: list[type[BaseScore]] = [RankHistogram, CrpsForEnsemble, ContinuousScores]
-DEFAULT_DATASINKS: list[type[BaseDatasink]] = [CFCompliantNetCDF]
+TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore | BaseCategoricalScore)
 
 
 def find_matching_kind_in_list(
-    items: list[type[TItem]],
+    items: Sequence[type[TItem]],
     kind: str,
 ) -> type[TItem]:
-    """Return a datasource, calcuation or datasink of a given kind."""
+    """Return a datasource, calculation or datasink of a given kind."""
     for item in items:
         if kind == item.kind:
             return item
@@ -46,19 +38,19 @@ def find_matching_kind_in_list(
 
 
 def merge_user_and_default_items(
-    default_items: list[type[TItem]],
-    user_items: list[type[TItem]] | None,
+    default_items: Sequence[type[TItem]],
+    user_items: Sequence[type[TItem]] | None,
 ) -> list[type[TItem]]:
     """Merge default and user-provided items."""
     if user_items is None:
-        return default_items
-    return default_items + user_items
+        return list(default_items)
+    return list(default_items) + list(user_items)
 
 
 def execute_pipeline(
     config: tuple[Path, ConfigKind] | Config,
     user_datasources: list[type[BaseDatasource]] | None = None,
-    user_scores: list[type[BaseScore]] | None = None,
+    user_scores: list[type[BaseScore] | type[BaseCategoricalScore]] | None = None,
     user_datasinks: list[type[BaseDatasink]] | None = None,
 ) -> OutputDataset:
     """Execute a verification pipeline as defined in the configuration.
@@ -70,7 +62,7 @@ def execute_pipeline(
         of configuration file. For now, only 'yaml' is supported.
     user_datasources : list[type[BaseDatasource]] | None, optional
         Option to plug-in a user-implementation of a DataSource., by default None
-    user_scores : list[type[BaseScore]] | None, optional
+    user_scores : list[type[BaseScore | BaseCategoricalScore]] | None, optional
         Option to plug-in a user-implementation of a Score., by default None
     user_datasinks : list[type[BaseDatasink]] | None, optional
         Option to plug-in a user-implementation of a DataSink., by default None
@@ -117,7 +109,7 @@ def execute_pipeline(
     for datasource_config in config.datasources:
         source_kind = find_matching_kind_in_list(
             items=available_datasources,
-            kind=datasource_config.kind,
+            kind=datasource_config.import_adapter,
         )
         datasource = source_kind.from_config(
             datasource_config.model_dump(),  # type: ignore[misc] # Allow Any
@@ -165,12 +157,27 @@ def execute_pipeline(
         for score_config in config.scores:
             score_kind = find_matching_kind_in_list(
                 items=available_scores,
-                kind=score_config.kind,
+                kind=score_config.score_adapter,
             )
-            score = score_kind.from_config(score_config.model_dump())  # type: ignore[misc] # Allow Any
+            score = cast(
+                "BaseScore | BaseCategoricalScore",
+                score_kind.from_config(
+                    score_config.model_dump(),  # type: ignore[misc] # Allow Any
+                ),
+            )
             for verification_pair in score.config.verification_pairs:
                 obs, sim = input_dataset.get_pair(verification_pair)
-                result = score.validate_and_compute(obs=obs, sim=sim)
+
+                # Check if the score is a categorical score, because in that case we need to provide
+                # the thresholds array as well. We do this runtime check, because the contract of
+                # the compute function in the BaseCategoricalScore is different from the one in
+                # BaseScore, and we want to keep the compute function signature of BaseScore simple
+                # without optional arguments that are only required for categorical scores.
+                if isinstance(score, BaseCategoricalScore):
+                    thresholds = input_dataset.get_thresholds_array()
+                    result = score.validate_and_compute(obs=obs, sim=sim, thresholds=thresholds)
+                else:
+                    result = score.validate_and_compute(obs=obs, sim=sim)
                 output_dataset.add_score(verification_pair_id=verification_pair.id, score=result)
 
                 msg = (
@@ -184,7 +191,7 @@ def execute_pipeline(
             for datasink_config in config.datasinks:
                 sink_kind = find_matching_kind_in_list(
                     items=available_datasinks,
-                    kind=datasink_config.kind,
+                    kind=datasink_config.export_adapter,
                 )
                 datasink = sink_kind.from_config(datasink_config.model_dump())  # type: ignore[misc] # Allow Any
 

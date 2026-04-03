@@ -14,7 +14,7 @@ from scores.continuous import (  # type:ignore[import-untyped]
 )
 
 from dpyverification.configuration.default.scores import ContinuousScoresConfig
-from dpyverification.constants import SupportedContinuousScore, TimeseriesKind
+from dpyverification.constants import DataType, SupportedContinuousScore
 from dpyverification.scores.base import BaseScore
 
 if TYPE_CHECKING:
@@ -35,8 +35,8 @@ class ContinuousScores(BaseScore):
 
     kind = "continuous_scores"
     config_class = ContinuousScoresConfig
-    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
-        TimeseriesKind.simulated_forecast_single,
+    supported_data_types: ClassVar[set[DataType]] = {
+        DataType.simulated_forecast_single,
     }
 
     def __init__(self, config: ContinuousScoresConfig) -> None:

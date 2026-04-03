@@ -5,12 +5,13 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
-from dpyverification.configuration.config import BaseDatasourceConfig
+from dpyverification.configuration.base import BaseDatasourceConfig
 from dpyverification.configuration.utils import (
     FewsWebserviceAuthConfig,
+    LocalFile,
     LocalFiles,
 )
-from dpyverification.constants import DataSourceKind
+from dpyverification.constants import DataSourceKind, DataType
 
 
 class ArchiveKind(StrEnum):
@@ -60,7 +61,7 @@ class FewsWebserviceVersion(BaseModel):
 class FewsWebserviceConfig(BaseDatasourceConfig):
     """A fews webservice input config element."""
 
-    kind: Literal[DataSourceKind.FEWSWEBSERVICE]
+    import_adapter: Literal[DataSourceKind.FEWSWEBSERVICE]
     auth_config: FewsWebserviceAuthConfig = Field(
         default_factory=FewsWebserviceAuthConfig,  # type:ignore[misc]
     )
@@ -78,20 +79,16 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
             "which is the Delft-FEWS standard.",
         ),
     ] = ArchiveKind.open_archive
-    forecast_retrieval_method: (
-        Annotated[
-            ForecastRetrievalMethod,
-            Field(
-                default=ForecastRetrievalMethod.retrieve_all_forecast_data,
-                description="Since Delft-FEWS 2025.01, the Delft-FEWS Webservice can"
-                "retrieve forecasts for specific forecast periods (lead times). This avoid having "
-                "to retrieve all forecast data outside of the configured forecast periods "
-                "(lead times) for the verification pipeline. If not provided, the method will be "
-                "automatically determined based on the configured webservice version.",
-            ),
-        ]
-        | None
-    ) = None
+    forecast_retrieval_method: Annotated[
+        ForecastRetrievalMethod,
+        Field(
+            description="Since Delft-FEWS 2025.01, the Delft-FEWS Webservice can"
+            "retrieve forecasts for specific forecast periods (lead times). This avoid having "
+            "to retrieve all forecast data outside of the configured forecast periods "
+            "(lead times) for the verification pipeline. If not provided, the method will be "
+            "automatically determined based on the configured webservice version.",
+        ),
+    ] = ForecastRetrievalMethod.retrieve_all_forecast_data
     max_workers_in_thread_pool: Annotated[
         int,
         Field(
@@ -113,27 +110,41 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
         return webservice_version_year >= implementation_year
 
     @model_validator(mode="after")
-    def set_forecast_retrieval_method_based_on_version_if_none(self) -> "FewsWebserviceConfig":
-        """Automatically set the forecast retrieval method based on the webservice version."""
+    def validate_forecast_retrieval_method(self) -> "FewsWebserviceConfig":
+        """Validate that the configures retrieval method is compatible with the webservice."""
         if (
-            self.webservice_supports_lead_time_in_get_timeseries
-            and self.forecast_retrieval_method is None
+            not self.webservice_supports_lead_time_in_get_timeseries
+            and self.forecast_retrieval_method
+            == ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
         ):
-            self.forecast_retrieval_method = (
-                ForecastRetrievalMethod.retrieve_forecast_data_per_lead_time
+            msg = (
+                f"Configured forecast retrieval method {self.forecast_retrieval_method} is not "
+                f"compatible with the configured webservice version {self.webservice_version}. "
             )
-        elif (
-            self.forecast_retrieval_method is None
-            and not self.webservice_supports_lead_time_in_get_timeseries
-        ):
-            self.forecast_retrieval_method = ForecastRetrievalMethod.retrieve_all_forecast_data
+            raise ValueError(msg)
         return self
 
 
 class FewsNetCDFConfig(BaseDatasourceConfig, LocalFiles):
-    """A file input fewsnetcdf config element."""
+    """A FEWS NetCDF config element."""
 
-    kind: Literal[DataSourceKind.FEWSNETCDF]
+    import_adapter: Literal[DataSourceKind.FEWSNETCDF]
     netcdf_kind: FewsNetCDFKind
     station_ids: Annotated[list[str], Field(min_length=1)] | None = None
     parameter_ids: Annotated[list[str], Field(min_length=1)] | None = None
+
+
+class NetCDFConfig(BaseDatasourceConfig, LocalFiles):
+    """A NetCDF config element."""
+
+    import_adapter: Literal[DataSourceKind.NETCDF]
+
+
+class CsvConfig(LocalFile, BaseDatasourceConfig):
+    """A CSV input config element."""
+
+    import_adapter: Literal[DataSourceKind.CSV]
+    data_type: Literal[DataType.threshold]
+    stations: Annotated[list[str], Field(min_length=1)]
+    variables: Annotated[list[str], Field(min_length=1)]
+    thresholds: Annotated[list[str], Field(min_length=1)]

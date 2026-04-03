@@ -9,9 +9,11 @@ import xarray
 import xarray as xr
 
 from dpyverification.base import Base
-from dpyverification.configuration.config import BaseDatasourceConfig
+from dpyverification.configuration.base import (
+    BaseDatasourceConfig,
+)
 from dpyverification.configuration.utils import TimePeriod
-from dpyverification.constants import FORECAST_TIMESERIES_KINDS, StandardDim, TimeseriesKind
+from dpyverification.constants import FORECAST_DATA_TYPES, DataType, StandardDim
 
 
 class BaseDatasource(Base):
@@ -19,28 +21,28 @@ class BaseDatasource(Base):
 
     kind: str = ""
     config_class: type[BaseDatasourceConfig] = BaseDatasourceConfig
-    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = set()
+    supported_data_types: ClassVar[set[DataType]] = set()
 
     def __init__(self, config: BaseDatasourceConfig) -> None:
         self.config: BaseDatasourceConfig = config
-        self.timeseries_kind = config.timeseries_kind
+        self.data_type = config.data_type
         self.data_array = xarray.DataArray()
 
     @property
-    def timeseries_kind(self) -> str:
+    def data_type(self) -> str:
         """Whether the instance represents sim or obs data."""
-        return self.config.timeseries_kind
+        return self.config.data_type
 
-    @timeseries_kind.setter
-    def timeseries_kind(self, new_timeseries_kind: TimeseriesKind) -> None:
-        if new_timeseries_kind not in self.supported_timeseries_kinds:
+    @data_type.setter
+    def data_type(self, new_data_type: DataType) -> None:
+        if new_data_type not in self.supported_data_types:
             msg = (
-                f"Timeseries kind '{new_timeseries_kind}' is not supported ",
+                f"Data type '{new_data_type}' is not supported ",
                 f"by {self.__class__.__name__}",
             )
             raise NotImplementedError(msg)
 
-        self._timeseries_kind = new_timeseries_kind
+        self._data_type = new_data_type
 
     @abstractmethod
     def fetch_data(self) -> Self:
@@ -90,6 +92,18 @@ class BaseDatasource(Base):
         self.fetch_data()
         data_array_original = self.data_array
 
+        # Check that the datatype is defined, and consistent with the config
+        if "data_type" not in data_array_original.attrs:  # type:ignore[misc]
+            msg = "The fetched data array does not have a 'data_type' attribute."
+            raise ValueError(msg)
+        if data_array_original.attrs["data_type"] != self.config.data_type:  # type:ignore[misc]
+            msg = (
+                f"The data type of the fetched data array "
+                f"({data_array_original.attrs['data_type']}) does not match the configured data "  # type:ignore[misc]
+                f"type ({self.config.data_type})."
+            )
+            raise ValueError(msg)
+
         # Make sure the name of the array is set to the configured source
         data_array_original.name = self.config.source
 
@@ -98,7 +112,7 @@ class BaseDatasource(Base):
             data_array_original = self.config.id_mapping.rename_data_array(data_array_original)
 
         # Additional layer to filter time, frt and fp properly according to config.
-        if data_array_original.attrs["timeseries_kind"] in FORECAST_TIMESERIES_KINDS:  # type:ignore[misc]
+        if data_array_original.attrs["data_type"] in FORECAST_DATA_TYPES:  # type:ignore[misc]
             # Select only relevant forecast periods for simulations
             data_array_original = data_array_original.sel(
                 forecast_period=self.config.forecast_periods.timedelta64,
@@ -108,8 +122,9 @@ class BaseDatasource(Base):
                 da=data_array_original,
                 verification_period_on_time=self.config.verification_period_on_time,
             )
-        else:
-            # Historical timeseries kind
+        if data_array_original.attrs["data_type"] == DataType.observed_historical:  # type:ignore[misc]
+            # Mask and drop time values outside of the configured vp
+            # Historical data type
             data_array_original = data_array_original.sel(
                 {
                     StandardDim.time: slice(  # type:ignore[misc]

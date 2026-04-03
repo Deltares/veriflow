@@ -183,7 +183,7 @@ class VerificationPair(BaseModel):
 class LocalFile(BaseModel):
     """Configuration pointing to a local file."""
 
-    directory: str
+    directory: Path
     filename: str
 
 

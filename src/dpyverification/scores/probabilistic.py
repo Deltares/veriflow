@@ -10,8 +10,12 @@ import xarray as xr
 from scores.probability import crps_cdf, crps_for_ensemble  # type: ignore[import-untyped]
 from xskillscore import rank_histogram  # type: ignore[import-untyped]
 
-from dpyverification.configuration import CrpsCDFConfig, CrpsForEnsembleConfig, RankHistogramConfig
-from dpyverification.constants import StandardDim, TimeseriesKind
+from dpyverification.configuration.default.scores import (
+    CrpsCDFConfig,
+    CrpsForEnsembleConfig,
+    RankHistogramConfig,
+)
+from dpyverification.constants import DataType, StandardDim
 from dpyverification.scores.base import BaseScore
 
 
@@ -20,8 +24,8 @@ class CrpsForEnsemble(BaseScore):
 
     kind = "crps_for_ensemble"
     config_class = CrpsForEnsembleConfig
-    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
-        TimeseriesKind.simulated_forecast_ensemble,
+    supported_data_types: ClassVar[set[DataType]] = {
+        DataType.simulated_forecast_ensemble,
     }
 
     def __init__(self, config: CrpsForEnsembleConfig) -> None:
@@ -47,8 +51,8 @@ class CrpsCDF(BaseScore):
 
     kind = "crps_cdf"
     config_class = CrpsCDFConfig
-    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
-        TimeseriesKind.simulated_forecast_probabilistic,
+    supported_data_types: ClassVar[set[DataType]] = {
+        DataType.simulated_forecast_probabilistic,
     }
 
     def __init__(self, config: CrpsCDFConfig) -> None:
@@ -63,7 +67,7 @@ class CrpsCDF(BaseScore):
         )
 
         # crps_cdf outputs a rather ambiguous variable 'total', hence rename to score kind.
-        return result.rename_vars({"total": str(self.config.kind)})  # type:ignore[misc]
+        return result.rename_vars({"total": str(self.config.score_adapter)})  # type:ignore[misc]
 
 
 class RankHistogram(BaseScore):
@@ -75,8 +79,8 @@ class RankHistogram(BaseScore):
 
     kind = "rank_histogram"
     config_class = RankHistogramConfig
-    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
-        TimeseriesKind.simulated_forecast_ensemble,
+    supported_data_types: ClassVar[set[DataType]] = {
+        DataType.simulated_forecast_ensemble,
     }
 
     def __init__(self, config: RankHistogramConfig) -> None:

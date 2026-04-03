@@ -27,9 +27,10 @@ On the following input datasets:
 
 from typing import Annotated, Literal
 
+import xarray as xr
 from pydantic import AfterValidator, BaseModel, Field
 
-from dpyverification.constants import StandardDim, TimeseriesKind
+from dpyverification.constants import DataType, StandardDim
 
 AllowedDTypeInt = Literal["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"]
 AllowedDTypeFloat = Literal["float16", "float32", "float64"]
@@ -116,7 +117,6 @@ class RealizationCoord(BaseModel):
 
 class ThresholdCoord(BaseModel):
     dims: Annotated[tuple[str, ...], AfterValidator(check_dims({StandardDim.threshold}))]
-    dtype: AllowedDTypeFloat
 
 
 class BaseCoords(BaseModel):
@@ -155,6 +155,15 @@ class SimulatedForecastProbabilisticCoords(BaseCoords):
     time: ForecastTimeCoord
 
 
+class ThresholdCoords(BaseModel):
+    """The structure of a threshold array."""
+
+    station: StationCoord
+    station_name: StationCoord | None = None  # Optional station name coordinate
+    variable: VariableCoord
+    threshold: ThresholdCoord
+
+
 CFCompliantName = Annotated[
     str,
     Field(
@@ -169,7 +178,7 @@ CFCompliantName = Annotated[
 
 
 class BaseAttrs(BaseModel):
-    timeseries_kind: str
+    data_type: str
 
 
 class Base(BaseModel):
@@ -251,11 +260,51 @@ class SimulatedForecastProbabilistic(Base):
     coords: SimulatedForecastProbabilisticCoords
 
 
-# All input schemas, keyed by the corresponding timeseries kind
-input_schemas: dict[TimeseriesKind, BaseModel] = {
-    TimeseriesKind.observed_historical: ObservedHistorical,
-    TimeseriesKind.simulated_historical: SimulatedHistorical,
-    TimeseriesKind.simulated_forecast_single: SimulatedForecastSingle,
-    TimeseriesKind.simulated_forecast_ensemble: SimulatedForecastEnsemble,
-    TimeseriesKind.simulated_forecast_probabilistic: SimulatedForecastProbabilistic,
+class Thresholds(Base):
+    dims: Annotated[
+        tuple[str, ...],
+        AfterValidator(
+            check_dims(
+                {
+                    StandardDim.variable,
+                    StandardDim.station,
+                    StandardDim.threshold,
+                },
+            ),
+        ),
+    ]
+    coords: ThresholdCoords
+
+
+# All input schemas, keyed by the corresponding data type
+INPUT_SCHEMAS: dict[DataType, BaseModel] = {
+    DataType.observed_historical: ObservedHistorical,
+    DataType.simulated_historical: SimulatedHistorical,
+    DataType.simulated_forecast_single: SimulatedForecastSingle,
+    DataType.simulated_forecast_ensemble: SimulatedForecastEnsemble,
+    DataType.simulated_forecast_probabilistic: SimulatedForecastProbabilistic,
+    DataType.threshold: Thresholds,
 }
+
+
+def validate_input_data(data_array: xr.DataArray) -> BaseModel:
+    """Validate input data against the expected schema for the given data type."""
+    if not isinstance(data_array, xr.DataArray):
+        msg = f"Expected an xarray DataArray. Got: {type(data_array)}"
+        raise TypeError(msg)
+
+    if "data_type" not in data_array.attrs:
+        msg = "Input data array is missing required 'data_type' attribute."
+        raise ValueError(msg)
+
+    data_type = data_array.attrs["data_type"]
+    schema_class = INPUT_SCHEMAS.get(data_type)
+    if not schema_class:
+        msg = f"No input schema defined for data type: {data_type}"
+        raise ValueError(msg)
+
+    # Convert the xarray DataArray to a dictionary that can be used as input for the Pydantic model
+    data_dict = data_array.to_dict(data=False)
+
+    # Validate the data against the schema
+    schema_class.model_validate(data_dict)

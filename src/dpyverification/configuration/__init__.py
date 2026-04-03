@@ -5,7 +5,8 @@ from typing import Annotated
 
 from pydantic import Field
 
-from dpyverification.configuration.config import Config, GeneralInfoConfig
+from dpyverification.configuration.base import GeneralInfoConfig
+from dpyverification.configuration.config import Config
 from dpyverification.configuration.default.datasinks import (
     CFCompliantNetCDFConfig,
     FewsNetCDFOutputConfig,

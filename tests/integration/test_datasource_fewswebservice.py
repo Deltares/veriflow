@@ -10,9 +10,10 @@ import pytest
 import requests
 import xarray as xr
 import yaml
+
 from dpyverification.constants import StandardDim
 from dpyverification.datasources.fewswebservice import FewsWebservice
-from dpyverification.datasources.inputschemas import input_schemas
+from dpyverification.datasources.inputschemas import INPUT_SCHEMAS
 
 SIM_TIME_DIM_LENGTH = 373
 OBS_TIME_DIM_LENGTH = 721
@@ -158,7 +159,7 @@ def test_get_data_returns_valid_data_array(
     fews_netcdf: FewsWebservice = request.getfixturevalue(fews_webservice)
     datasource = fews_netcdf.get_data()
 
-    schema = input_schemas[fews_netcdf.config.timeseries_kind]
+    schema = INPUT_SCHEMAS[fews_netcdf.config.data_type]
     schema.model_validate(fews_netcdf.data_array.to_dict(data=False))
 
     assert all(

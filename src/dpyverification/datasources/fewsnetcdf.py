@@ -9,13 +9,12 @@ import numpy as np
 import xarray as xr
 from numpy.typing import NDArray
 
-from dpyverification.configuration import FewsNetCDFConfig
-from dpyverification.configuration.default.datasources import FewsNetCDFKind
+from dpyverification.configuration.default.datasources import FewsNetCDFConfig, FewsNetCDFKind
 from dpyverification.constants import (
-    FORECAST_TIMESERIES_KINDS,
+    FORECAST_DATA_TYPES,
+    DataType,
     StandardCoord,
     StandardDim,
-    TimeseriesKind,
 )
 from dpyverification.datasources.base import BaseDatasource
 
@@ -179,6 +178,11 @@ class Preprocessor:
         if self.variables is not None:
             dataset = dataset[self.variables]
 
+        # Sometimes time_bnds is included in the dataset, but this is not expected in the internal
+        # datamodel and can cause issues with alignment later on, so we drop it if it exists.
+        if "time_bnds" in dataset:
+            dataset = dataset.drop_vars("time_bnds")
+
         # Filter stations
         if self.stations is not None:
             dataset = self.filter_stations(dataset, self.stations)
@@ -319,7 +323,7 @@ def quantiles_to_cdf_data_array(
 
     result = result.assign_coords(threshold=("threshold", thresholds))
     result.attrs.update(  # type:ignore[misc]
-        {"timeseries_kind": TimeseriesKind.simulated_forecast_probabilistic},  # type:ignore[misc]
+        {"data_type": DataType.simulated_forecast_probabilistic},  # type:ignore[misc]
     )
     result.name = sim.name
 
@@ -422,9 +426,9 @@ class FewsNetCDF(BaseDatasource):
 
     kind = "fewsnetcdf"
     config_class = FewsNetCDFConfig
-    supported_timeseries_kinds: ClassVar[set[TimeseriesKind]] = {
-        TimeseriesKind.observed_historical,
-        TimeseriesKind.simulated_forecast_ensemble,
+    supported_data_types: ClassVar[set[DataType]] = {
+        DataType.observed_historical,
+        DataType.simulated_forecast_ensemble,
     }
 
     def __init__(self, config: FewsNetCDFConfig) -> None:
@@ -434,17 +438,23 @@ class FewsNetCDF(BaseDatasource):
     def convert_dataset_to_dataarray(
         dataset: xr.Dataset,
         source: str,
-        timeseries_kind: TimeseriesKind,
+        data_type: DataType,
     ) -> xr.DataArray:
         """Transform dataset to internal datamodel."""
+
         # Extract the variable units from data variables
-        units = [dataset[da].attrs["units"] for da in dataset]  # type:ignore[misc]
+        def _get_unit(da: xr.DataArray) -> str:
+            if "units" not in da.attrs:  # type:ignore[misc]
+                return "unknown"
+            return da.attrs["units"]  # type:ignore[no-any-return, misc]
+
+        units = [_get_unit(dataset[da]) for da in dataset]
 
         # Stack the variables along dimension variable
         da = dataset.to_dataarray(dim=StandardDim.variable, name=source)
 
-        # Set the configured timeseries kind as attribute
-        da.attrs["timeseries_kind"] = timeseries_kind  # type:ignore[misc]
+        # Set the configured data type as attribute
+        da.attrs["data_type"] = data_type  # type:ignore[misc]
 
         # Set the station_id as index on station dim
         #   to ensure automatic alignment based on this coord later on.
@@ -458,7 +468,7 @@ class FewsNetCDF(BaseDatasource):
             {StandardCoord.units.name: (StandardDim.variable, units)},  # type:ignore[misc]
         )
 
-        if timeseries_kind in FORECAST_TIMESERIES_KINDS:
+        if data_type in FORECAST_DATA_TYPES:
             return da.transpose(
                 StandardDim.variable,
                 StandardDim.station,
@@ -479,7 +489,7 @@ class FewsNetCDF(BaseDatasource):
         )
 
         # Observations
-        if self.config.timeseries_kind == TimeseriesKind.observed_historical:
+        if self.config.data_type == DataType.observed_historical:
             dataset = xr.open_mfdataset(
                 self.config.paths,  # type:ignore[arg-type] # generator is acceptable argument
                 preprocess=preprocessor,
@@ -501,7 +511,7 @@ class FewsNetCDF(BaseDatasource):
                 self.config.paths,
             )
 
-        if self.config.timeseries_kind in FORECAST_TIMESERIES_KINDS:
+        if self.config.data_type in FORECAST_DATA_TYPES:
             # After loading data into xr.Dataset, apply a filter on forecast reference time, based
             #   on the configured verification period
             dataset = dataset.sel(
@@ -523,16 +533,19 @@ class FewsNetCDF(BaseDatasource):
                 },
             )
 
+        # Load into memory, in the future support dask
+        dataset.load()
+
         # Convert datasets to data_array
         data_array = self.convert_dataset_to_dataarray(
             dataset,
             self.config.source,
-            self.config.timeseries_kind,
+            self.config.data_type,
         )
 
-        # For probabilistic timeseries kinds, transform the data array so that
+        # For probabilistic data types, transform the data array so that
         #   all cdf's share the same threshold dim
-        if self.config.timeseries_kind == TimeseriesKind.simulated_forecast_probabilistic:
+        if self.config.data_type == DataType.simulated_forecast_probabilistic:
             if len(data_array[StandardDim.variable]) > 1:
                 msg = "Multiple variables for simulated_forecast_probabilistic not yet supported"
                 raise NotImplementedError(msg)

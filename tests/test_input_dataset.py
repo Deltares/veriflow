@@ -1,7 +1,9 @@
 """Test the dpyverification.datamodel package."""
 
 import xarray as xr
+
 from dpyverification.datamodel.main import InputDataset
+from dpyverification.datasources.csv import Csv
 from dpyverification.datasources.fewsnetcdf import FewsNetCDF
 
 # mypy: disable-error-code="misc"
@@ -55,5 +57,16 @@ def test_init_input_dataset_fewsnetcdf(
         data=[
             fews_netcdf_observed_historical.get_data().data_array,
             fews_netcdf_simulated_forecast_ensemble_frt.get_data().data_array,
+        ],
+    )
+
+
+def test_init_input_dataset_thresholds(
+    xarray_thresholds: Csv,
+) -> None:
+    """Test the fewsnetcdf is accepted by the input_dataset."""
+    InputDataset(
+        data=[
+            xarray_thresholds.data_array,
         ],
     )

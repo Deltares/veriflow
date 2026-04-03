@@ -8,8 +8,10 @@ from typing import Literal
 import pytest
 import xarray as xr
 import yaml
+from pydantic import BaseModel
+
 from dpyverification.configuration import Config
-from dpyverification.configuration.config import IdMap, IdMappingConfig
+from dpyverification.configuration.base import IdMap, IdMappingConfig
 from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
 from dpyverification.configuration.utils import (
     FewsWebserviceAuthConfig,
@@ -17,10 +19,10 @@ from dpyverification.configuration.utils import (
     Range,
     TimeUnits,
 )
-from pydantic import BaseModel
+from dpyverification.constants import VERSION
 
 
-@pytest.fixture()
+@pytest.fixture  # type:ignore[misc] # has type overloaded function
 def _mock_env(monkeypatch: Generator[pytest.MonkeyPatch, None, None]) -> None:
     """Create a mock environment for testing secret env vars."""
     monkeypatch.setenv("FEWSWEBSERVICE_URL", "https://fixture_url.test")  # type: ignore  # noqa: PGH003
@@ -35,6 +37,24 @@ def test_auth_config_from_fixture() -> None:
     assert str(config.url) == "https://fixture_url.test/"
     assert config.username.get_secret_value() == "fixture_user"
     assert config.password.get_secret_value() == "fixture_pass"
+
+
+def test_schema_up_to_date(tmp_path: Path) -> None:
+    """Check that the schema for our config is up to date."""
+    file_path_schema = (
+        Path(__file__).parent.parent / "schemas" / f"{VERSION}" / "config.schema.json"
+    )
+    assert file_path_schema.exists()
+
+    tmp_file_path = tmp_path / "schema.json"
+    Config.write_schema(tmp_file_path)
+
+    # Check that the generated schema is identical to the one in the repository
+    with file_path_schema.open("r", encoding="utf-8") as f:
+        schema_in_repo = yaml.safe_load(f)  # type:ignore[misc]
+    with tmp_file_path.open("r", encoding="utf-8") as f:
+        generated_schema = yaml.safe_load(f)  # type:ignore[misc]
+    assert schema_in_repo == generated_schema  # type:ignore[misc]
 
 
 def test_schema_jsonable(tmp_path: Path) -> None:
@@ -65,15 +85,15 @@ def test_schema_dump_with_user_models(tmp_path: Path) -> None:
     tmpfile = tmp_path / "config.json"
 
     class UserDatasourceConfig(BaseModel):
-        kind: Literal["userdatasource"]
+        import_adapter: Literal["userdatasource"]
         some_other_property: list[int]
 
     class UserScoreconfig(BaseModel):
-        kind: Literal["userscore"]
+        score_adapter: Literal["userscore"]
         some_other_property: list[int]
 
     class UserDataSinkConfig(BaseModel):
-        kind: Literal["userdatasink"]
+        export_adapter: Literal["userdatasink"]
         some_other_property: list[int]
 
     Config.write_schema(
@@ -101,9 +121,9 @@ def test_schema_dump_with_user_models(tmp_path: Path) -> None:
 
 def test_forecast_period_config() -> None:
     """Check forecast periods config identical when using list or range."""
-    list_instance = ForecastPeriods(unit=TimeUnits.HOUR, values=[1, 2, 3])
+    list_instance = ForecastPeriods(unit=TimeUnits.hour, values=[1, 2, 3])
     range_instance = ForecastPeriods(
-        unit=TimeUnits.HOUR,
+        unit=TimeUnits.hour,
         values=Range(start=1, end=3, step=1).to_list(),
     )
     assert list_instance == range_instance
@@ -122,7 +142,7 @@ def test_single_id_map_get_mapping() -> None:
 def test_id_mapping_rename_dataset(xarray_observed_historical: xr.DataArray) -> None:
     """Test partial renaming of stations on dummy dataset."""
     config = IdMappingConfig(
-        station=IdMap({"newstation1": {"observation_source": "station0"}}),
+        station=IdMap({"newstation1": {"observation_source": "station_0"}}),
     )
     new_da = config.rename_data_array(xarray_observed_historical)
     assert next(iter(new_da.station.to_numpy())) == "newstation1"  # type:ignore[misc]
