@@ -1,4 +1,7 @@
-
+=========================
 Constants
--------------------------
-.. automodule:: dpyverification.constants
+=========================
+.. autosummary::
+   :toctree: _generated
+
+   dpyverification.constants

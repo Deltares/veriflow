@@ -1,6 +1,7 @@
 """Test the functions in the pipeline module."""
 
 import pytest
+from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
 from pytest_lazy_fixtures import lf
 
 from dpyverification.configuration.base import GeneralInfoConfig

@@ -2,6 +2,21 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../../src"))
+
+# # This function skips classes / functions not part of  __all__ defined at the module level.
+# #   This enables us to keep the .rst file minimal, while retaining full control over what 
+# #   gets documented from the codebase.
+# def skip(app, what, name, obj, skip, options):
+#     # Only filter top-level module members
+#     if what == "module" and hasattr(obj, "__all__"):
+#         return name not in obj.__all__
+
+#     # For everything else (classes, methods, etc.), use default behavior
+#     return skip
+
+# def setup(app):
+#     app.connect("autodoc-skip-member", skip)
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -60,11 +75,12 @@ html_theme_options = {
         "json_url": "_static/versions.json",  # see below
         "version_match": "current",
     },
-    "navigation_depth": 2,
+    "navigation_depth": 3,
 }
 
 # Autodoc
 autosummary_generate = True
+autosummary_ignore_module_all = False
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_typehints_format = "short"
@@ -74,6 +90,7 @@ autodoc_default_options = {
     "undoc-members": True,  # show StrEnum members from constants
     # "show-inheritance": True, # shows 'bases' in docs
 }
+
 
 # Autodoc Pytantic
 # autodoc_default_options = {"inherited-members": "BaseModel"}
