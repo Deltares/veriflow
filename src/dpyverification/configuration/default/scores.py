@@ -80,9 +80,7 @@ class CrpsForEnsembleConfig(BaseScoreConfig, ReduceDimsForecast):
     method: Annotated[
         Literal["ecdf", "fair"],
         Field(
-            description=(
-                "Method to compute the cumulative distribution function from an ensemble."
-            ),
+            description="Method to compute the cumulative distribution function from an ensemble.",
             default="ecdf",
         ),
     ]

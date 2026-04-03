@@ -19,10 +19,8 @@ class BaseCFCompliantConfig(LocalFile, BaseDatasinkConfig):
     title: Annotated[
         str,
         Field(
-            description=(
-                "Value for the title attribute in the generated NetCDF."
-                " A title will be generated if not provided"
-            ),
+            description="Value for the title attribute in the generated NetCDF."
+            " A title will be generated if not provided",
         ),
     ] = f"Verification results created by {NAME}"
     institution: Annotated[

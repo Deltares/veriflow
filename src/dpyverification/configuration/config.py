@@ -4,6 +4,9 @@ This definition is used both as the schema for the configuration yaml file, and 
 the dpyverification configuration object.
 
 To generate a yaml / json file with the json representation of this schema:
+
+.. code-block:: python
+
     import pathlib
     import yaml
     from dpyverification.configuration import Config
