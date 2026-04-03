@@ -178,6 +178,11 @@ class Preprocessor:
         if self.variables is not None:
             dataset = dataset[self.variables]
 
+        # Sometimes time_bnds is included in the dataset, but this is not expected in the internal
+        # datamodel and can cause issues with alignment later on, so we drop it if it exists.
+        if "time_bnds" in dataset:
+            dataset = dataset.drop_vars("time_bnds")
+
         # Filter stations
         if self.stations is not None:
             dataset = self.filter_stations(dataset, self.stations)
@@ -436,8 +441,14 @@ class FewsNetCDF(BaseDatasource):
         data_type: DataType,
     ) -> xr.DataArray:
         """Transform dataset to internal datamodel."""
+
         # Extract the variable units from data variables
-        units = [dataset[da].attrs["units"] for da in dataset]  # type:ignore[misc]
+        def _get_unit(da: xr.DataArray) -> str:
+            if "units" not in da.attrs:  # type:ignore[misc]
+                return "unknown"
+            return da.attrs["units"]  # type:ignore[no-any-return, misc]
+
+        units = [_get_unit(dataset[da]) for da in dataset]
 
         # Stack the variables along dimension variable
         da = dataset.to_dataarray(dim=StandardDim.variable, name=source)

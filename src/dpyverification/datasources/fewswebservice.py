@@ -175,6 +175,7 @@ class FewsWebservice(BaseDatasource):
                         netcdf_kind=FewsNetCDFKind.observation,
                         id_mapping=self.config.id_mapping,
                         source=self.config.source,
+                        parameter_ids=self.config.parameter_ids,
                     ),
                 )
 
