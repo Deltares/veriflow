@@ -11,7 +11,12 @@ from scores.categorical import (  # type:ignore[import-untyped]
     BinaryContingencyManager,
 )
 
-from dpyverification.configuration.default.scores import CategoricalScoresConfig, EventOperator
+from dpyverification.configuration.default.scores import (
+    BaseEvent,
+    CategoricalScoresConfig,
+    EventOperator,
+    ThresholdEvent,
+)
 from dpyverification.constants import DataType, SupportedCategoricalScores
 from dpyverification.scores.base import BaseCategoricalScore
 
@@ -88,51 +93,51 @@ class CategoricalScores(BaseCategoricalScore):
     def __init__(self, config: CategoricalScoresConfig) -> None:
         self.config: CategoricalScoresConfig = config
 
-    def compute(
+    def compute_score_for_single_event(
         self,
         obs: xr.DataArray,
         sim: xr.DataArray,
         thresholds: xr.DataArray,
+        event: BaseEvent,
     ) -> xr.Dataset | xr.DataArray:
-        """Compute any number of categorical scores."""
-        results: list[xr.DataArray | xr.Dataset] = []
-        for event in self.config.events:
-            operator_func = get_event_operator(event.operator)
-            obs_events = create_binary_array(
-                obs,
-                thresholds=thresholds,
-                operator=operator_func,
-            )
-            sim_events = create_binary_array(
-                sim,
-                thresholds=thresholds,
-                operator=operator_func,
-            )
-            binary_contingency_manager = BinaryContingencyManager(  # type:ignore[misc]
-                fcst_events=sim_events,
-                obs_events=obs_events,
-            )
-            basic_contingency_manager = binary_contingency_manager.transform(  # type:ignore[misc]
-                preserve_dims=self.config.preserve_dims,
-            )
-            scores = []
-            for score in self.config.scores:
-                score_func = get_categorical_score(score)
-                score_array = score_func(basic_contingency_manager)  # type:ignore[misc]
-                score_array.name = str(score.value)  # type:ignore[misc]
-                scores.append(score_array)  # type:ignore[misc]
+        """Compute any number of categorical scores for a single event."""
+        if not isinstance(event, ThresholdEvent):
+            msg = f"Unsupported event type: {type(event)}. Expected a ThresholdEvent."
+            raise TypeError(msg)
 
-            if self.config.return_contingency_table is True:
-                table: xr.DataArray = basic_contingency_manager.get_table()  # type:ignore[misc]
-                table.name = "contingency_table"
-                scores.append(table)  # type:ignore[misc]
+        operator_func = get_event_operator(event.operator)
+        obs_events = create_binary_array(
+            obs,
+            thresholds=thresholds,
+            operator=operator_func,
+        )
+        sim_events = create_binary_array(
+            sim,
+            thresholds=thresholds,
+            operator=operator_func,
+        )
+        binary_contingency_manager = BinaryContingencyManager(  # type:ignore[misc]
+            fcst_events=sim_events,
+            obs_events=obs_events,
+        )
+        basic_contingency_manager = binary_contingency_manager.transform(  # type:ignore[misc]
+            preserve_dims=self.config.preserve_dims,
+        )
+        scores = []
+        for score in self.config.scores:
+            score_func = get_categorical_score(score)
+            score_array = score_func(basic_contingency_manager)  # type:ignore[misc]
+            score_array.name = str(score.value)  # type:ignore[misc]
+            scores.append(score_array)  # type:ignore[misc]
 
-            merged_scores: xr.Dataset = xr.merge(scores)  # type:ignore[misc, assignment]
-            merged_scores = set_event_coordinates_on_result(
-                merged_scores,
-                threshold=event.threshold,
-                operator=event.operator,
-            )
-            results.append(merged_scores)
+        if self.config.return_contingency_table is True:
+            table: xr.DataArray = basic_contingency_manager.get_table()  # type:ignore[misc]
+            table.name = "contingency_table"
+            scores.append(table)  # type:ignore[misc]
 
-        return xr.combine_by_coords(results)
+        merged_scores: xr.Dataset = xr.merge(scores)  # type:ignore[misc, assignment]
+        return set_event_coordinates_on_result(
+            merged_scores,
+            threshold=event.threshold,
+            operator=event.operator,
+        )

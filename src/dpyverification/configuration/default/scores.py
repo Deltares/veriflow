@@ -5,7 +5,11 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, RootModel
 
-from dpyverification.configuration.base import BaseCategoricalScoreConfig, BaseScoreConfig
+from dpyverification.configuration.base import (
+    BaseCategoricalScoreConfig,
+    BaseEvent,
+    BaseScoreConfig,
+)
 from dpyverification.constants import (
     ScoreKind,
     StandardDim,
@@ -107,8 +111,8 @@ class ContinuousScoresConfig(BaseScoreConfig, ReduceDimsForecast):
     scores: list[SupportedContinuousScore]
 
 
-class ThresholdOperator(BaseModel):
-    """An event definition."""
+class ThresholdEvent(BaseEvent):
+    """An event definition for a threshold."""
 
     threshold: Annotated[
         str,
@@ -131,10 +135,15 @@ class CategoricalScoresConfig(BaseCategoricalScoreConfig, ReduceDimsForecast):
         ),
     ]
     events: Annotated[
-        list[ThresholdOperator],
+        list[ThresholdEvent],
         Field(
-            description="A list of event definitions. For each event, a categorical score will be "
-            "computed.",
+            description="A list of threshold event definitions. For each event, a categorical "
+            "score will be computed. A threshold event is defined by a threshold and an operator. "
+            "The threshold is a string that corresponds to a threshold id defined in the "
+            "configuration. The operator defines how the threshold is applied to the data to "
+            "create the event. For example, if the threshold is '10' and the operator is "
+            "'greater_than', the event will be created by applying the operator to the data "
+            "and the threshold, i.e. data > 10. ",
         ),
     ]
     return_contingency_table: Annotated[

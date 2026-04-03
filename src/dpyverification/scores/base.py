@@ -6,7 +6,11 @@ from typing import ClassVar
 import xarray as xr
 
 from dpyverification.base import Base
-from dpyverification.configuration.base import BaseCategoricalScoreConfig, BaseScoreConfig
+from dpyverification.configuration.base import (
+    BaseCategoricalScoreConfig,
+    BaseEvent,
+    BaseScoreConfig,
+)
 from dpyverification.constants import DataType
 
 
@@ -59,11 +63,12 @@ class BaseCategoricalScore(Base):
         self.config: BaseCategoricalScoreConfig = config
 
     @abstractmethod
-    def compute(
+    def compute_score_for_single_event(
         self,
         obs: xr.DataArray,
         sim: xr.DataArray,
         thresholds: xr.DataArray,
+        event: BaseEvent,
     ) -> xr.DataArray | xr.Dataset:
         """Abstract calculation."""
 
@@ -80,7 +85,21 @@ class BaseCategoricalScore(Base):
             f"{self.__class__.__name__}. Supported types: "
             f"{sorted(self.supported_data_types)}."
             raise ValueError(msg)
-        result = self.compute(obs, sim, thresholds=thresholds)
+
+        results: list[xr.DataArray | xr.Dataset] = []
+        for event in self.config.events:
+            if not isinstance(event, BaseEvent):
+                msg = f"Unsupported event type: {type(event)}. Expected a BaseEvent."  # type:ignore[unreachable] # runtime check
+                raise TypeError(msg)
+            result_for_a_single_event = self.compute_score_for_single_event(
+                obs,
+                sim,
+                thresholds=thresholds,
+                event=event,
+            )
+            results.append(result_for_a_single_event)
+        result = xr.combine_by_coords(results)
+
         if isinstance(result, xr.DataArray) and result.name is None:  # type:ignore[misc]
             result.name = self.config.score_adapter
         return result

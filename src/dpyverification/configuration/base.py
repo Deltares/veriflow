@@ -15,6 +15,7 @@ To generate a yaml / json file with the json representation of this schema:
 
 # ruff: noqa: D102 Do not require class docstrings for the classes in this file
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self
 
@@ -63,7 +64,7 @@ class GeneralInfoConfig(BaseModel):
                 "Will be automatically created if it doesn't yet exist.",
             ),
         ),
-    ] = Path("./.verification_cache")
+    ] = ".verification_cache"  # type:ignore[assignment] # Allow Path type for default value, since it will be converted to Path during validation.
 
     def get_verification_pair(self, pair_id: str) -> VerificationPair:
         """Get one verification_pair by its id."""
@@ -293,6 +294,10 @@ class BaseScoreConfig(BaseConfig):
         return self
 
 
+class BaseEvent(BaseModel):
+    """Base class for event definitions."""
+
+
 class BaseCategoricalScoreConfig(BaseScoreConfig):
     """
     Base config for a categorical score config.
@@ -301,6 +306,12 @@ class BaseCategoricalScoreConfig(BaseScoreConfig):
     this base class.
     """
 
-    # No additional fields yet, but we want to keep the categorical score configs separate from the
-    # continuous score configs, because they require a different compute function signature and thus
-    # a different Score class implementation.
+    events: Annotated[
+        Iterable[
+            BaseEvent
+        ],  # we use Iterable instead of list to also allow subclasses of BaseEvent (see: https://docs.python.org/3/library/typing.html#generics)
+        Field(
+            description="A list of event definitions. For each event, a categorical score will be "
+            "computed.",
+        ),
+    ]

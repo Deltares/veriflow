@@ -95,20 +95,20 @@
           "title": "Verification Pair Ids",
           "type": "array"
         },
+        "events": {
+          "description": "A list of threshold event definitions. For each event, a categorical score will be computed. A threshold event is defined by a threshold and an operator. The threshold is a string that corresponds to a threshold id defined in the configuration. The operator defines how the threshold is applied to the data to create the event. For example, if the threshold is '10' and the operator is 'greater_than', the event will be created by applying the operator to the data and the threshold, i.e. data > 10. ",
+          "items": {
+            "$ref": "#/$defs/ThresholdEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
         "scores": {
           "description": "For reference, see: https://scores.readthedocs.io/en/stable/api.html#module-scores.categorical.",
           "items": {
             "$ref": "#/$defs/SupportedCategoricalScores"
           },
           "title": "Scores",
-          "type": "array"
-        },
-        "events": {
-          "description": "A list of event definitions. For each event, a categorical score will be computed.",
-          "items": {
-            "$ref": "#/$defs/ThresholdOperator"
-          },
-          "title": "Events",
           "type": "array"
         },
         "return_contingency_table": {
@@ -120,8 +120,8 @@
       },
       "required": [
         "score_adapter",
-        "scores",
-        "events"
+        "events",
+        "scores"
       ],
       "title": "CategoricalScoresConfig",
       "type": "object"
@@ -650,6 +650,7 @@
           "default": "A set of forecast periods for which to evaluate of the verification scores. A forecast period is the timedelta between the forecast reference time of a forecast (t0, analysis_time, initialization time) and the valid time (time, observed time) and is also known as: lead time or forecast horizon)"
         },
         "cache_dir": {
+          "default": ".verification_cache",
           "description": [
             "Path pointing to a cache directory. ",
             "Will be automatically created if it doesn't yet exist."
@@ -847,8 +848,8 @@
       "title": "SupportedContinuousScore",
       "type": "string"
     },
-    "ThresholdOperator": {
-      "description": "An event definition.",
+    "ThresholdEvent": {
+      "description": "An event definition for a threshold.",
       "properties": {
         "threshold": {
           "description": "Threshold id to use in event definition.",
@@ -864,7 +865,7 @@
         "threshold",
         "operator"
       ],
-      "title": "ThresholdOperator",
+      "title": "ThresholdEvent",
       "type": "object"
     },
     "TimeUnits": {

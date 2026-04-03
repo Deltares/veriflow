@@ -31,7 +31,7 @@ from dpyverification.configuration.default.scores import (
     CrpsForEnsembleConfig,
     EventOperator,
     RankHistogramConfig,
-    ThresholdOperator,
+    ThresholdEvent,
 )
 from dpyverification.configuration.utils import (
     ForecastPeriods,
@@ -786,7 +786,7 @@ def score_config_categorical(
         score_adapter=ScoreKind.categorical_scores,
         general=fews_general_info_config_single.model_dump(),
         scores=["accuracy", "false_alarm_rate"],
-        events=[ThresholdOperator(threshold="warn_2", operator=EventOperator.GREATER_THAN)],
+        events=[ThresholdEvent(threshold="warn_2", operator=EventOperator.GREATER_THAN)],
         verification_pair_ids=["pair1"],
         reduce_dims=[StandardDim.forecast_reference_time],
     )

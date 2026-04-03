@@ -104,7 +104,7 @@ def test_categorical_scores(
 ) -> None:
     """Test the categorical scores config."""
     instance = CategoricalScores(config=score_config_categorical)
-    instance.compute(
+    instance.validate_and_compute(
         obs=xarray_observed_historical,
         sim=xarray_simulated_forecast_single,
         thresholds=xarray_thresholds.data_array,  # type:ignore[misc]
