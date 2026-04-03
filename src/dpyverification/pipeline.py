@@ -9,40 +9,20 @@ from typing import TypeVar, cast
 from cftime import CFWarning  # type:ignore[import-untyped]
 from xarray import SerializationWarning
 
-from dpyverification.configuration import Config, ConfigFile
-from dpyverification.configuration.file import ConfigKind
+from dpyverification.configuration.config import Config
+from dpyverification.configuration.file import ConfigFile, ConfigKind
 from dpyverification.datamodel import InputDataset, OutputDataset
+from dpyverification.datasinks import DEFAULT_DATASINKS
 from dpyverification.datasinks.base import BaseDatasink
-from dpyverification.datasinks.cf_compliant_netdf import CFCompliantNetCDF
+from dpyverification.datasources import DEFAULT_DATASOURCES
 from dpyverification.datasources.base import BaseDatasource
-from dpyverification.datasources.csv import Csv
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF
-from dpyverification.datasources.fewswebservice import FewsWebservice
-from dpyverification.datasources.netcdf import NetCDF
+from dpyverification.scores import DEFAULT_SCORES
 from dpyverification.scores.base import BaseCategoricalScore, BaseScore
-from dpyverification.scores.categorical import CategoricalScores
-from dpyverification.scores.continuous import ContinuousScores
-from dpyverification.scores.probabilistic import CrpsForEnsemble, RankHistogram
 
 logger = logging.getLogger(__name__)
 
 
 TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore | BaseCategoricalScore)
-
-DEFAULT_DATASOURCES: list[type[BaseDatasource]] = [
-    FewsNetCDF,
-    FewsWebservice,
-    NetCDF,
-    Csv,
-]
-
-DEFAULT_SCORES: list[type[BaseScore] | type[BaseCategoricalScore]] = [
-    RankHistogram,
-    CrpsForEnsemble,
-    ContinuousScores,
-    CategoricalScores,
-]
-DEFAULT_DATASINKS: list[type[BaseDatasink]] = [CFCompliantNetCDF]
 
 
 def find_matching_kind_in_list(

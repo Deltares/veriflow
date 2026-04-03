@@ -32,10 +32,13 @@ from dpyverification.configuration.default.datasinks import (
     CFCompliantNetCDFConfig,
 )
 from dpyverification.configuration.default.datasources import (
+    CsvConfig,
     FewsNetCDFConfig,
     FewsWebserviceConfig,
+    NetCDFConfig,
 )
 from dpyverification.configuration.default.scores import (
+    CategoricalScoresConfig,
     ContinuousScoresConfig,
     CrpsCDFConfig,
     CrpsForEnsembleConfig,
@@ -97,12 +100,18 @@ class Config(BaseModel):
             Option to provide user-implemented config classes, by default None
 
         """
-        default_datasources_config = [FewsNetCDFConfig, FewsWebserviceConfig]
+        default_datasources_config = [
+            FewsNetCDFConfig,
+            FewsWebserviceConfig,
+            CsvConfig,
+            NetCDFConfig,
+        ]
         default_scores_config = [
             CrpsForEnsembleConfig,
             RankHistogramConfig,
             CrpsCDFConfig,
             ContinuousScoresConfig,
+            CategoricalScoresConfig,
         ]
         default_datasinks_config = [CFCompliantNetCDFConfig]
 
