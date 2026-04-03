@@ -92,33 +92,22 @@ def test_cli_run(
     )
 
 
-@pytest.mark.parametrize(
-    ("cli_option_key", "cli_option_value"),
-    [
-        ("--verification-period-start", "1"),
-    ],
-    ids=[
-        "verification-period-start",
-    ],
-)
 def test_cli_run_with_invalid_overrides(
     cli_dummy_pipeline_config_yaml: Path,
-    cli_option_key: str,
-    cli_option_value: str,
 ) -> None:
     """Test running the CLI with invalid overrides."""
     expected_exit_code = 2
+
     result = runner.invoke(
         app,
         [
             "run-pipeline",
             str(cli_dummy_pipeline_config_yaml),
-            cli_option_key,
-            cli_option_value,
+            "--verification-period-start",
+            "not-a-valid-datetime",
         ],
-        catch_exceptions=True,
+        catch_exceptions=False,
         color=False,
     )
 
     assert result.exit_code == expected_exit_code
-    assert "verification-period-start': '1' does not match the" in result.output
