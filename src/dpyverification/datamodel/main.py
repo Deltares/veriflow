@@ -232,11 +232,11 @@ class OutputDataset:
             if include_input_data:
                 # Return results, include the input dataset
                 obs, sim = self.input_dataset.get_pair(verification_pair)
-                return xr.merge([obs, sim, dataset])  # type:ignore[list-item, return-value]
+                return xr.merge([obs, sim, dataset], compat="no_conflicts")  # type:ignore[list-item, return-value]
 
             # Return results, exclude input dataset
             return dataset
 
         # Return only input dataset (no results found in datastore)
         obs, sim = self.input_dataset.get_pair(verification_pair)
-        return xr.merge([obs, sim])  # type:ignore[list-item, return-value]
+        return xr.merge([obs, sim], compat="no_conflicts")  # type:ignore[list-item, return-value]
