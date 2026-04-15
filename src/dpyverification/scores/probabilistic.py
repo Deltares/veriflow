@@ -105,7 +105,7 @@ class RankHistogram(BaseScore):
         result: xr.DataArray | xr.Dataset = rank_histogram(
             observations=obs,
             forecasts=sim,
-            dim=self.config.preserve_dims,
+            dim=self.config.reduce_dims,
             member_dim=StandardDim.realization.value,
         )
         return result

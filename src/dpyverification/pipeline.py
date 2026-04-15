@@ -209,11 +209,11 @@ def run_pipeline(
                     result = score.validate_and_compute(obs=obs, sim=sim, thresholds=thresholds)
                 else:
                     result = score.validate_and_compute(obs=obs, sim=sim)
-                output_dataset.add_score(verification_pair_id=verification_pair.id, score=result)
+                output_dataset.add_score(verification_pair=verification_pair, score=result)
 
                 msg = (
                     f"Successfully computed {score.__class__.__name__} for verification pair "
-                    "{pair_id}."
+                    f"{verification_pair.id}."
                 )
                 logger.info(msg)
 
@@ -227,10 +227,10 @@ def run_pipeline(
                 datasink = sink_kind.from_config(datasink_config.model_dump())  # type: ignore[misc] # Allow Any
 
                 # We write results for each verification pair separately to the datasink. The
-                #   datasink determines what the output will ook like.
+                #   datasink determines what the output will look like.
                 for verification_pair in config.general.verification_pairs:
                     datasink.write_data(
-                        output_dataset.get_output_dataset(verification_pair),
+                        output_dataset.get(verification_pair),
                     )
                     msg = (
                         f"Successfully wrote results of verification pair {verification_pair.id} "

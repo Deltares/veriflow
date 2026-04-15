@@ -752,6 +752,7 @@ def score_config_rank_histogram(
     return RankHistogramConfig(
         score_adapter=ScoreKind.rank_histogram,
         general=fews_general_info_config_ensemble.model_dump(),
+        reduce_dims=[StandardDim.forecast_reference_time],
     )
 
 
