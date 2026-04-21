@@ -20,14 +20,14 @@ def test_fetch_thresholds(
     # Test the threshold ids are as expected (coordinate values)
     np.testing.assert_array_equal(
         xarray_thresholds.data_array.threshold.to_numpy(),  # type:ignore[misc]
-        np.array(["warn_1"]),  # type:ignore[misc]
+        np.array(["warn_1", "warn_2"]),  # type:ignore[misc]
     )
 
     # Test one threshold value matches the source csv content.
     expected_value = dummy_threshold_df[
         (dummy_threshold_df["station"] == "station_2")
         & (dummy_threshold_df["variable"] == "var_1")
-        & (dummy_threshold_df["threshold"] == "warn_1")
+        & (dummy_threshold_df["threshold"].isin(["warn_1"]))
     ]["value"].iloc[0]
 
     np.testing.assert_approx_equal(
