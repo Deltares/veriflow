@@ -57,18 +57,19 @@ def get_event_operator(
 class CategoricalScoreDim(StrEnum):
     """Names of dimensions added when computing a categorical score."""
 
+    THRESHOLD_EVENT = "threshold_event"
     EVENT_THRESHOLD = "event_threshold"
     EVENT_OPERATOR = "event_operator"
 
 
 def create_binary_array(
     data: xr.DataArray,
-    thresholds: xr.DataArray,
+    threshold_array: xr.DataArray,
     operator: Callable[[xr.DataArray, xr.DataArray], xr.DataArray],
 ) -> xr.DataArray:
     """Given data and thresholds, compute the binary events."""
     # Align along dimension station
-    data_aligned, thresholds_aligned = xr.align(data, thresholds, join="inner")
+    data_aligned, thresholds_aligned = xr.align(data, threshold_array, join="inner")
     result = operator(data_aligned, thresholds_aligned)
     if isinstance(result, xr.DataArray):  # type:ignore[misc]
         return result
@@ -83,12 +84,26 @@ def set_event_coordinates_on_result(
 ) -> xr.Dataset:
     """Set coordinates on data array to represent the event for which a score was computed."""
     data_array = data_array.expand_dims(
-        {CategoricalScoreDim.EVENT_THRESHOLD: 1, CategoricalScoreDim.EVENT_OPERATOR: 1},
+        {CategoricalScoreDim.THRESHOLD_EVENT: 1},
+    )
+    data_array = data_array.assign_coords(
+        {CategoricalScoreDim.THRESHOLD_EVENT: [f"{operator.value}_{threshold}"]},
+    )
+
+    data_array = data_array.assign_coords(
+        {
+            CategoricalScoreDim.EVENT_THRESHOLD: (
+                CategoricalScoreDim.THRESHOLD_EVENT,
+                [threshold],
+            ),
+        },
     )
     return data_array.assign_coords(
-        {  # type:ignore[misc]
-            CategoricalScoreDim.EVENT_OPERATOR: [operator.name],  # type:ignore[misc]
-            CategoricalScoreDim.EVENT_THRESHOLD: [threshold],  # type:ignore[misc]
+        {
+            CategoricalScoreDim.EVENT_OPERATOR: (
+                CategoricalScoreDim.THRESHOLD_EVENT,
+                [operator.value],
+            ),
         },
     )
 
@@ -112,7 +127,7 @@ class CategoricalScores(BaseCategoricalScore):
         self,
         obs: xr.DataArray,
         sim: xr.DataArray,
-        thresholds: xr.DataArray,
+        threshold_array: xr.DataArray,
         event: BaseEvent,
     ) -> xr.Dataset | xr.DataArray:
         """Compute any number of categorical scores for a single event."""
@@ -121,14 +136,15 @@ class CategoricalScores(BaseCategoricalScore):
             raise TypeError(msg)
 
         operator_func = get_event_operator(event.operator)
+
         obs_events = create_binary_array(
             obs,
-            thresholds=thresholds,
+            threshold_array=threshold_array,
             operator=operator_func,
         )
         sim_events = create_binary_array(
             sim,
-            thresholds=thresholds,
+            threshold_array=threshold_array,
             operator=operator_func,
         )
         binary_contingency_manager = BinaryContingencyManager(  # type:ignore[misc]
@@ -150,7 +166,7 @@ class CategoricalScores(BaseCategoricalScore):
             table.name = "contingency_table"
             scores.append(table)  # type:ignore[misc]
 
-        merged_scores: xr.Dataset = xr.merge(scores)  # type:ignore[misc, assignment]
+        merged_scores: xr.Dataset = xr.merge(scores, compat="no_conflicts")  # type:ignore[misc, assignment]
         return set_event_coordinates_on_result(
             merged_scores,
             threshold=event.threshold,

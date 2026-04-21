@@ -69,7 +69,7 @@ class BaseCategoricalScore(Base):
         self,
         obs: xr.DataArray,
         sim: xr.DataArray,
-        thresholds: xr.DataArray,
+        threshold_array: xr.DataArray,
         event: BaseEvent,
     ) -> xr.DataArray | xr.Dataset:
         """Abstract calculation."""
@@ -93,10 +93,14 @@ class BaseCategoricalScore(Base):
             if not isinstance(event, BaseEvent):
                 msg = f"Unsupported event type: {type(event)}. Expected a BaseEvent."  # type:ignore[unreachable] # runtime check
                 raise TypeError(msg)
+            if event.threshold not in thresholds["threshold"]:  # type:ignore[unreachable] # runtime check
+                msg = f"Threshold '{event.threshold}' not found in thresholds DataArray."  # type:ignore[unreachable] # runtime check
+                raise ValueError(msg)
+            threshold_array = thresholds.sel({"threshold": event.threshold})  # type:ignore[unreachable] # runtime check
             result_for_a_single_event = self.compute_score_for_single_event(
                 obs,
                 sim,
-                thresholds=thresholds,
+                threshold_array=threshold_array,
                 event=event,
             )
             results.append(result_for_a_single_event)
