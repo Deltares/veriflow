@@ -87,7 +87,7 @@ def set_event_coordinates_on_result(
         {CategoricalScoreDim.THRESHOLD_EVENT: 1},
     )
     data_array = data_array.assign_coords(
-        {CategoricalScoreDim.THRESHOLD_EVENT: [f"{operator.value}_{threshold}"]},
+        {CategoricalScoreDim.THRESHOLD_EVENT: [f"{operator.value}_{threshold}"]},  # type:ignore[misc]
     )
 
     data_array = data_array.assign_coords(
@@ -96,15 +96,16 @@ def set_event_coordinates_on_result(
                 CategoricalScoreDim.THRESHOLD_EVENT,
                 [threshold],
             ),
-        },
+        },  # type:ignore[misc]
     )
+
     return data_array.assign_coords(
         {
             CategoricalScoreDim.EVENT_OPERATOR: (
                 CategoricalScoreDim.THRESHOLD_EVENT,
                 [operator.value],
             ),
-        },
+        },  # type:ignore[misc]
     )
 
 
@@ -166,7 +167,7 @@ class CategoricalScores(BaseCategoricalScore):
             table.name = "contingency_table"
             scores.append(table)  # type:ignore[misc]
 
-        merged_scores: xr.Dataset = xr.merge(scores, compat="no_conflicts")  # type:ignore[misc, assignment]
+        merged_scores: xr.Dataset = xr.merge(scores, compat="no_conflicts")  # type:ignore[misc, call-overload]
         return set_event_coordinates_on_result(
             merged_scores,
             threshold=event.threshold,
