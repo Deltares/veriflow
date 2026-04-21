@@ -859,7 +859,7 @@ def xarray_thresholds(
         filename=file_path.name,
         stations=["station_2"],
         variables=["var_1"],
-        thresholds=["warn_1"],
+        thresholds=["warn_1", "warn_2"],
     )
     instance = Csv(config)
     instance.fetch_data()
