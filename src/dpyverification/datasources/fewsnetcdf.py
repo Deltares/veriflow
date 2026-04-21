@@ -1,6 +1,6 @@
 """Read and write NetCDF files in a fews compatible format."""
 
-from collections.abc import Generator
+from collections.abc import Iterator
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Self
@@ -336,7 +336,7 @@ def quantiles_to_cdf_data_array(
 
 
 def parse_forecast_period_netcdf_files(
-    paths: Generator[Path, None, None],
+    paths: Iterator[Path],
 ) -> xr.Dataset:
     """Parse NetCDF responses from get timeseries with leadTimes parameter."""
 
@@ -378,6 +378,7 @@ def parse_forecast_period_netcdf_files(
                 ),
             },
         )
+        dataset = dataset.sortby(StandardDim.forecast_reference_time)
 
         # Set coord (expected for alignment of individual arrays)
         dataset = dataset.assign_coords(
@@ -394,11 +395,17 @@ def parse_forecast_period_netcdf_files(
             },
         )
 
-    # Create one object
+    # Combine files in a deterministic order and make xarray's merge semantics explicit so the
+    # result does not depend on platform-specific file iteration or library defaults.
     dataset_list = [preprocess(xr.open_dataset(path)) for path in paths]
-    dataset = xr.merge(dataset_list)
+    dataset = xr.merge(
+        dataset_list,
+        join="outer",
+        compat="no_conflicts",
+        combine_attrs="override",
+    )
 
-    # Sort forecast_period index
+    dataset = dataset.sortby(StandardDim.forecast_reference_time)
     dataset = dataset.sortby(StandardDim.forecast_period)
 
     # Decode byte-string coords

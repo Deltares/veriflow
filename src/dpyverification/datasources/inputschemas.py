@@ -289,7 +289,10 @@ INPUT_SCHEMAS: dict[DataType, BaseModel] = {
 
 
 def validate_input_data(data_array: xr.DataArray) -> BaseModel:
-    """Validate input data against the expected schema for the given data type."""
+    """Validate input data against the expected schema for the given data type.
+
+    The data type is determined from the 'data_type' attribute of the provided xarray DataArray.
+    """
     if not isinstance(data_array, xr.DataArray):
         msg = f"Expected an xarray DataArray. Got: {type(data_array)}"
         raise TypeError(msg)

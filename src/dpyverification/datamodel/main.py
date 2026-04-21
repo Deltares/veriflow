@@ -200,43 +200,59 @@ class OutputDataset:
         # Internal datastore that stores results of score computation in a dictionary where the
         #   key represent the pair_id of the VerificationPair and the value is an xr.Dataset that
         #   contains all results from varying scores for that pair.
-        self.datastore: dict[str, xr.Dataset] = {}
+        self.datastore: dict[VerificationPair, xr.Dataset] = {}
 
-    def add_score(self, score: xr.DataArray | xr.Dataset, verification_pair_id: str) -> None:
+    def add_score(
+        self,
+        score: xr.DataArray | xr.Dataset,
+        verification_pair: VerificationPair,
+    ) -> None:
         """Add a score results to the datastore."""
         # Convert to xr.Dataset
         if isinstance(score, xr.DataArray):  # type:ignore[misc]
             score = score.to_dataset()
 
         # Add to the store, if not added before
-        if verification_pair_id not in self.datastore:
-            self.datastore[verification_pair_id] = score
+        if verification_pair not in self.datastore:
+            self.datastore[verification_pair] = score
 
         # Pair has added data to the datastore before, so merge
         else:
-            self.datastore[verification_pair_id] = xr.merge(
-                [self.datastore[verification_pair_id], score],  # type:ignore[list-item, assignment]
+            self.datastore[verification_pair] = xr.merge(
+                [self.datastore[verification_pair], score],  # type:ignore[list-item, assignment]
             )
 
-    def get_output_dataset(
+    def get(
         self,
         verification_pair: VerificationPair,
         *,
         include_input_data: bool = True,
     ) -> xr.Dataset:
         """Get the output dataset for a given verification pair."""
-        if verification_pair.id in self.datastore:
+        if verification_pair in self.datastore:
             # Get the results for this pair
-            dataset = self.datastore[verification_pair.id]
+            dataset = self.datastore[verification_pair]
 
             if include_input_data:
                 # Return results, include the input dataset
                 obs, sim = self.input_dataset.get_pair(verification_pair)
-                return xr.merge([obs, sim, dataset])  # type:ignore[list-item, return-value]
+                return xr.merge([obs, sim, dataset], compat="no_conflicts", join="outer")  # type:ignore[misc, no-any-return, call-overload]
 
             # Return results, exclude input dataset
             return dataset
 
         # Return only input dataset (no results found in datastore)
         obs, sim = self.input_dataset.get_pair(verification_pair)
-        return xr.merge([obs, sim])  # type:ignore[list-item, return-value]
+        return xr.merge([obs, sim], compat="no_conflicts", join="outer")  # type:ignore[misc, no-any-return, call-overload]
+
+    @property
+    def verification_pairs(self) -> list[VerificationPair]:
+        """Return the list of verification pairs that are stored in the output dataset."""
+        return list(self.datastore.keys())
+
+    def __repr__(self) -> str:
+        """Return a string representation of the output dataset."""
+        return (
+            f"OutputDataset with {len(self.datastore)} verification pairs: "
+            f"{self.verification_pairs}"
+        )

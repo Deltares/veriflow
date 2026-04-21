@@ -22,7 +22,7 @@ def test_write_data_cf_compliant_netcdf_no_scores(
         fn = f"test_{verification_pair.id}"
         datasink_cf_compliant_netcdf.config.filename = fn
         datasink_cf_compliant_netcdf.write_data(
-            output_dataset.get_output_dataset(verification_pair),
+            output_dataset.get(verification_pair),
         )
         assert (tmp_path / fn).exists()
 
@@ -46,12 +46,12 @@ def test_write_data_cf_compliant_netcdf_crps(
             sim,
         )
         # Write data from the output dataset
-        output_dataset.add_score(score=crps_result, verification_pair_id=verification_pair.id)
+        output_dataset.add_score(score=crps_result, verification_pair=verification_pair)
 
         # Write the data
         fn = f"test_{verification_pair.id}"
         datasink_cf_compliant_netcdf.config.filename = fn
         datasink_cf_compliant_netcdf.write_data(
-            output_dataset.get_output_dataset(verification_pair),
+            output_dataset.get(verification_pair),
         )
         assert (tmp_path / fn).exists()

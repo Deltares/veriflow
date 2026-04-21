@@ -49,7 +49,6 @@ from dpyverification.configuration.default.scores import (
 )
 
 from .base import (
-    BaseCategoricalScoreConfig,
     BaseDatasinkConfig,
     BaseDatasourceConfig,
     BaseScoreConfig,
@@ -71,7 +70,7 @@ class Config(BaseModel):
     fileversion: str
     general: GeneralInfoConfig
     datasources: Annotated[Sequence[BaseDatasourceConfig], Field(min_length=1)]
-    scores: Annotated[Sequence[BaseScoreConfig | BaseCategoricalScoreConfig], Field(min_length=1)]
+    scores: Annotated[Sequence[BaseScoreConfig], Field(min_length=1)]
     datasinks: Annotated[Sequence[BaseDatasinkConfig] | None, Field(min_length=1)] = None
     id_mapping: IdMappingConfig | None = None
 

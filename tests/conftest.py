@@ -752,6 +752,7 @@ def score_config_rank_histogram(
     return RankHistogramConfig(
         score_adapter=ScoreKind.rank_histogram,
         general=fews_general_info_config_ensemble.model_dump(),
+        reduce_dims=[StandardDim.forecast_reference_time],
     )
 
 
@@ -858,7 +859,7 @@ def xarray_thresholds(
         filename=file_path.name,
         stations=["station_2"],
         variables=["var_1"],
-        thresholds=["warn_1"],
+        thresholds=["warn_1", "warn_2"],
     )
     instance = Csv(config)
     instance.fetch_data()
