@@ -1,6 +1,6 @@
 """A module for frequently used config elements in the context of verification."""
 
-from collections.abc import Generator
+from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Literal
@@ -195,9 +195,9 @@ class LocalFiles(BaseModel):
     ]
 
     @property
-    def paths(self) -> Generator[Path, None, None]:
-        """Return all filepaths as Path objects."""
-        return Path(self.directory).rglob(self.filename_glob)
+    def paths(self) -> Iterator[Path]:
+        """Return all filepaths as Path objects in a deterministic sorted order."""
+        return iter(sorted(Path(self.directory).rglob(self.filename_glob)))
 
 
 class FewsWebserviceAuthConfig(BaseSettings):
