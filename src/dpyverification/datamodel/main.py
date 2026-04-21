@@ -249,3 +249,10 @@ class OutputDataset:
     def verification_pairs(self) -> list[VerificationPair]:
         """Return the list of verification pairs that are stored in the output dataset."""
         return list(self.datastore.keys())
+
+    def __repr__(self) -> str:
+        """Return a string representation of the output dataset."""
+        return (
+            f"OutputDataset with {len(self.datastore)} verification pairs: "
+            f"{self.verification_pairs}"
+        )
