@@ -56,7 +56,7 @@ init_typed = true
 target-version = "py310"
 line-length = 100
 indent-width = 4
-include = ["src/**/*.py", "tests/**/*.py"]
+include = ["src/**/*.py", "tests/**/*.py", "examples/**/*.ipynb"]
 
 [tool.ruff.format]
 indent-style = "space"
@@ -97,6 +97,7 @@ dev = [
     "matplotlib>=3.10.8",
     "mypy==1.10.1",
     "myst-parser>=5.0.0",
+    "nbqa>=1.9.1",
     "nbsphinx>=0.9.8",
     "pandas-stubs==2.2.2.240603",
     "pandoc>=2.4",
@@ -111,4 +112,7 @@ dev = [
     "sphinx-gallery>=0.20.0",
     "types-pyyaml==6.0.12.20240311",
     "types-requests==2.32.0.20240712",
+]
+app = [
+    "dash>=4.1.0",
 ]
