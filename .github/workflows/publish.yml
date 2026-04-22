@@ -1,16 +1,17 @@
 name: Publish Python 🐍 distribution 📦 to PyPI and TestPyPI
 
 on:
-  workflow_run:
-    workflows: ["CI", "Build and deploy docs"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  workflow_dispatch:
 
 jobs:
   build:
     name: Build distribution 📦
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success'
 
     steps:
     - uses: actions/checkout@v6
@@ -58,6 +59,7 @@ jobs:
 
   publish-to-testpypi:
     name: Publish Python 🐍 distribution 📦 to TestPyPI
+    if: github.ref == 'refs/heads/main'
     needs:
     - build
     runs-on: ubuntu-latest
