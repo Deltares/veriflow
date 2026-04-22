@@ -710,82 +710,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dpyverification"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "importlib-metadata" },
-    { name = "netcdf4" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "scores" },
-    { name = "typer" },
-    { name = "xarray" },
-    { name = "xskillscore" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ipykernel" },
-    { name = "matplotlib" },
-    { name = "mypy" },
-    { name = "myst-parser" },
-    { name = "nbsphinx" },
-    { name = "pandas-stubs" },
-    { name = "pandoc" },
-    { name = "pre-commit" },
-    { name = "pydata-sphinx-theme" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-lazy-fixtures" },
-    { name = "ruff" },
-    { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "sphinx-design" },
-    { name = "sphinx-gallery" },
-    { name = "types-pyyaml" },
-    { name = "types-requests" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "importlib-metadata", specifier = ">=7,<9" },
-    { name = "netcdf4", specifier = "==1.7.4" },
-    { name = "pydantic", specifier = "==2.12.5" },
-    { name = "pydantic-settings", specifier = "==2.12.0" },
-    { name = "pyyaml", specifier = "==6.0.1" },
-    { name = "requests", specifier = "==2.32.3" },
-    { name = "scores", specifier = "==2.4.0" },
-    { name = "typer", specifier = ">=0.24.1" },
-    { name = "xarray", specifier = "==2026.1.0" },
-    { name = "xskillscore", specifier = "==0.0.26" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "ipykernel", specifier = ">=7.2.0" },
-    { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "mypy", specifier = "==1.10.1" },
-    { name = "myst-parser", specifier = ">=5.0.0" },
-    { name = "nbsphinx", specifier = ">=0.9.8" },
-    { name = "pandas-stubs", specifier = "==2.2.2.240603" },
-    { name = "pandoc", specifier = ">=2.4" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "pydata-sphinx-theme", specifier = ">=0.16.1" },
-    { name = "pytest", specifier = "==8.2.2" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "pytest-lazy-fixtures", specifier = "==1.3.2" },
-    { name = "ruff", specifier = ">=0.5.0" },
-    { name = "sphinx", specifier = ">=9.0.4" },
-    { name = "sphinx-design", specifier = ">=0.7.0" },
-    { name = "sphinx-gallery", specifier = ">=0.20.0" },
-    { name = "types-pyyaml", specifier = "==6.0.12.20240311" },
-    { name = "types-requests", specifier = "==2.32.0.20240712" },
-]
-
-[[package]]
 name = "executing"
 version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3052,6 +2976,82 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+]
+
+[[package]]
+name = "veriflow"
+version = "0.0.1"
+source = { editable = "." }
+dependencies = [
+    { name = "importlib-metadata" },
+    { name = "netcdf4" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "scores" },
+    { name = "typer" },
+    { name = "xarray" },
+    { name = "xskillscore" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ipykernel" },
+    { name = "matplotlib" },
+    { name = "mypy" },
+    { name = "myst-parser" },
+    { name = "nbsphinx" },
+    { name = "pandas-stubs" },
+    { name = "pandoc" },
+    { name = "pre-commit" },
+    { name = "pydata-sphinx-theme" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-lazy-fixtures" },
+    { name = "ruff" },
+    { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "sphinx-design" },
+    { name = "sphinx-gallery" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "importlib-metadata", specifier = ">=7,<9" },
+    { name = "netcdf4", specifier = "==1.7.4" },
+    { name = "pydantic", specifier = "==2.12.5" },
+    { name = "pydantic-settings", specifier = "==2.12.0" },
+    { name = "pyyaml", specifier = "==6.0.1" },
+    { name = "requests", specifier = "==2.32.3" },
+    { name = "scores", specifier = "==2.4.0" },
+    { name = "typer", specifier = ">=0.24.1" },
+    { name = "xarray", specifier = "==2026.1.0" },
+    { name = "xskillscore", specifier = "==0.0.26" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ipykernel", specifier = ">=7.2.0" },
+    { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "mypy", specifier = "==1.10.1" },
+    { name = "myst-parser", specifier = ">=5.0.0" },
+    { name = "nbsphinx", specifier = ">=0.9.8" },
+    { name = "pandas-stubs", specifier = "==2.2.2.240603" },
+    { name = "pandoc", specifier = ">=2.4" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pydata-sphinx-theme", specifier = ">=0.16.1" },
+    { name = "pytest", specifier = "==8.2.2" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-lazy-fixtures", specifier = "==1.3.2" },
+    { name = "ruff", specifier = ">=0.5.0" },
+    { name = "sphinx", specifier = ">=9.0.4" },
+    { name = "sphinx-design", specifier = ">=0.7.0" },
+    { name = "sphinx-gallery", specifier = ">=0.20.0" },
+    { name = "types-pyyaml", specifier = "==6.0.12.20240311" },
+    { name = "types-requests", specifier = "==2.32.0.20240712" },
 ]
 
 [[package]]

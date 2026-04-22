@@ -39,7 +39,7 @@
           "type": "string"
         },
         "title": {
-          "default": "Verification results created by DPyVerification",
+          "default": "Verification results created by veriflow",
           "description": "Value for the title attribute in the generated NetCDF. A title will be generated if not provided",
           "title": "Title",
           "type": "string"

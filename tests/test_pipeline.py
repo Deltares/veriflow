@@ -3,20 +3,20 @@
 import pytest
 from pytest_lazy_fixtures import lf
 
-from dpyverification.configuration.base import GeneralInfoConfig
-from dpyverification.configuration.default.scores import (
+from veriflow.configuration.base import GeneralInfoConfig
+from veriflow.configuration.default.scores import (
     BaseScoreConfig,
     CategoricalScoresConfig,
     EventOperator,
     ThresholdEvent,
 )
-from dpyverification.configuration.file import Config
-from dpyverification.constants import ScoreKind, SupportedCategoricalScores
-from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
-from dpyverification.datasources.csv import Csv
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF
-from dpyverification.datasources.netcdf import NetCDF
-from dpyverification.pipeline import run_pipeline
+from veriflow.configuration.file import Config
+from veriflow.constants import ScoreKind, SupportedCategoricalScores
+from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
+from veriflow.datasources.csv import Csv
+from veriflow.datasources.fewsnetcdf import FewsNetCDF
+from veriflow.datasources.netcdf import NetCDF
+from veriflow.pipeline import run_pipeline
 
 
 @pytest.mark.parametrize(

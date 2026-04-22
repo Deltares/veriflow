@@ -59,7 +59,7 @@ jobs:
         run: uv sync --dev
       - name: Run pytest
         run: |
-          uv run pytest --junit-xml=test-results-${{ matrix.os }}-${{ matrix.python-version }}.xml --cov=dpyverification --cov-report=term --cov-report=xml
+          uv run pytest --junit-xml=test-results-${{ matrix.os }}-${{ matrix.python-version }}.xml --cov=veriflow --cov-report=term --cov-report=xml
       - uses: actions/upload-artifact@v7
         # Upload the test results, to be parsed by second workflow
         # Two workflows, in order to support PRs from forks, as per

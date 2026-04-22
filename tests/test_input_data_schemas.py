@@ -7,7 +7,7 @@ import pytest
 import xarray as xr
 from pydantic import ValidationError
 
-from dpyverification.datasources.inputschemas import (
+from veriflow.datasources.inputschemas import (
     INPUT_SCHEMAS,
     HistoricalTimeCoord,
     ObservedHistorical,

@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from dpyverification.cli import app
-from dpyverification.configuration import Config
+from veriflow.cli import app
+from veriflow.configuration import Config
 
 # mypy: disable-error-code=misc
 
@@ -58,7 +58,7 @@ def test_cli_run(
         captured_config = config
 
     # Patch the symbol used by the CLI module
-    monkeypatch.setattr("dpyverification.cli.run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr("veriflow.cli.run_pipeline", fake_run_pipeline)
 
     if case["cli_option_key"] is None and case["cli_option_value"] is None:
         result = runner.invoke(

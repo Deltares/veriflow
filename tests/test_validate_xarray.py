@@ -2,8 +2,8 @@
 
 import pytest
 
-from dpyverification.datasources.csv import Csv
-from dpyverification.datasources.inputschemas import validate_input_data
+from veriflow.datasources.csv import Csv
+from veriflow.datasources.inputschemas import validate_input_data
 
 
 def test_validate_thresholds(xarray_thresholds: Csv) -> None:

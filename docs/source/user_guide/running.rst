@@ -9,7 +9,7 @@ You can execute a verification pipeline via a Python interface, or via the Comma
 
       .. code-block:: python
 
-         from dpyverification import run_pipeline
+         from veriflow import run_pipeline
          from pathlib import Path
 
          path_to_config = ("./config.yaml")
@@ -19,4 +19,4 @@ You can execute a verification pipeline via a Python interface, or via the Comma
 
       .. code-block:: bash
 
-         dpyverification run --config ./config.yaml
+         veriflow run --config ./config.yaml

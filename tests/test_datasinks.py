@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
-from dpyverification.datamodel.main import InputDataset, OutputDataset
-from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
-from dpyverification.scores.probabilistic import CrpsForEnsemble
+from veriflow.configuration.default.scores import CrpsForEnsembleConfig
+from veriflow.datamodel.main import InputDataset, OutputDataset
+from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
+from veriflow.scores.probabilistic import CrpsForEnsemble
 
 
 def test_write_data_cf_compliant_netcdf_no_scores(

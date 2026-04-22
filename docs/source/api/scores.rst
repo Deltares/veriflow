@@ -5,9 +5,9 @@ Scores
 .. autosummary::
    :toctree: _generated
 
-   dpyverification.scores.continuous
-   dpyverification.scores.probabilistic
-   dpyverification.scores.categorical
-   dpyverification.scores.base
+   veriflow.scores.continuous
+   veriflow.scores.probabilistic
+   veriflow.scores.categorical
+   veriflow.scores.base
    
    

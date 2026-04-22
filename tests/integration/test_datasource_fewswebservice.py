@@ -1,4 +1,4 @@
-"""Test the fewswebservice module of the dpyverification.datasources package."""
+"""Test the fewswebservice module of the veriflow.datasources package."""
 
 # mypy: ignore-errors
 
@@ -11,9 +11,9 @@ import requests
 import xarray as xr
 import yaml
 
-from dpyverification.constants import StandardDim
-from dpyverification.datasources.fewswebservice import FewsWebservice
-from dpyverification.datasources.inputschemas import INPUT_SCHEMAS
+from veriflow.constants import StandardDim
+from veriflow.datasources.fewswebservice import FewsWebservice
+from veriflow.datasources.inputschemas import INPUT_SCHEMAS
 
 SIM_TIME_DIM_LENGTH = 373
 OBS_TIME_DIM_LENGTH = 721

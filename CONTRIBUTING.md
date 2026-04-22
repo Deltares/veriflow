@@ -8,7 +8,7 @@ Currently, we have guidelines for the following types of contributions:
 
 ## Code contributions
 
-DPyVerification requires Python 3.11 or newer.
+veriflow requires Python 3.11 or newer.
 
 ### GitHub
  If you are new to Git and pull request based development, GitHub provides a
@@ -16,7 +16,7 @@ DPyVerification requires Python 3.11 or newer.
 
 ### Fork the project
 1. Create your own fork of the project using the GitHub web user interface.
-2. Clone your fork. Avoid cloning (https://github.com/Deltares-research/DPyVerification).
+2. Clone your fork. Avoid cloning (https://github.com/Deltares/veriflow).
 3. Immediately create a new local branch, with a command such as git checkout -b branch_name.
 
 ### Create a GitHub issue
@@ -24,7 +24,7 @@ Prior to developing a pull request, considering creating a GitHub issue to captu
 
 ### Set up for local development
 
-DPyVerification is developed using uv. Refer to the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/#installation-methods) to install uv.
+veriflow is developed using uv. Refer to the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/#installation-methods) to install uv.
 
 #### Create a virtual environment and install the project.
 

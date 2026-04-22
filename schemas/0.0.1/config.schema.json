@@ -1,0 +1,1064 @@
+{
+  "$defs": {
+    "ArchiveKind": {
+      "description": "Archive kind.",
+      "enum": [
+        "open_archive",
+        "external_storage_archive"
+      ],
+      "title": "ArchiveKind",
+      "type": "string"
+    },
+    "CFCompliantNetCDFConfig": {
+      "additionalProperties": true,
+      "description": "A cf-compliant NetCDF output config element.",
+      "properties": {
+        "export_adapter": {
+          "const": "cf_compliant_netcdf",
+          "title": "Export Adapter",
+          "type": "string"
+        },
+        "force_overwrite": {
+          "default": true,
+          "title": "Force Overwrite",
+          "type": "boolean"
+        },
+        "directory": {
+          "format": "path",
+          "title": "Directory",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "conventions": {
+          "const": "CF-1.7",
+          "default": "CF-1.7",
+          "title": "Conventions",
+          "type": "string"
+        },
+        "title": {
+          "default": "Verification results created by veriflow",
+          "description": "Value for the title attribute in the generated NetCDF. A title will be generated if not provided",
+          "title": "Title",
+          "type": "string"
+        },
+        "institution": {
+          "description": "Value for the institution attribute in the generated NetCDF.",
+          "title": "Institution",
+          "type": "string"
+        },
+        "comment": {
+          "default": "Verification results created by {NAME}",
+          "description": "Value for the comment attribute in the generated NetCDF.",
+          "title": "Comment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "export_adapter",
+        "directory",
+        "filename",
+        "institution"
+      ],
+      "title": "CFCompliantNetCDFConfig",
+      "type": "object"
+    },
+    "CategoricalScoresConfig": {
+      "additionalProperties": true,
+      "description": "Config to compute categorical scores, based on an event definition.",
+      "properties": {
+        "reduce_dims": {
+          "items": {
+            "enum": [
+              "station",
+              "forecast_reference_time",
+              "forecast_period"
+            ],
+            "type": "string"
+          },
+          "title": "Reduce Dims",
+          "type": "array"
+        },
+        "score_adapter": {
+          "const": "categorical_scores",
+          "title": "Score Adapter",
+          "type": "string"
+        },
+        "verification_pair_ids": {
+          "default": [],
+          "description": "Optional field to select verification_pairs from the general configuration, by providing a list of verification pair ids from the general config. Only these pair ids will be used in the computation of this score.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Pair Ids",
+          "type": "array"
+        },
+        "events": {
+          "description": "A list of threshold event definitions. For each event, a categorical score will be computed. A threshold event is defined by a threshold and an operator. The threshold is a string that corresponds to a threshold id defined in the configuration. The operator defines how the threshold is applied to the data to create the event. For example, if the threshold is '10' and the operator is 'greater_than', the event will be created by applying the operator to the data and the threshold, i.e. data > 10. ",
+          "items": {
+            "$ref": "#/$defs/ThresholdEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "scores": {
+          "description": "For reference, see: https://scores.readthedocs.io/en/stable/api.html#module-scores.categorical.",
+          "items": {
+            "$ref": "#/$defs/SupportedCategoricalScores"
+          },
+          "title": "Scores",
+          "type": "array"
+        },
+        "return_contingency_table": {
+          "default": true,
+          "description": "Whether to return the contingency table in the output.",
+          "title": "Return Contingency Table",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "score_adapter",
+        "events",
+        "scores"
+      ],
+      "title": "CategoricalScoresConfig",
+      "type": "object"
+    },
+    "ContinuousScoresConfig": {
+      "additionalProperties": true,
+      "description": "Configure multiple continuous scores.",
+      "properties": {
+        "reduce_dims": {
+          "items": {
+            "enum": [
+              "station",
+              "forecast_reference_time",
+              "forecast_period"
+            ],
+            "type": "string"
+          },
+          "title": "Reduce Dims",
+          "type": "array"
+        },
+        "score_adapter": {
+          "const": "continuous_scores",
+          "title": "Score Adapter",
+          "type": "string"
+        },
+        "verification_pair_ids": {
+          "default": [],
+          "description": "Optional field to select verification_pairs from the general configuration, by providing a list of verification pair ids from the general config. Only these pair ids will be used in the computation of this score.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Pair Ids",
+          "type": "array"
+        },
+        "scores": {
+          "items": {
+            "$ref": "#/$defs/SupportedContinuousScore"
+          },
+          "title": "Scores",
+          "type": "array"
+        }
+      },
+      "required": [
+        "score_adapter",
+        "scores"
+      ],
+      "title": "ContinuousScoresConfig",
+      "type": "object"
+    },
+    "CrpsCDFConfig": {
+      "additionalProperties": true,
+      "description": "Configuration for CRPS for CDF.\n\nFor reference, see: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_cdf",
+      "properties": {
+        "reduce_dims": {
+          "items": {
+            "enum": [
+              "station",
+              "forecast_reference_time",
+              "forecast_period"
+            ],
+            "type": "string"
+          },
+          "title": "Reduce Dims",
+          "type": "array"
+        },
+        "score_adapter": {
+          "const": "crps_cdf",
+          "title": "Score Adapter",
+          "type": "string"
+        },
+        "verification_pair_ids": {
+          "default": [],
+          "description": "Optional field to select verification_pairs from the general configuration, by providing a list of verification pair ids from the general config. Only these pair ids will be used in the computation of this score.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Pair Ids",
+          "type": "array"
+        },
+        "integration_method": {
+          "default": "exact",
+          "description": "The method of integration. 'exact' computes the exact integral, 'trapz' uses a trapezoidal rule and is an approximation of the CRPS.",
+          "enum": [
+            "exact",
+            "trapz"
+          ],
+          "title": "Integration Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score_adapter"
+      ],
+      "title": "CrpsCDFConfig",
+      "type": "object"
+    },
+    "CrpsForEnsembleConfig": {
+      "additionalProperties": true,
+      "description": "Configuration for CRPS for ensemble.\n\nFor reference, see: See: https://scores.readthedocs.io/en/stable/api.html#scores.probability.crps_for_ensemble",
+      "properties": {
+        "reduce_dims": {
+          "items": {
+            "enum": [
+              "station",
+              "forecast_reference_time",
+              "forecast_period"
+            ],
+            "type": "string"
+          },
+          "title": "Reduce Dims",
+          "type": "array"
+        },
+        "score_adapter": {
+          "const": "crps_for_ensemble",
+          "title": "Score Adapter",
+          "type": "string"
+        },
+        "verification_pair_ids": {
+          "default": [],
+          "description": "Optional field to select verification_pairs from the general configuration, by providing a list of verification pair ids from the general config. Only these pair ids will be used in the computation of this score.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Pair Ids",
+          "type": "array"
+        },
+        "method": {
+          "default": "ecdf",
+          "description": "Method to compute the cumulative distribution function from an ensemble.",
+          "enum": [
+            "ecdf",
+            "fair"
+          ],
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score_adapter"
+      ],
+      "title": "CrpsForEnsembleConfig",
+      "type": "object"
+    },
+    "CsvConfig": {
+      "additionalProperties": true,
+      "description": "A CSV input config element.",
+      "properties": {
+        "import_adapter": {
+          "const": "csv",
+          "title": "Import Adapter",
+          "type": "string"
+        },
+        "source": {
+          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "data_type": {
+          "const": "threshold",
+          "title": "Data Type",
+          "type": "string"
+        },
+        "directory": {
+          "format": "path",
+          "title": "Directory",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "stations": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Stations",
+          "type": "array"
+        },
+        "variables": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Variables",
+          "type": "array"
+        },
+        "thresholds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Thresholds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "import_adapter",
+        "source",
+        "data_type",
+        "directory",
+        "filename",
+        "stations",
+        "variables",
+        "thresholds"
+      ],
+      "title": "CsvConfig",
+      "type": "object"
+    },
+    "DataType": {
+      "description": "Input timeseries data kind.",
+      "enum": [
+        "observed_historical",
+        "simulated_historical",
+        "simulated_forecast_single",
+        "simulated_forecast_ensemble",
+        "simulated_forecast_probabilistic",
+        "threshold"
+      ],
+      "title": "DataType",
+      "type": "string"
+    },
+    "EventOperator": {
+      "description": "Event operators.",
+      "enum": [
+        "greater_than",
+        "less_than",
+        "greater_than_or_equal_to",
+        "less_than_or_equal_to"
+      ],
+      "title": "EventOperator",
+      "type": "string"
+    },
+    "FewsNetCDFConfig": {
+      "additionalProperties": true,
+      "description": "A FEWS NetCDF config element.",
+      "properties": {
+        "directory": {
+          "title": "Directory",
+          "type": "string"
+        },
+        "filename_glob": {
+          "description": "A valid filename glob, like '*.nc' for all netcdf files.",
+          "title": "Filename Glob",
+          "type": "string"
+        },
+        "import_adapter": {
+          "const": "fewsnetcdf",
+          "title": "Import Adapter",
+          "type": "string"
+        },
+        "source": {
+          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/DataType"
+        },
+        "netcdf_kind": {
+          "$ref": "#/$defs/FewsNetCDFKind"
+        },
+        "station_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Station Ids"
+        },
+        "parameter_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameter Ids"
+        }
+      },
+      "required": [
+        "directory",
+        "filename_glob",
+        "import_adapter",
+        "source",
+        "data_type",
+        "netcdf_kind"
+      ],
+      "title": "FewsNetCDFConfig",
+      "type": "object"
+    },
+    "FewsNetCDFKind": {
+      "description": "FEWS NetCDF kind.",
+      "enum": [
+        "observation",
+        "simulated_forecast_per_forecast_reference_time",
+        "simulated_forecast_per_forecast_period"
+      ],
+      "title": "FewsNetCDFKind",
+      "type": "string"
+    },
+    "FewsWebserviceAuthConfig": {
+      "additionalProperties": false,
+      "description": "Get url, username and password safely from environment variables.\n\nThis config class inherits from :class:`pydantic_settings.BaseSettings`,\nthat will try to infer field values from environment variables.\n\nMake sure to prefix each environment variable with FEWSWEBSERVICE_.\n\nFor url: set the environment variable as: FEWSWEBSERVICE_URL.\nFor username: set the environment variable as: FEWSWEBSERVICE_USERNAME.\nFor password: set the environment variable as: FEWSWEBSERVICE_PASSWORD.\n\nsee: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage",
+      "properties": {
+        "url": {
+          "format": "uri",
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "username": {
+          "format": "password",
+          "title": "Username",
+          "type": "string",
+          "writeOnly": true
+        },
+        "password": {
+          "format": "password",
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "url",
+        "username",
+        "password"
+      ],
+      "title": "FewsWebserviceAuthConfig",
+      "type": "object"
+    },
+    "FewsWebserviceConfig": {
+      "additionalProperties": true,
+      "description": "A fews webservice input config element.",
+      "properties": {
+        "import_adapter": {
+          "const": "fewswebservice",
+          "title": "Import Adapter",
+          "type": "string"
+        },
+        "source": {
+          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/DataType"
+        },
+        "auth_config": {
+          "$ref": "#/$defs/FewsWebserviceAuthConfig"
+        },
+        "location_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Location Ids",
+          "type": "array"
+        },
+        "parameter_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Parameter Ids",
+          "type": "array"
+        },
+        "module_instance_id": {
+          "minLength": 1,
+          "title": "Module Instance Id",
+          "type": "string"
+        },
+        "ensemble_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ensemble Id"
+        },
+        "qualifier_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Qualifier Ids"
+        },
+        "export_id_map": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Export Id Map"
+        },
+        "webservice_version": {
+          "description": "Please specify the version as 'YYYY.01' or 'YYYY.02",
+          "pattern": "^\\d{4}\\.(0[1-2])$",
+          "title": "Webservice Version",
+          "type": "string"
+        },
+        "archive_kind": {
+          "$ref": "#/$defs/ArchiveKind",
+          "default": "open_archive",
+          "description": "Archive kind. Defaults to a Delft-FEWS Open Archive, which is the Delft-FEWS standard."
+        },
+        "forecast_retrieval_method": {
+          "$ref": "#/$defs/ForecastRetrievalMethod",
+          "default": "retrieve_all_forecast_data",
+          "description": "Since Delft-FEWS 2025.01, the Delft-FEWS Webservice canretrieve forecasts for specific forecast periods (lead times). This avoid having to retrieve all forecast data outside of the configured forecast periods (lead times) for the verification pipeline. If not provided, the method will be automatically determined based on the configured webservice version."
+        },
+        "max_workers_in_thread_pool": {
+          "default": 2,
+          "description": "This datasource asynchronously retrieves data from the Delft-FEWS webservice. Define here the maximum workers it can use. Use 5-10 for gentle load on the server-side and keep below 30 to avoid instability and minimize the risk of internal server errors.",
+          "title": "Max Workers In Thread Pool",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "import_adapter",
+        "source",
+        "data_type",
+        "location_ids",
+        "parameter_ids",
+        "module_instance_id",
+        "webservice_version"
+      ],
+      "title": "FewsWebserviceConfig",
+      "type": "object"
+    },
+    "ForecastPeriods": {
+      "description": "A forecast periods config element.",
+      "properties": {
+        "unit": {
+          "$ref": "#/$defs/TimeUnits"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/Range"
+            }
+          ],
+          "title": "Values"
+        }
+      },
+      "required": [
+        "unit",
+        "values"
+      ],
+      "title": "ForecastPeriods",
+      "type": "object"
+    },
+    "ForecastRetrievalMethod": {
+      "description": "Retrieval methods for simulations.",
+      "enum": [
+        "retrieve_all_forecast_data",
+        "retrieve_forecast_data_per_lead_time"
+      ],
+      "title": "ForecastRetrievalMethod",
+      "type": "string"
+    },
+    "GeneralInfoConfig": {
+      "description": "General configuration information that is shared across the pipeline.",
+      "properties": {
+        "verification_period": {
+          "$ref": "#/$defs/VerificationPeriod",
+          "description": "The start and end of the verification period."
+        },
+        "verification_pairs": {
+          "description": "Specify pairs for computation of verification metrics. This allows you to verify multiple variables and multiple sources. For example, by specifying two pairs: verify simulated discharge for ModelA and ModelB against observed discharge fromsource Observed.",
+          "items": {
+            "$ref": "#/$defs/VerificationPair"
+          },
+          "title": "Verification Pairs",
+          "type": "array"
+        },
+        "forecast_periods": {
+          "$ref": "#/$defs/ForecastPeriods",
+          "default": "A set of forecast periods for which to evaluate of the verification scores. A forecast period is the timedelta between the forecast reference time of a forecast (t0, analysis_time, initialization time) and the valid time (time, observed time) and is also known as: lead time or forecast horizon)"
+        },
+        "cache_dir": {
+          "default": ".verification_cache",
+          "description": [
+            "Path pointing to a cache directory. ",
+            "Will be automatically created if it doesn't yet exist."
+          ],
+          "format": "path",
+          "title": "Cache Dir",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verification_period",
+        "verification_pairs"
+      ],
+      "title": "GeneralInfoConfig",
+      "type": "object"
+    },
+    "IdMap": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "description": "Mapping from internal IDs to external IDs per data source.",
+      "title": "IdMap",
+      "type": "object"
+    },
+    "IdMappingConfig": {
+      "description": "Config for mapping external ids to their internal definition.",
+      "properties": {
+        "variable": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IdMap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Mapping of internal to external definitions per source as a dictionary. The key corresponds to the internal definition and the value is another dictionary with keys corresponding to the source and the value to the external definition. "
+        },
+        "station": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IdMap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Mapping of internal to external definitions per source as a dictionary. The key corresponds to the internal definition and the value is another dictionary with keys corresponding to the source and the value to the external definition. "
+        }
+      },
+      "title": "IdMappingConfig",
+      "type": "object"
+    },
+    "NetCDFConfig": {
+      "additionalProperties": true,
+      "description": "A NetCDF config element.",
+      "properties": {
+        "directory": {
+          "title": "Directory",
+          "type": "string"
+        },
+        "filename_glob": {
+          "description": "A valid filename glob, like '*.nc' for all netcdf files.",
+          "title": "Filename Glob",
+          "type": "string"
+        },
+        "import_adapter": {
+          "const": "netcdf",
+          "title": "Import Adapter",
+          "type": "string"
+        },
+        "source": {
+          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/DataType"
+        }
+      },
+      "required": [
+        "directory",
+        "filename_glob",
+        "import_adapter",
+        "source",
+        "data_type"
+      ],
+      "title": "NetCDFConfig",
+      "type": "object"
+    },
+    "Range": {
+      "description": "A range.",
+      "properties": {
+        "start": {
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "title": "End",
+          "type": "integer"
+        },
+        "step": {
+          "title": "Step",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "step"
+      ],
+      "title": "Range",
+      "type": "object"
+    },
+    "RankHistogramConfig": {
+      "additionalProperties": true,
+      "description": "A rank histogram config element.",
+      "properties": {
+        "reduce_dims": {
+          "items": {
+            "enum": [
+              "station",
+              "forecast_reference_time",
+              "forecast_period"
+            ],
+            "type": "string"
+          },
+          "title": "Reduce Dims",
+          "type": "array"
+        },
+        "score_adapter": {
+          "const": "rank_histogram",
+          "title": "Score Adapter",
+          "type": "string"
+        },
+        "verification_pair_ids": {
+          "default": [],
+          "description": "Optional field to select verification_pairs from the general configuration, by providing a list of verification pair ids from the general config. Only these pair ids will be used in the computation of this score.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Pair Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "score_adapter"
+      ],
+      "title": "RankHistogramConfig",
+      "type": "object"
+    },
+    "SupportedCategoricalScores": {
+      "description": "The supported categorical scores.\n\nExplicitly excluded scores\n- gilberts_skill_score              (identical to equitable_threat_score)\n- threat_score                      (identical to critical_success_index)\n- heidke_skill_score                (identical to cohens_kappa)\n- frequency_bias                    (identical to bias score)\n- fraction_correct                  (identical to accuracy)\n- hanssen_and_kuipers_discriminant  (identical to peirce_skill_score)\n- true_skill_statistic              (identical to peirce_skill_score)\n- yules_q                           (identical to odds_ratio_skill_score)\n- positive_predictive_value         (identical to precision)\n- success_ratio                     (identical to precision)\n- probability_of_detection          (identical to hit_rate)\n- true_positive_rate                (identical to hit rate)\n- sensitivity                       (identical to hit rate)\n- recall                            (identical to hit rate)\n- true_negative_rate                (identical to specificity)\n- probability of false detection    (identical to false alarm rate)",
+      "enum": [
+        "accuracy",
+        "base_rate",
+        "bias_score",
+        "cohens_kappa",
+        "critical_success_index",
+        "equitable_threat_score",
+        "f1_score",
+        "false_alarm_rate",
+        "false_alarm_ratio",
+        "forecast_rate",
+        "peirce_skill_score",
+        "hit_rate",
+        "negative_predictive_value",
+        "odds_ratio",
+        "odds_ratio_skill_score",
+        "precision",
+        "specificity",
+        "symmetric_extremal_dependence_index"
+      ],
+      "title": "SupportedCategoricalScores",
+      "type": "string"
+    },
+    "SupportedContinuousScore": {
+      "description": "Supported continuous scores.",
+      "enum": [
+        "additive_bias",
+        "mean_error",
+        "mae",
+        "mse",
+        "rmse",
+        "nse",
+        "kge"
+      ],
+      "title": "SupportedContinuousScore",
+      "type": "string"
+    },
+    "ThresholdEvent": {
+      "description": "An event definition for a threshold.",
+      "properties": {
+        "threshold": {
+          "description": "Threshold id to use in event definition.",
+          "title": "Threshold",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/EventOperator",
+          "description": "The operator to use for creating the events."
+        }
+      },
+      "required": [
+        "threshold",
+        "operator"
+      ],
+      "title": "ThresholdEvent",
+      "type": "object"
+    },
+    "TimeUnits": {
+      "description": "Time unit strings, compatible with numpy datetime64 and timedelta64.",
+      "enum": [
+        "Y",
+        "M",
+        "W",
+        "D",
+        "h",
+        "m",
+        "s"
+      ],
+      "title": "TimeUnits",
+      "type": "string"
+    },
+    "VerificationPair": {
+      "description": "Configuration for a verification pair.\n\nShould consist of an id and reference to a source for\nobservations and simulations. The id can be any arbitrary string, and the obs and sim fields\nshould contain an exact reference to a configured source in the datasource configuration.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "obs": {
+          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Obs",
+          "type": "string"
+        },
+        "sim": {
+          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Sim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "obs",
+        "sim"
+      ],
+      "title": "VerificationPair",
+      "type": "object"
+    },
+    "VerificationPeriod": {
+      "description": "Definition of the verification period.",
+      "properties": {
+        "start": {
+          "description": "YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "description": "YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM], see: https://docs.pydantic.dev/2.0/usage/types/datetime/#validation-of-datetime-types",
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "dimension": {
+          "default": "forecast_reference_time",
+          "description": "The dimension along which the verification period is defined. Using 'forecast_reference_time' allows for a forecast-centric verification run, whereas 'time' allows for an observation-centric verification run.",
+          "enum": [
+            "forecast_reference_time",
+            "time"
+          ],
+          "title": "Dimension",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "VerificationPeriod",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "fileversion": {
+      "title": "Fileversion",
+      "type": "string"
+    },
+    "general": {
+      "$ref": "#/$defs/GeneralInfoConfig"
+    },
+    "datasources": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "csv": "#/$defs/CsvConfig",
+            "fewsnetcdf": "#/$defs/FewsNetCDFConfig",
+            "fewswebservice": "#/$defs/FewsWebserviceConfig",
+            "netcdf": "#/$defs/NetCDFConfig"
+          },
+          "propertyName": "import_adapter"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/FewsNetCDFConfig"
+          },
+          {
+            "$ref": "#/$defs/FewsWebserviceConfig"
+          },
+          {
+            "$ref": "#/$defs/CsvConfig"
+          },
+          {
+            "$ref": "#/$defs/NetCDFConfig"
+          }
+        ]
+      },
+      "title": "Datasources",
+      "type": "array"
+    },
+    "scores": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "categorical_scores": "#/$defs/CategoricalScoresConfig",
+            "continuous_scores": "#/$defs/ContinuousScoresConfig",
+            "crps_cdf": "#/$defs/CrpsCDFConfig",
+            "crps_for_ensemble": "#/$defs/CrpsForEnsembleConfig",
+            "rank_histogram": "#/$defs/RankHistogramConfig"
+          },
+          "propertyName": "score_adapter"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/CrpsForEnsembleConfig"
+          },
+          {
+            "$ref": "#/$defs/RankHistogramConfig"
+          },
+          {
+            "$ref": "#/$defs/CrpsCDFConfig"
+          },
+          {
+            "$ref": "#/$defs/ContinuousScoresConfig"
+          },
+          {
+            "$ref": "#/$defs/CategoricalScoresConfig"
+          }
+        ]
+      },
+      "title": "Scores",
+      "type": "array"
+    },
+    "datasinks": {
+      "anyOf": [
+        {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "cf_compliant_netcdf": "#/$defs/CFCompliantNetCDFConfig"
+              },
+              "propertyName": "export_adapter"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CFCompliantNetCDFConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Datasinks"
+    },
+    "id_mapping": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IdMappingConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "fileversion",
+    "general",
+    "datasources",
+    "scores"
+  ],
+  "title": "ConfigSchema",
+  "type": "object"
+}

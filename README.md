@@ -1,9 +1,9 @@
-[![Docs latest](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://deltares.github.io/scoreflow/index.html)
-[![Tests](https://github.com/Deltares/scoreflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Deltares/scoreflow/actions/workflows/ci.yml)
-[![Docs](https://github.com/Deltares/scoreflow/actions/workflows/docs.yml/badge.svg)](https://github.com/Deltares/scoreflow/actions/workflows/docs.yml)
-[![codecov](https://codecov.io/gh/Deltares/scoreflow//branch/main/graph/badge.svg)](https://codecov.io/gh/Deltares-research/DPyVerification)
+[![Docs latest](https://img.shields.io/badge/docs-latest-darkgreen.svg)](https://deltares.github.io/veriflow/index.html)
+[![Tests](https://github.com/Deltares/veriflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Deltares/veriflow/actions/workflows/ci.yml)
+[![Docs](https://github.com/Deltares/veriflow/actions/workflows/docs.yml/badge.svg)](https://github.com/Deltares/veriflow/actions/workflows/docs.yml)
+[![codecov](https://codecov.io/gh/Deltares/veriflow//branch/main/graph/badge.svg)](https://codecov.io/gh/Deltares/veriflow)
 
-# Scoreflow
+# Veriflow
 
 
 A verification pipeline, that integrates the full verification process
@@ -59,8 +59,8 @@ Naturally, verification is nothing new and many custom approaches exist. Custom 
 Install from source:
 
 ```bash
-git clone https://github.com/Deltares-research/DPyVerification.git
-cd DPyVerification
+git clone https://github.com/Deltares/veriflow.git
+cd veriflow
 pip install .
 ```
 

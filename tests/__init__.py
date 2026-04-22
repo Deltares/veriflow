@@ -1,4 +1,4 @@
-"""Collection of tests for the dpyverification package."""
+"""Collection of tests for the veriflow package."""
 
 import os
 
