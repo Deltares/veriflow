@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dpyverification.datasources.csv import Csv
+from veriflow.datasources.csv import Csv
 
 # mypy: disable-error-code=misc
 # we are using xarray DataArrays in the tests, which have attributes that mypy cannot verify

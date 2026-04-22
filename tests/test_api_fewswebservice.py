@@ -1,10 +1,10 @@
-"""Test the fewswebservice module of the dpyverification.datasources package."""
+"""Test the fewswebservice module of the veriflow.datasources package."""
 
 # mypy: ignore-errors
 
 from datetime import datetime
 
-from dpyverification.datasources.fewswebservice import (
+from veriflow.datasources.fewswebservice import (
     FewsWebserviceClient,
 )
 

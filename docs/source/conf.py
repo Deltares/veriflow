@@ -1,7 +1,7 @@
 import os
 import sys
 
-from dpyverification.constants import VERSION
+from veriflow.constants import VERSION
 
 sys.path.insert(0, os.path.abspath("../../src"))
 
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "dpyverification"
+project = "veriflow"
 copyright = "2026, Deltares"
 author = "Jurian Beunk"
 

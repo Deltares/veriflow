@@ -1,12 +1,12 @@
-"""Test the fewsnetcdf module of the dpyverification.datasources package."""
+"""Test the fewsnetcdf module of the veriflow.datasources package."""
 
 import pytest
 import xarray as xr
 
-from dpyverification.constants import StandardDim
-from dpyverification.datasinks.fewsnetcdf import FewsNetcdfOutputSchema
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF
-from dpyverification.datasources.inputschemas import INPUT_SCHEMAS
+from veriflow.constants import StandardDim
+from veriflow.datasinks.fewsnetcdf import FewsNetcdfOutputSchema
+from veriflow.datasources.fewsnetcdf import FewsNetCDF
+from veriflow.datasources.inputschemas import INPUT_SCHEMAS
 
 
 def test_get_data_compliant_file_happy(

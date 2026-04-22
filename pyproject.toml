@@ -1,6 +1,6 @@
 [project]
-name = "dpyverification"
-version = "0.1.0"
+name = "veriflow"
+version = "0.0.1"
 description = ""
 authors = [
     {name = "Jurian Beunk", email = "jurian.beunk@deltares.nl"},
@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dpyverification = "dpyverification.cli:app"
+veriflow = "veriflow.cli:app"
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"

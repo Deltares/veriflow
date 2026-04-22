@@ -4,19 +4,19 @@ from copy import deepcopy
 
 import xarray as xr
 
-from dpyverification.configuration.default.scores import (
+from veriflow.configuration.default.scores import (
     CategoricalScoresConfig,
     ContinuousScoresConfig,
     CrpsCDFConfig,
     CrpsForEnsembleConfig,
     RankHistogramConfig,
 )
-from dpyverification.constants import DataType
-from dpyverification.datamodel.main import InputDataset
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF
-from dpyverification.scores.categorical import CategoricalScores
-from dpyverification.scores.continuous import ContinuousScores
-from dpyverification.scores.probabilistic import CrpsCDF, CrpsForEnsemble, RankHistogram
+from veriflow.constants import DataType
+from veriflow.datamodel.main import InputDataset
+from veriflow.datasources.fewsnetcdf import FewsNetCDF
+from veriflow.scores.categorical import CategoricalScores
+from veriflow.scores.continuous import ContinuousScores
+from veriflow.scores.probabilistic import CrpsCDF, CrpsForEnsemble, RankHistogram
 
 
 def test_ensemble_crps(

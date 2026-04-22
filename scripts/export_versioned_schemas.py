@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from dpyverification.configuration import Config
-from dpyverification.constants import VERSION
+from veriflow.configuration import Config
+from veriflow.constants import VERSION
 
 schema_dir = Path(__file__).parent.parent / "schemas" / f"{VERSION}"
 schema_path = schema_dir / "config.schema.json"

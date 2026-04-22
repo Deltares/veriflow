@@ -17,7 +17,7 @@ The pipeline configuration can be provided in either Python objects, or via a YA
 
       .. code-block:: python
 
-         from dpyverification import configure
+         from veriflow import configure
 
          configure(
              verification={

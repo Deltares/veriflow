@@ -5,4 +5,4 @@ Datamodel
 .. autosummary::
    :toctree: _generated
 
-   dpyverification.datamodel.main
+   veriflow.datamodel.main

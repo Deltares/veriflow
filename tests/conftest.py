@@ -15,17 +15,17 @@ import pytest
 import xarray as xr
 import yaml
 
-from dpyverification.configuration import Config
-from dpyverification.configuration.base import GeneralInfoConfig, IdMappingConfig
-from dpyverification.configuration.default.datasinks import CFCompliantNetCDFConfig
-from dpyverification.configuration.default.datasources import (
+from veriflow.configuration import Config
+from veriflow.configuration.base import GeneralInfoConfig, IdMappingConfig
+from veriflow.configuration.default.datasinks import CFCompliantNetCDFConfig
+from veriflow.configuration.default.datasources import (
     ArchiveKind,
     CsvConfig,
     FewsWebserviceAuthConfig,
     FewsWebserviceConfig,
     NetCDFConfig,
 )
-from dpyverification.configuration.default.scores import (
+from veriflow.configuration.default.scores import (
     CategoricalScoresConfig,
     ContinuousScoresConfig,
     CrpsCDFConfig,
@@ -34,13 +34,13 @@ from dpyverification.configuration.default.scores import (
     RankHistogramConfig,
     ThresholdEvent,
 )
-from dpyverification.configuration.utils import (
+from veriflow.configuration.utils import (
     ForecastPeriods,
     TimeUnits,
     VerificationPair,
     VerificationPeriod,
 )
-from dpyverification.constants import (
+from veriflow.constants import (
     DataSinkKind,
     DataSourceKind,
     DataType,
@@ -48,12 +48,12 @@ from dpyverification.constants import (
     StandardCoord,
     StandardDim,
 )
-from dpyverification.datamodel.main import InputDataset
-from dpyverification.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
-from dpyverification.datasources.csv import Csv
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
-from dpyverification.datasources.fewswebservice import FewsWebservice, ForecastRetrievalMethod
-from dpyverification.datasources.netcdf import NetCDF
+from veriflow.datamodel.main import InputDataset
+from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
+from veriflow.datasources.csv import Csv
+from veriflow.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
+from veriflow.datasources.fewswebservice import FewsWebservice, ForecastRetrievalMethod
+from veriflow.datasources.netcdf import NetCDF
 
 TESTS_DATA_DIR = Path(__file__).parent / "data"
 

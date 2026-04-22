@@ -1,4 +1,4 @@
-"""Test the main module of the dpyverification.configuration package."""
+"""Test the main module of the veriflow.configuration package."""
 
 from collections.abc import Generator
 from copy import deepcopy
@@ -10,16 +10,16 @@ import xarray as xr
 import yaml
 from pydantic import BaseModel
 
-from dpyverification.configuration import Config
-from dpyverification.configuration.base import IdMap, IdMappingConfig
-from dpyverification.configuration.default.scores import CrpsForEnsembleConfig
-from dpyverification.configuration.utils import (
+from veriflow.configuration import Config
+from veriflow.configuration.base import IdMap, IdMappingConfig
+from veriflow.configuration.default.scores import CrpsForEnsembleConfig
+from veriflow.configuration.utils import (
     FewsWebserviceAuthConfig,
     ForecastPeriods,
     Range,
     TimeUnits,
 )
-from dpyverification.constants import VERSION
+from veriflow.constants import VERSION
 
 
 @pytest.fixture  # type:ignore[misc] # has type overloaded function
@@ -69,7 +69,7 @@ def test_schema_jsonable(tmp_path: Path) -> None:
     assert tmpfile.exists()
 
     # TODO(AU): Additional tests on the configuration schema # noqa: FIX002
-    #   https://github.com/Deltares-research/DPyVerification/issues/37
+    #   https://github.com/Deltares/veriflow/issues/37
     #   When adding documentation, can add the json schema in the doc. Then, also compare the
     #   version in the documentation with the current version as per this test.
 

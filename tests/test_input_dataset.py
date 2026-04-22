@@ -1,10 +1,10 @@
-"""Test the dpyverification.datamodel package."""
+"""Test the veriflow.datamodel package."""
 
 import xarray as xr
 
-from dpyverification.datamodel.main import InputDataset
-from dpyverification.datasources.csv import Csv
-from dpyverification.datasources.fewsnetcdf import FewsNetCDF
+from veriflow.datamodel.main import InputDataset
+from veriflow.datasources.csv import Csv
+from veriflow.datasources.fewsnetcdf import FewsNetCDF
 
 # mypy: disable-error-code="misc"
 
