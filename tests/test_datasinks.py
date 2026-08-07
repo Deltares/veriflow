@@ -98,6 +98,23 @@ def test_cf_compliant_netcdf_write_force_overwrite_false_raises(
         datasink_cf_compliant_netcdf.write_data(output_datatree_without_scores)
 
 
+def test_write_data_cf_compliant_netcdf_creates_output_directory(
+    output_datatree_without_scores: VeriflowDataTree,
+    tmpdir: Path,
+    datasink_cf_compliant_netcdf: CFCompliantNetCDF,
+) -> None:
+    """Test that writing creates a missing output directory."""
+    dt = output_datatree_without_scores
+    verification_pair = datasink_cf_compliant_netcdf.config.general.verification_pairs[0]
+    output_directory = tmpdir / "nested" / "output"
+    datasink_cf_compliant_netcdf.config.directory = str(output_directory)
+    datasink_cf_compliant_netcdf.config.filename = "test.nc"
+
+    datasink_cf_compliant_netcdf.write_data(dt.get(verification_pair))
+
+    assert (output_directory / "test.nc").exists()
+
+
 @pytest.mark.parametrize(
     "dt_fixture",
     [
