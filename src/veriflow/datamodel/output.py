@@ -103,15 +103,15 @@ class VeriflowAccessor:
         """Get the DataTree node corresponding to a specific verification pair."""
         return cast("xr.DataTree", self.dt[verification_pair_id])
 
-    def aligned_input(self, verification_pair_id: str) -> xr.DataTree:
+    def get_aligned_input(self, verification_pair_id: str) -> xr.DataTree:
         """Get the input dataset for a specific verification pair."""
         pair_node = self.get_verification_pair_node(verification_pair_id)
         return cast("xr.DataTree", pair_node[DataTreeNode.ALIGNED_INPUT])
 
-    def output(self, verification_pair_id: str) -> xr.Dataset:
+    def get_outputs(self, verification_pair_id: str) -> xr.DataTree:
         """Get the output dataset for a specific verification pair."""
         pair_node = self.get_verification_pair_node(verification_pair_id)
-        return cast("xr.DataTree", pair_node[DataTreeNode.OUTPUT]).to_dataset()
+        return cast("xr.DataTree", pair_node[DataTreeNode.OUTPUT])
 
     def list_scores(self, verification_pair_id: str) -> list[str]:
         """Get a list of available scores for a specific verification pair."""

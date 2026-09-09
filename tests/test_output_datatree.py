@@ -32,15 +32,15 @@ def test_input_staged_subtree_valid(
     assert isinstance(dt, xr.DataTree)
     assert hasattr(dt, "veriflow")
     accessor = dt.veriflow
-    assert hasattr(accessor, "input_staged")
-    assert callable(accessor.input_staged)
+    assert hasattr(accessor, "aligned_input")
+    assert callable(accessor.get_aligned_input)
     pair = dt.veriflow.verification_pairs[0]
-    input_staged_dt = accessor.input_staged(pair)
-    assert isinstance(input_staged_dt, xr.DataTree)
-    assert DataTreeNode.OBSERVATIONS in input_staged_dt.children
-    assert DataTreeNode.SIMULATIONS in input_staged_dt.children
-    reference_ds = input_staged_dt[DataTreeNode.OBSERVATIONS].to_dataset()
-    evaluation_ds = input_staged_dt[DataTreeNode.SIMULATIONS].to_dataset()
+    aligned_input_dt = accessor.get_aligned_input(pair)
+    assert isinstance(aligned_input_dt, xr.DataTree)
+    assert DataTreeNode.OBSERVATIONS in aligned_input_dt.children
+    assert DataTreeNode.SIMULATIONS in aligned_input_dt.children
+    reference_ds = aligned_input_dt[DataTreeNode.OBSERVATIONS].to_dataset()
+    evaluation_ds = aligned_input_dt[DataTreeNode.SIMULATIONS].to_dataset()
     assert isinstance(reference_ds, xr.Dataset)
     assert isinstance(evaluation_ds, xr.Dataset)
     # Always expect exactly one data variable in both reference and evaluation datasets.
@@ -50,7 +50,7 @@ def test_input_staged_subtree_valid(
     # Check that indeed, the source_id of the reference and evaluation datasets exist.
     assert (
         reference_ds[next(iter(reference_ds.data_vars))].attrs["source_id"]
-        == fake_verification_pair.reference_source_id
+        == fake_verification_pair.observations_source_id
     )
     assert (
         evaluation_ds[next(iter(evaluation_ds.data_vars))].attrs["source_id"]
@@ -106,18 +106,18 @@ def test_input_and_output(
         name=str(xarray_fake_score_result.name),
     )
 
-    input_staged_dt = dt.veriflow.input_staged(fake_verification_pair.id)
-    assert isinstance(input_staged_dt, xr.DataTree)
+    aligned_input_dt = dt.veriflow.get_aligned_input(fake_verification_pair.id)
+    assert isinstance(aligned_input_dt, xr.DataTree)
     assert (
         fake_verification_pair.variable
-        in input_staged_dt[DataTreeNode.OBSERVATIONS].to_dataset().data_vars
+        in aligned_input_dt[DataTreeNode.OBSERVATIONS].to_dataset().data_vars
     )
     assert (
         fake_verification_pair.variable
-        in input_staged_dt[DataTreeNode.SIMULATIONS].to_dataset().data_vars
+        in aligned_input_dt[DataTreeNode.SIMULATIONS].to_dataset().data_vars
     )
 
-    output_dataset = dt.veriflow.output(fake_verification_pair.id)
+    output_dataset = dt.veriflow.get_outputs(fake_verification_pair.id)
     assert isinstance(output_dataset, xr.Dataset)
     assert "fake_score" in dt.veriflow.list_scores(fake_verification_pair.id)
 

@@ -163,7 +163,7 @@ class InputDataset:
         resulting DataArrays. This method is called by the verification pipeline at runtime
         to retrieve the correct data for one of the configured verification pairs.
         """
-        obs_ds = self.datastore[verification_pair.reference_source_id]
+        obs_ds = self.datastore[verification_pair.observations_source_id]
         sim_ds = self.datastore[verification_pair.simulations_source_id]
 
         variable = verification_pair.variable
@@ -171,7 +171,7 @@ class InputDataset:
             msg = (
                 f"Variable '{variable}' configured on verification pair "
                 f"'{verification_pair.id}' not found in observations source "
-                f"'{verification_pair.reference_source_id}'. "
+                f"'{verification_pair.observations_source_id}'. "
                 f"Available variables: {sorted(obs_ds.data_vars)}."  # type:ignore[type-var]
             )
             raise ValueError(msg)

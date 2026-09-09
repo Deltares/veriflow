@@ -336,7 +336,7 @@ class S3AuthConfig(BaseSettings):
         if self.region_name is not None:
             client_kwargs["region_name"] = self.region_name
 
-        options: dict[str, object] = {"anon": self.anon}
+        options: dict[str, object] = {}
         if self.access_key_id is not None:
             options["key"] = self.access_key_id.get_secret_value()
         if self.secret_access_key is not None:

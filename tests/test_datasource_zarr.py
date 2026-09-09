@@ -24,7 +24,7 @@ def _make_zarr_config(
 ) -> ZarrConfig:
     return ZarrConfig(
         general=general,
-        source_id=general.verification_pairs[0].reference_source_id,
+        source_id=general.verification_pairs[0].observations_source_id,
         data_type=data_type,
         import_adapter=DataSourceKind.ZARR,
         path=path,

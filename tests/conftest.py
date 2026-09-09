@@ -199,7 +199,7 @@ def xarray_observed_historical_datasource(
     datasource = NetCDF(
         config=NetCDFConfig(
             general=xarray_general_info_config,
-            source_id=xarray_general_info_config.verification_pairs[0].reference_source_id,
+            source_id=xarray_general_info_config.verification_pairs[0].observations_source_id,
             data_type=DataType.observed_historical,
             directory=str(tmp_path),
             filename_glob="observations.nc",
@@ -463,7 +463,7 @@ def fews_general_info_config_single() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="source_single",
                 variable="discharge",
             ),
@@ -483,7 +483,7 @@ def xarray_general_info_config() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="source_single",
                 variable="var_1",
             ),
@@ -503,7 +503,7 @@ def xarray_general_info_config_historical() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="source_single",
                 variable="var_1",
             ),
@@ -523,7 +523,7 @@ def fews_general_info_config_ensemble() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="source_ensemble",
                 variable="discharge",
             ),
@@ -543,7 +543,7 @@ def fews_general_info_config_probabilistic() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="source_probabilistic",
                 variable="discharge",
             ),
@@ -751,7 +751,7 @@ def fews_netcdf_simulated_historical() -> FewsNetCDF:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="source_ensemble",
                 variable="discharge",
             ),
@@ -1255,7 +1255,7 @@ def cli_dummy_pipeline_config_yaml(tmp_path: Path) -> Path:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                reference_source_id="observed",
+                observations_source_id="observed",
                 simulations_source_id="simulated",
                 variable="variable_1",
             ),
@@ -1326,7 +1326,7 @@ def output_datatree_without_scores(
     # Initialize the output dataset
     output_dataset = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
     verification_pair = VerificationPair(
-        reference_source_id="observation_source",
+        observations_source_id="observation_source",
         simulations_source_id="simulation_ensemble_source",
         id="test_pair",
         variable="var_0",
@@ -1344,7 +1344,7 @@ def output_datatree_without_scores(
 def fake_verification_pair() -> VerificationPair:
     """Fixture for a fake verification pair."""
     return VerificationPair(
-        reference_source_id="observation_source",
+        observations_source_id="observation_source",
         simulations_source_id="simulation_ensemble_source",
         id="test_pair",
         variable="var_0",
@@ -1378,7 +1378,7 @@ def output_datatree_with_multiple_pairs(
     output_dataset = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
     for pair_id in ("test_pair_1", "test_pair_2"):
         verification_pair = VerificationPair(
-            reference_source_id="observation_source",
+            observations_source_id="observation_source",
             simulations_source_id="simulation_ensemble_source",
             id=pair_id,
             variable="var_0",

@@ -185,7 +185,7 @@ def test_get_data_for_simulated_historical() -> None:
         verification_pairs=[
             VerificationPair(
                 id="idtest",
-                reference_source_id="observed_historical",
+                observations_source_id="observed_historical",
                 simulations_source_id="simulated_historical",
                 variable="Qsim",
             ),

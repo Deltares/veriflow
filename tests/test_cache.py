@@ -256,7 +256,7 @@ class TestHistoricalCacheRequest:
             general=xarray_general_info_config_historical,
             source_id=xarray_general_info_config_historical.verification_pairs[
                 0
-            ].reference_source_id,
+            ].observations_source_id,
             data_type=DataType.observed_historical,
             directory=".",
             filename_glob="*.nc",
