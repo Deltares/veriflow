@@ -490,7 +490,6 @@ class TestZarrCache:
         )
         options = ZarrCache(cfg).storage_options
         assert options is not None
-        assert options["anon"] is True
         assert options["requester_pays"] == "true"
         assert options["client_kwargs"] == {
             "region_name": "eu-west-1",

@@ -5,6 +5,8 @@ import xarray as xr
 
 from veriflow.utils import convert_byte_string_coord_to_utf8, convert_byte_string_coords_to_utf8
 
+# mypy: disable-error-code=misc
+
 
 def test_convert_byte_string_coord_to_utf8_decodes_non_ascii_utf8() -> None:
     """Byte-string coordinates are decoded with UTF-8, not ASCII."""

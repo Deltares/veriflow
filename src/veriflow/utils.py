@@ -16,15 +16,15 @@ def convert_byte_string_coord_to_utf8(coord: xr.DataArray) -> xr.DataArray:
         return coord
 
     values = coord.to_numpy()  # type:ignore[misc]
-    if values.ndim == 0:
-        decoded = _decode_utf8(values.item())
+    if values.ndim == 0:  # type:ignore[misc]
+        decoded = _decode_utf8(values.item())  # type:ignore[misc]
     else:
-        decoded = np.array(
-            [_decode_utf8(value) for value in values.flat],
+        decoded = np.array(  # type:ignore[type-var, assignment]
+            [_decode_utf8(value) for value in values.flat],  # type:ignore[misc]
             dtype=str,
-        ).reshape(values.shape)
+        ).reshape(values.shape)  # type:ignore[misc]
 
-    return xr.DataArray(decoded, dims=coord.dims, attrs=coord.attrs, name=coord.name)
+    return xr.DataArray(decoded, dims=coord.dims, attrs=coord.attrs, name=coord.name)  # type:ignore[misc]
 
 
 def convert_byte_string_coords_to_utf8(

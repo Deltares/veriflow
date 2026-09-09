@@ -32,7 +32,7 @@ def test_input_staged_subtree_valid(
     assert isinstance(dt, xr.DataTree)
     assert hasattr(dt, "veriflow")
     accessor = dt.veriflow
-    assert hasattr(accessor, "aligned_input")
+    assert hasattr(accessor, "get_aligned_input")
     assert callable(accessor.get_aligned_input)
     pair = dt.veriflow.verification_pairs[0]
     aligned_input_dt = accessor.get_aligned_input(pair)
@@ -117,8 +117,8 @@ def test_input_and_output(
         in aligned_input_dt[DataTreeNode.SIMULATIONS].to_dataset().data_vars
     )
 
-    output_dataset = dt.veriflow.get_outputs(fake_verification_pair.id)
-    assert isinstance(output_dataset, xr.Dataset)
+    outputs_datatree = dt.veriflow.get_outputs(fake_verification_pair.id)
+    assert isinstance(outputs_datatree, xr.DataTree)
     assert "fake_score" in dt.veriflow.list_scores(fake_verification_pair.id)
 
 

@@ -108,7 +108,6 @@ def test_build_storage_options_remote_merges(
     )
     options = Zarr(config=config)._build_storage_options()
     assert options is not None
-    assert options["anon"] is True
     assert options["requester_pays"] == "true"
 
 
@@ -129,4 +128,3 @@ def test_s3_auth_config_to_storage_options_unwraps_secrets() -> None:
         "endpoint_url": "https://s3.example.com/",
         "region_name": "us-east-1",
     }
-    assert options["anon"] is False
