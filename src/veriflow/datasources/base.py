@@ -56,7 +56,7 @@ class BaseDatasource(Base):
 
     @property
     def data_type(self) -> DataType:
-        """Whether the instance represents sim or obs data."""
+        """Whether the instance represents simulations or observations data."""
         return self.config.data_type
 
     @data_type.setter

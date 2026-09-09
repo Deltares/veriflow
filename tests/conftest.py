@@ -421,7 +421,7 @@ def xarray_observed_forecast_single_datasource(
     datasource = NetCDF(
         config=NetCDFConfig(
             general=xarray_general_info_config,
-            source_id=xarray_general_info_config.verification_pairs[0].evaluation_source_id,
+            source_id=xarray_general_info_config.verification_pairs[0].simulations_source_id,
             data_type=DataType.simulated_forecast_single,
             directory=str(tmp_path),
             filename_glob="forecast_single.nc",
@@ -464,7 +464,7 @@ def fews_general_info_config_single() -> GeneralInfoConfig:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="source_single",
+                simulations_source_id="source_single",
                 variable="discharge",
             ),
         ],
@@ -484,7 +484,7 @@ def xarray_general_info_config() -> GeneralInfoConfig:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="source_single",
+                simulations_source_id="source_single",
                 variable="var_1",
             ),
         ],
@@ -504,7 +504,7 @@ def xarray_general_info_config_historical() -> GeneralInfoConfig:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="source_single",
+                simulations_source_id="source_single",
                 variable="var_1",
             ),
         ],
@@ -524,7 +524,7 @@ def fews_general_info_config_ensemble() -> GeneralInfoConfig:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="source_ensemble",
+                simulations_source_id="source_ensemble",
                 variable="discharge",
             ),
         ],
@@ -544,7 +544,7 @@ def fews_general_info_config_probabilistic() -> GeneralInfoConfig:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="source_probabilistic",
+                simulations_source_id="source_probabilistic",
                 variable="discharge",
             ),
         ],
@@ -752,7 +752,7 @@ def fews_netcdf_simulated_historical() -> FewsNetCDF:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="source_ensemble",
+                simulations_source_id="source_ensemble",
                 variable="discharge",
             ),
         ],
@@ -1256,7 +1256,7 @@ def cli_dummy_pipeline_config_yaml(tmp_path: Path) -> Path:
             VerificationPair(
                 id="pair1",
                 reference_source_id="observed",
-                evaluation_source_id="simulated",
+                simulations_source_id="simulated",
                 variable="variable_1",
             ),
         ],
@@ -1327,7 +1327,7 @@ def output_datatree_without_scores(
     output_dataset = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
     verification_pair = VerificationPair(
         reference_source_id="observation_source",
-        evaluation_source_id="simulation_ensemble_source",
+        simulations_source_id="simulation_ensemble_source",
         id="test_pair",
         variable="var_0",
     )
@@ -1345,7 +1345,7 @@ def fake_verification_pair() -> VerificationPair:
     """Fixture for a fake verification pair."""
     return VerificationPair(
         reference_source_id="observation_source",
-        evaluation_source_id="simulation_ensemble_source",
+        simulations_source_id="simulation_ensemble_source",
         id="test_pair",
         variable="var_0",
     )
@@ -1379,7 +1379,7 @@ def output_datatree_with_multiple_pairs(
     for pair_id in ("test_pair_1", "test_pair_2"):
         verification_pair = VerificationPair(
             reference_source_id="observation_source",
-            evaluation_source_id="simulation_ensemble_source",
+            simulations_source_id="simulation_ensemble_source",
             id=pair_id,
             variable="var_0",
         )

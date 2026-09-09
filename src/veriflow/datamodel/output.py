@@ -36,41 +36,40 @@ class DataTreeNode(StrEnum):
     """Enum for standard DataTree node names."""
 
     ROOT = "veriflow-output"
-    INPUT = "input"
     OUTPUT = "output"
-    INPUT_STAGED = "input_staged"
-    REFERENCE = "reference"
-    EVALUATION = "evaluation"
+    ALIGNED_INPUT = "aligned_input"
+    OBSERVATIONS = "observations"
+    SIMULATIONS = "simulations"
 
 
 @xr.register_datatree_accessor("veriflow")  # type: ignore[no-untyped-call, misc]
 class VeriflowAccessor:
     """Accessor for managing the output dataset for veriflow.
 
-        The DataTree layout is as follows:
+    The DataTree layout is as follows:
 
-        - The root node is ``veriflow-output``.
-        - Each child node represents a verification pair, identified by its unique ID.
-        - Each verification pair contains an ``input_staged`` node with data prepared for
-            verification. The reference and evaluation data are aligned and ready for verification.
-            For example, when a forecast is verified against observations, the observations are
-            mapped into forecast space along the ``forecast_reference_time`` and ``lead_time``
-            dimensions.
-        - Each verification pair contains an ``output`` node with its computed scores.
-        - Each output node contains one or more score nodes, such as ``crps`` or
-            ``rank_histogram``. The node name is identical to the ``score_adapter`` used in the
-            veriflow pipeline configuration. In turn, each node has a dataset containing the
-            computed score results. This dataset can contain one or more data variables
-            corresponding to different aspects of the score.
+    - The root node is ``veriflow-output``.
+    - Each child node represents a verification pair, identified by its unique ID.
+    - Each verification pair has two main child nodes: ``aligned_input`` and ``output``.
+
+      - The ``aligned_input`` node contains data prepared for verification. The
+        observation and simulation data are aligned and ready for verification. For
+        example, when a forecast is verified against observations, the observations
+        are mapped into forecast space along the ``forecast_reference_time`` and
+        ``lead_time`` dimensions.
+
+      - The ``output`` node contains the results of the verification. Each child
+        under the ``output`` node is a dataset containing one or more data
+        variables corresponding to different aspects of the output.
 
     Schematic representation of the DataTree structure::
 
         veriflow-output
         ├── verification_pair_1
-        │   ├── input_staged
-        │   │   ├── reference
+        │   ├── aligned_input
+        │   │   ├── observations
         │   │   │   └── waterlevel
-        │   │   └── evaluation
+        │   │   └── simulations
         │   │       └── waterlevel
         │   └── output
         │       ├── crps
@@ -81,7 +80,7 @@ class VeriflowAccessor:
         │       └── rank_histogram
         │           └── rank_histogram
         └── verification_pair_2
-            ├── input_staged
+            ├── aligned_input
             │   └── ...
             └── output
                 └── ...
@@ -104,10 +103,10 @@ class VeriflowAccessor:
         """Get the DataTree node corresponding to a specific verification pair."""
         return cast("xr.DataTree", self.dt[verification_pair_id])
 
-    def input_staged(self, verification_pair_id: str) -> xr.DataTree:
+    def aligned_input(self, verification_pair_id: str) -> xr.DataTree:
         """Get the input dataset for a specific verification pair."""
         pair_node = self.get_verification_pair_node(verification_pair_id)
-        return cast("xr.DataTree", pair_node[DataTreeNode.INPUT_STAGED])
+        return cast("xr.DataTree", pair_node[DataTreeNode.ALIGNED_INPUT])
 
     def output(self, verification_pair_id: str) -> xr.Dataset:
         """Get the output dataset for a specific verification pair."""
@@ -157,13 +156,13 @@ class VeriflowAccessor:
         sim: xr.DataArray,
     ) -> None:
         """Add input data to the datastore."""
-        base_path_in_dt = f"{verification_pair.id}/{DataTreeNode.INPUT_STAGED}"
+        base_path_in_dt = f"{verification_pair.id}/{DataTreeNode.ALIGNED_INPUT}"
         self._validate_path_does_not_exist(base_path_in_dt)
 
         # Add reference data. We use `to_dataset()` to preserve the variable names and ensure
         # consistency in the DataTree structure.
-        self.dt[f"{base_path_in_dt}/{DataTreeNode.REFERENCE}"] = obs.to_dataset()
-        self.dt[f"{base_path_in_dt}/{DataTreeNode.EVALUATION}"] = sim.to_dataset()
+        self.dt[f"{base_path_in_dt}/{DataTreeNode.OBSERVATIONS}"] = obs.to_dataset()
+        self.dt[f"{base_path_in_dt}/{DataTreeNode.SIMULATIONS}"] = sim.to_dataset()
 
 
 if TYPE_CHECKING:

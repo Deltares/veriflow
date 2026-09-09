@@ -164,13 +164,13 @@ class InputDataset:
         to retrieve the correct data for one of the configured verification pairs.
         """
         obs_ds = self.datastore[verification_pair.reference_source_id]
-        sim_ds = self.datastore[verification_pair.evaluation_source_id]
+        sim_ds = self.datastore[verification_pair.simulations_source_id]
 
         variable = verification_pair.variable
         if variable not in obs_ds.data_vars:
             msg = (
                 f"Variable '{variable}' configured on verification pair "
-                f"'{verification_pair.id}' not found in obs source "
+                f"'{verification_pair.id}' not found in observations source "
                 f"'{verification_pair.reference_source_id}'. "
                 f"Available variables: {sorted(obs_ds.data_vars)}."  # type:ignore[type-var]
             )
@@ -178,8 +178,8 @@ class InputDataset:
         if variable not in sim_ds.data_vars:
             msg = (
                 f"Variable '{variable}' configured on verification pair "
-                f"'{verification_pair.id}' not found in sim source "
-                f"'{verification_pair.evaluation_source_id}'. Available variables: "
+                f"'{verification_pair.id}' not found in simulations source "
+                f"'{verification_pair.simulations_source_id}'. Available variables: "
                 f"{sorted(sim_ds.data_vars)}."  # type:ignore[type-var]
             )
             raise ValueError(msg)

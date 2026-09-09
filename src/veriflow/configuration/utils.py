@@ -184,20 +184,18 @@ class VerificationPeriod(TimePeriod):
 
 
 class VerificationPair(BaseModel):
-    """
-    Configuration for a verification pair.
+    """Configuration for a verification pair.
 
-    Should consist of an id and reference to a source for
-    observations and simulations. The id can be any arbitrary string, and the obs and sim fields
-    should contain an exact reference to a configured source in the datasource configuration.
-    The variable field selects which physical variable from each source's dataset to verify;
-    after id mapping the same internal variable name must exist as a data variable on both the
-    observation and simulation source.
+    The id uniquely identifies the verification pair.
+    The observations_source_id and simulations_source_id fields reference the respective data
+    sources and should match with the configured source_id in the datasource configuration.
+    The variable field specifies the (internal; i.e. after id mapping) physical variable to be
+    verified.
     """
 
     id: str
-    reference_source_id: Source
-    evaluation_source_id: Source
+    observations_source_id: Source
+    simulations_source_id: Source
     variable: Variable
 
     model_config = {

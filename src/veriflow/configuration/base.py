@@ -293,7 +293,8 @@ class BaseScoreConfig(BaseConfig):
             default=None,
             description="Optional coordinate reference system for score computation. When set, "
             "obs and sim coordinates are reprojected to this CRS before computing the score and "
-            "the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+            "the results are expressed in it. When omitted, observations and simulations must "
+            "share the same CRS.",
         ),
     ] = None
 

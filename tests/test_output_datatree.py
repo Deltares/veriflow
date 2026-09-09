@@ -37,10 +37,10 @@ def test_input_staged_subtree_valid(
     pair = dt.veriflow.verification_pairs[0]
     input_staged_dt = accessor.input_staged(pair)
     assert isinstance(input_staged_dt, xr.DataTree)
-    assert DataTreeNode.REFERENCE in input_staged_dt.children
-    assert DataTreeNode.EVALUATION in input_staged_dt.children
-    reference_ds = input_staged_dt[DataTreeNode.REFERENCE].to_dataset()
-    evaluation_ds = input_staged_dt[DataTreeNode.EVALUATION].to_dataset()
+    assert DataTreeNode.OBSERVATIONS in input_staged_dt.children
+    assert DataTreeNode.SIMULATIONS in input_staged_dt.children
+    reference_ds = input_staged_dt[DataTreeNode.OBSERVATIONS].to_dataset()
+    evaluation_ds = input_staged_dt[DataTreeNode.SIMULATIONS].to_dataset()
     assert isinstance(reference_ds, xr.Dataset)
     assert isinstance(evaluation_ds, xr.Dataset)
     # Always expect exactly one data variable in both reference and evaluation datasets.
@@ -54,7 +54,7 @@ def test_input_staged_subtree_valid(
     )
     assert (
         evaluation_ds[next(iter(evaluation_ds.data_vars))].attrs["source_id"]
-        == fake_verification_pair.evaluation_source_id
+        == fake_verification_pair.simulations_source_id
     )
 
 
@@ -110,11 +110,11 @@ def test_input_and_output(
     assert isinstance(input_staged_dt, xr.DataTree)
     assert (
         fake_verification_pair.variable
-        in input_staged_dt[DataTreeNode.REFERENCE].to_dataset().data_vars
+        in input_staged_dt[DataTreeNode.OBSERVATIONS].to_dataset().data_vars
     )
     assert (
         fake_verification_pair.variable
-        in input_staged_dt[DataTreeNode.EVALUATION].to_dataset().data_vars
+        in input_staged_dt[DataTreeNode.SIMULATIONS].to_dataset().data_vars
     )
 
     output_dataset = dt.veriflow.output(fake_verification_pair.id)
@@ -145,7 +145,7 @@ def test_path_exists_in_dt(
     """Test path_exists_in_dt for both existing and non-existing paths."""
     dt = output_datatree_without_scores
     assert (
-        dt.veriflow._path_exists_in_dt(f"{fake_verification_pair.id}/{DataTreeNode.INPUT_STAGED}")
+        dt.veriflow._path_exists_in_dt(f"{fake_verification_pair.id}/{DataTreeNode.ALIGNED_INPUT}")
         is True
     )
     assert dt.veriflow._path_exists_in_dt("does_not_exist") is False
