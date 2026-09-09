@@ -118,7 +118,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, observations and simulations must share the same CRS.",
           "title": "Crs"
         },
         "verification_pair_ids": {
@@ -198,7 +198,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, observations and simulations must share the same CRS.",
           "title": "Crs"
         },
         "verification_pair_ids": {
@@ -262,7 +262,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, observations and simulations must share the same CRS.",
           "title": "Crs"
         },
         "verification_pair_ids": {
@@ -328,7 +328,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, observations and simulations must share the same CRS.",
           "title": "Crs"
         },
         "verification_pair_ids": {
@@ -959,7 +959,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, observations and simulations must share the same CRS.",
           "title": "Crs"
         },
         "verification_pair_ids": {
@@ -1089,7 +1089,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+          "description": "Optional coordinate reference system for score computation. When set, obs and sim coordinates are reprojected to this CRS before computing the score and the results are expressed in it. When omitted, observations and simulations must share the same CRS.",
           "title": "Crs"
         },
         "verification_pair_ids": {
@@ -1214,24 +1214,24 @@
       "type": "string"
     },
     "VerificationPair": {
-      "description": "Configuration for a verification pair.\n\nShould consist of an id and reference to a source for\nobservations and simulations. The id can be any arbitrary string, and the obs and sim fields\nshould contain an exact reference to a configured source in the datasource configuration.\nThe variable field selects which physical variable from each source's dataset to verify;\nafter id mapping the same internal variable name must exist as a data variable on both the\nobservation and simulation source.",
+      "description": "Configuration for a verification pair.\n\nThe id uniquely identifies the verification pair.\nThe observations_source_id and simulations_source_id fields reference the respective data\nsources and should match with the configured source_id in the datasource configuration.\nThe variable field specifies the (internal; i.e. after id mapping) physical variable to be\nverified.",
       "properties": {
         "id": {
           "title": "Id",
           "type": "string"
         },
-        "reference_source_id": {
+        "observations_source_id": {
           "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
-          "title": "Reference Source Id",
+          "title": "Observations Source Id",
           "type": "string"
         },
-        "evaluation_source_id": {
+        "simulations_source_id": {
           "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
-          "title": "Evaluation Source Id",
+          "title": "Simulations Source Id",
           "type": "string"
         },
         "variable": {
@@ -1243,8 +1243,8 @@
       },
       "required": [
         "id",
-        "reference_source_id",
-        "evaluation_source_id",
+        "observations_source_id",
+        "simulations_source_id",
         "variable"
       ],
       "title": "VerificationPair",
