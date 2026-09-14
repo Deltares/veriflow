@@ -177,7 +177,7 @@ class BaseDatasource(Base):
             )
             raise ValueError(msg)
 
-    def _persist_configured_source_to_attrs(self) -> None:
+    def _persist_configured_source_id_to_attrs(self) -> None:
         # Make sure the source attribute is set to the expected source
         self.dataset.attrs["source_id"] = self.config.source_id  # type:ignore[misc]
 
@@ -243,7 +243,7 @@ class BaseDatasource(Base):
     def validate_fetched_data(self) -> None:
         """Validate that the dataset is consistent with the config."""
         self._validate_data_type()
-        self._persist_configured_source_to_attrs()
+        self._persist_configured_source_id_to_attrs()
         self._persist_configured_spatial_type_to_attrs()
         self._validate_dataset_structure_against_schema()
         self._validate_lead_times()
