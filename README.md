@@ -61,7 +61,7 @@ dt: xr.DataTree = run_pipeline((path_to_config, "yaml"))
 ```
 
 If it's your wish to further analyze the input data and verification results in an interactive Python session, assign the returned `xr.DataTree` from `run_pipeline` to a Python variable as in the code block above. For each each configured `verification_pair`*, the datatree contains input and output data for each verification pair.
-This allows for easy post-hoc analysis, visualization and further connection to external applications such as dashboards. See our [API documentation](https://deltares.github.io/veriflow/api/_generated/veriflow.datamodel.output.html) for a detailed overview of the datatree structure.
+This allows for easy post-hoc analysis, visualization and further connection to external applications such as dashboards. See our [API documentation](https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html) for a detailed overview of the datatree structure.
 
 *_a verification pair defines two data arrays: a reference data array and a evaluation data array. An example verification pair could be a combination of observed data and simulated forecast data for a given physical variable._
 
