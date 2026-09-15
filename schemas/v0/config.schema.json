@@ -30,7 +30,26 @@
         },
         "force_overwrite": {
           "default": true,
+          "description": "Whether to force overwrite existing output files.",
           "title": "Force Overwrite",
+          "type": "boolean"
+        },
+        "include_output": {
+          "default": true,
+          "description": "Whether to include output in the output.",
+          "title": "Include Output",
+          "type": "boolean"
+        },
+        "include_aligned_input_data": {
+          "default": true,
+          "description": "Whether to include aligned input data in the output (per verification pair). See for reference: https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+          "title": "Include Aligned Input Data",
+          "type": "boolean"
+        },
+        "include_input_data": {
+          "default": false,
+          "description": "Whether to include the input data in the output. This is the raw and validated input data as provided by the datasource(s).See for reference: https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+          "title": "Include Input Data",
           "type": "boolean"
         },
         "crs": {
@@ -45,7 +64,7 @@
             }
           ],
           "default": null,
-          "description": "Optional coordinate reference system for the output. When set, the results' coordinates are reprojected to this CRS before writing.",
+          "description": "Optional coordinate reference system for the output. When set, the results' coordinates are reprojected to this CRS before writing.See for reference: https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
           "title": "Crs"
         },
         "conventions": {
