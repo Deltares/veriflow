@@ -114,8 +114,8 @@ class VeriflowAccessor:
 
     - The root node is ``veriflow-datatree``.
     - The first child node is ``input_data``, which holds the validated input datasets
-    as fetched from the configured datasources. They are instances of `xr.Dataset` keyed by
-    their ``source_id``.
+      as fetched from the configured datasources. They are instances of `xr.Dataset` keyed by
+      their ``source_id``.
     - Each following child node represents a verification pair, identified by its unique ID.
     - Each verification pair has two main child nodes: ``aligned_input`` and ``output``.
 
