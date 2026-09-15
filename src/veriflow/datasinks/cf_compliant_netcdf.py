@@ -55,7 +55,7 @@ class CFCompliantNetCDF(BaseDatasink):
                 # Naming convention: "<stem>_<pair_id><suffix>".
                 dt[pair].to_netcdf(filepath)
             if self.config.include_aligned_input_data and not self.config.include_output:
-                dt.veriflow.get_aligned_input_data(pair).to_netcdf(filepath)
+                dt.veriflow.get_aligned_input(pair).to_netcdf(filepath)
             if not self.config.include_aligned_input_data and self.config.include_output:
                 dt.veriflow.get_outputs(pair).to_netcdf(filepath)
 

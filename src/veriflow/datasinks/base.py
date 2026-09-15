@@ -2,10 +2,9 @@
 
 from abc import abstractmethod
 
-import xarray as xr
-
 from veriflow.base import Base
 from veriflow.configuration.base import BaseDatasinkConfig
+from veriflow.datatree.datatree import VeriflowDataTree
 
 __all__ = [
     "BaseDatasink",
@@ -23,5 +22,5 @@ class BaseDatasink(Base):
         self.config = config
 
     @abstractmethod
-    def write_data(self, data: xr.DataTree) -> None:
+    def write_data(self, data: VeriflowDataTree) -> None:
         """Write output data for one verification pair to the datasource."""

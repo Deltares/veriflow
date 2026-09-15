@@ -10,6 +10,7 @@ from veriflow.configuration.base import GeneralInfoConfig
 from veriflow.constants import DataSinkKind
 from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF, CFCompliantNetCDFConfig
 from veriflow.datasinks.cf_compliant_zarr import CFCompliantZarr, CFCompliantZarrConfig
+from veriflow.datatree.datatree import VeriflowDataTree
 
 
 @pytest.mark.parametrize(
@@ -26,7 +27,7 @@ def test_cf_compliant_netcdf_write(
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
     """Test writing data to a cf-compliant NetCDF file."""
-    output_datatree: xr.DataTree = request.getfixturevalue(dt_fixture)
+    output_datatree: VeriflowDataTree = request.getfixturevalue(dt_fixture)
     datasink_cf_compliant_netcdf = CFCompliantNetCDF(
         CFCompliantNetCDFConfig(
             institution="Test Institution",
@@ -48,7 +49,7 @@ def test_cf_compliant_netcdf_write(
 
 
 def test_cf_compliant_netcdf_write_multiple_pairs(
-    output_datatree_with_multiple_pairs: xr.DataTree,
+    output_datatree_with_multiple_pairs: VeriflowDataTree,
     tmpdir: Path,
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
@@ -74,7 +75,7 @@ def test_cf_compliant_netcdf_write_multiple_pairs(
 
 
 def test_cf_compliant_netcdf_write_force_overwrite_false_raises(
-    output_datatree_without_scores: xr.DataTree,
+    output_datatree_without_scores: VeriflowDataTree,
     tmpdir: Path,
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
@@ -111,7 +112,7 @@ def test_cf_compliant_zarr_write_local(
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
     """Test writing data to a cf-compliant Zarr store."""
-    output_datatree: xr.DataTree = request.getfixturevalue(dt_fixture)
+    output_datatree: VeriflowDataTree = request.getfixturevalue(dt_fixture)
     datasink_cf_compliant_zarr = CFCompliantZarr(
         CFCompliantZarrConfig(
             institution="Test Institution",
@@ -131,7 +132,7 @@ def test_cf_compliant_zarr_write_local(
 
 
 def test_cf_compliant_zarr_write_explicit_consolidated(
-    output_datatree_without_scores: xr.DataTree,
+    output_datatree_without_scores: VeriflowDataTree,
     tmpdir: Path,
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
@@ -152,7 +153,7 @@ def test_cf_compliant_zarr_write_explicit_consolidated(
 
 
 def test_cf_compliant_zarr_write_force_overwrite_false_raises(
-    output_datatree_without_scores: xr.DataTree,
+    output_datatree_without_scores: VeriflowDataTree,
     tmpdir: Path,
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
