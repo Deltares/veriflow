@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, ctx, dcc, html, no_update
 from pydantic import BaseModel
 
-from veriflow.datamodel import OutputDataset
+from veriflow.datatree import OutputDataset
 
 
 class Theme(BaseModel):
