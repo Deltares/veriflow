@@ -104,7 +104,7 @@ def test_pipeline_historical_data_only(
     # Create a dummy datasource, by copying the observed historical
     # For testing purposes, set the data_type to "simulated_historical"
     dummy_config = xarray_observed_historical_datasource.config.model_copy()
-    dummy_config.source_id = "source_single"
+    dummy_config.source_id = "simulation_ensemble_source"
     dummy_config.data_type = DataType.simulated_historical
 
     config = Config(

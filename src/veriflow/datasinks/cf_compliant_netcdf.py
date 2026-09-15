@@ -2,16 +2,11 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
-
-import xarray as xr
 
 from veriflow.configuration.default.datasinks import CFCompliantNetCDFConfig
 from veriflow.constants import NAME, VERSION
 from veriflow.datasinks.base import BaseDatasink
-
-if TYPE_CHECKING:
-    from veriflow.datamodel.output import VeriflowDataTree
+from veriflow.datatree.datatree import DataTreeNode, VeriflowDataTree
 
 __all__ = [
     "CFCompliantNetCDF",
@@ -36,17 +31,33 @@ class CFCompliantNetCDF(BaseDatasink):
     def __init__(self, config: CFCompliantNetCDFConfig) -> None:
         self.config: CFCompliantNetCDFConfig = config
 
-    def write_data(self, dt: xr.DataTree) -> None:
+    def write_data(self, dt: VeriflowDataTree) -> None:
         """Write the data in the xarray DataTree to the file as specified in the output config."""
-        dt = cast("VeriflowDataTree", dt)
         directory = Path(self.config.directory)
         filename = Path(self.config.filename)
+
+        if self.config.include_input_data:
+            # Write the raw input data to a separate NetCDF file.
+            dt[DataTreeNode.INPUT_DATA].to_netcdf(
+                directory / f"{filename.stem}_input_data{filename.suffix}",
+            )
         for pair in dt.veriflow.verification_pairs:
-            # One file per verification pair, named "<stem>_<pair_id><suffix>".
+            if not (self.config.include_aligned_input_data or self.config.include_output):
+                continue
+
             filepath = directory / f"{filename.stem}_{pair}{filename.suffix}"
             if filepath.exists() and self.config.force_overwrite is False:
                 msg = "File already exists: " + str(filepath)
                 raise FileExistsError(msg)
+
+            if self.config.include_aligned_input_data and self.config.include_output:
+                # Write each verification pair to its own NetCDF file.
+                # Naming convention: "<stem>_<pair_id><suffix>".
+                dt[pair].to_netcdf(filepath)
+            if self.config.include_aligned_input_data and not self.config.include_output:
+                dt.veriflow.get_aligned_input_data(pair).to_netcdf(filepath)
+            if not self.config.include_aligned_input_data and self.config.include_output:
+                dt.veriflow.get_outputs(pair).to_netcdf(filepath)
 
             subset = dt[pair]
 

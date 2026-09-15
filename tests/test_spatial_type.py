@@ -6,8 +6,8 @@ import pytest
 import xarray as xr
 
 from veriflow.constants import DataType, SpatialType
-from veriflow.datamodel.input import InputDataset
 from veriflow.datasources.inputschemas import INPUT_SCHEMAS, validate_input_data
+from veriflow.datatree.datatree import VeriflowAccessor
 from veriflow.scores.spatial import SALScore
 
 
@@ -78,6 +78,6 @@ def test_map_historical_gridded_into_forecast_space(
     variable = "var_0"
     obs = xarray_observed_historical_gridded[variable]
     sim = xarray_simulated_forecast_single_gridded[variable]
-    mapped = InputDataset.map_historical_into_forecast_space(obs, sim)
+    mapped = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
     assert "y" in mapped.dims
     assert "x" in mapped.dims

@@ -16,7 +16,6 @@ from .constants import (
     StandardCoord,
     StandardDim,
 )
-from .datamodel import InputDataset, VeriflowAccessor, VeriflowDataTree
 from .datasources import (
     BaseDatasource,
     BaseDatasourceConfig,
@@ -25,6 +24,7 @@ from .datasources import (
     FewsWebservice,
     FewsWebserviceConfig,
 )
+from .datatree import VeriflowAccessor, VeriflowDataTree
 from .pipeline import run_pipeline
 from .scores.base import BaseScore, BaseScoreConfig
 from .scores.categorical import CategoricalScores, CategoricalScoresConfig

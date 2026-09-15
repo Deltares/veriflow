@@ -51,13 +51,12 @@ from veriflow.constants import (
     StandardCoord,
     StandardDim,
 )
-from veriflow.datamodel.input import InputDataset
-from veriflow.datamodel.output import VeriflowDataTree
 from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from veriflow.datasources.csv import Csv
 from veriflow.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
 from veriflow.datasources.fewswebservice import FewsWebservice, ForecastRetrievalMethod
 from veriflow.datasources.netcdf import NetCDF
+from veriflow.datatree.datatree import VeriflowDataTree
 from veriflow.types import DataSpec
 
 TESTS_DATA_DIR = Path(__file__).parent / "data"
@@ -212,7 +211,7 @@ def xarray_observed_historical_datasource(
 
 @pytest.fixture
 def xarray_simulated_forecast_ensemble() -> xr.Dataset:
-    """Return example simulations compatible with the internal datamodel.
+    """Return example simulations compatible with the internal datatree.
 
     Uses lead_time as dimension and coordinates.
     """
@@ -258,7 +257,7 @@ def xarray_simulated_forecast_ensemble() -> xr.Dataset:
 
 @pytest.fixture
 def xarray_simulated_forecast_single() -> xr.Dataset:
-    """Return example simulations compatible with the internal datamodel.
+    """Return example simulations compatible with the internal datatree.
 
     Uses lead_time as dimension and coordinates.
     """
@@ -483,8 +482,8 @@ def xarray_general_info_config() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                observations_source_id="observed",
-                simulations_source_id="source_single",
+                observations_source_id="observation_source",
+                simulations_source_id="simulation_ensemble_source",
                 variable="var_1",
             ),
         ],
@@ -503,8 +502,8 @@ def xarray_general_info_config_historical() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                observations_source_id="observed",
-                simulations_source_id="source_single",
+                observations_source_id="observation_source",
+                simulations_source_id="simulation_ensemble_source",
                 variable="var_1",
             ),
         ],
@@ -886,28 +885,14 @@ def fews_netcdf_compliant_file(
 
 
 @pytest.fixture
-def xarray_input_dataset(
+def input_data_datatree(
     xarray_observed_historical: xr.Dataset,
     xarray_simulated_forecast_ensemble: xr.Dataset,
-) -> InputDataset:
-    """Initialize datamodel with observations and forecasts (based on frt)."""
-    return InputDataset(
-        data=[xarray_observed_historical, xarray_simulated_forecast_ensemble],
-    )
-
-
-@pytest.fixture
-def input_dataset_fews_netcdf_simulated_forecast_ensemble(
-    fews_netcdf_observed_historical: FewsNetCDF,
-    fews_netcdf_simulated_forecast_ensemble_frt: FewsNetCDF,
-) -> InputDataset:
-    """Initialize datamodel with observations and forecasts (based on frt)."""
-    return InputDataset(
-        data=[
-            fews_netcdf_observed_historical.get_data().dataset,
-            fews_netcdf_simulated_forecast_ensemble_frt.get_data().dataset,
-        ],
-    )
+) -> VeriflowDataTree:
+    """Initialize a datatree with observations and forecasts (based on frt) as input data."""
+    dt = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
+    dt.veriflow.add_input_data([xarray_observed_historical, xarray_simulated_forecast_ensemble])
+    return dt
 
 
 # Score fixtures
@@ -1320,7 +1305,7 @@ def xarray_fake_score_result() -> xr.DataArray:
 
 @pytest.fixture
 def output_datatree_without_scores(
-    xarray_input_dataset: InputDataset,
+    input_data_datatree: VeriflowDataTree,
 ) -> VeriflowDataTree:
     """Fixture for an OutputDataset instance."""
     # Initialize the output dataset
@@ -1331,7 +1316,7 @@ def output_datatree_without_scores(
         id="test_pair",
         variable="var_0",
     )
-    obs, sim = xarray_input_dataset.get_pair(verification_pair)
+    obs, sim = input_data_datatree.veriflow.get_pair(verification_pair)
     output_dataset.veriflow.add_staged_input_data(
         verification_pair=verification_pair,
         obs=obs,
@@ -1372,7 +1357,7 @@ def output_datatree_with_scores(
 
 @pytest.fixture
 def output_datatree_with_multiple_pairs(
-    xarray_input_dataset: InputDataset,
+    input_data_datatree: VeriflowDataTree,
 ) -> VeriflowDataTree:
     """Fixture for an OutputDataset instance with two verification pairs."""
     output_dataset = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
@@ -1383,7 +1368,7 @@ def output_datatree_with_multiple_pairs(
             id=pair_id,
             variable="var_0",
         )
-        obs, sim = xarray_input_dataset.get_pair(verification_pair)
+        obs, sim = input_data_datatree.veriflow.get_pair(verification_pair)
         output_dataset.veriflow.add_staged_input_data(
             verification_pair=verification_pair,
             obs=obs,

@@ -251,15 +251,40 @@ class BaseDatasinkConfig(BaseConfig):
     """
 
     export_adapter: str
-
-    force_overwrite: bool = True
-
+    force_overwrite: Annotated[
+        bool,
+        Field(description="Whether to force overwrite existing output files."),
+    ] = True
+    include_output: Annotated[
+        bool,
+        Field(description="Whether to include output in the output."),
+    ] = True
+    include_aligned_input_data: Annotated[
+        bool,
+        Field(
+            description="Whether to include aligned input data in the output (per verification "
+            "pair). "
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+        ),
+    ] = True
+    include_input_data: Annotated[
+        bool,
+        Field(
+            description="Whether to include the input data in the output. This "
+            "is the raw and validated input data as provided by the datasource(s)."
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+        ),
+    ] = False
     crs: Annotated[
         CRSString | None,
         Field(
             default=None,
             description="Optional coordinate reference system for the output. When set, the "
-            "results' coordinates are reprojected to this CRS before writing.",
+            "results' coordinates are reprojected to this CRS before writing."
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
         ),
     ] = None
 

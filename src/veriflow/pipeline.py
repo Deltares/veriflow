@@ -14,12 +14,11 @@ from veriflow.cache import ZarrCache
 from veriflow.configuration.config import Config
 from veriflow.configuration.file import ConfigFile, ConfigKind
 from veriflow.constants import StandardAttribute
-from veriflow.datamodel import InputDataset
-from veriflow.datamodel.output import VeriflowDataTree
 from veriflow.datasinks import DEFAULT_DATASINKS
 from veriflow.datasinks.base import BaseDatasink
 from veriflow.datasources import DEFAULT_DATASOURCES
 from veriflow.datasources.base import BaseDatasource
+from veriflow.datatree.datatree import VeriflowDataTree
 from veriflow.scores import DEFAULT_SCORES
 from veriflow.scores.base import BaseCategoricalScore, BaseScore
 from veriflow.transformations import parse_crs, project_to_crs
@@ -213,19 +212,18 @@ def run_pipeline(
         for datasource in datasources:
             datasource.get_data()
 
-        # Initialize the input dataset
-        input_dataset = InputDataset(
+        # Initialize the output datatree and load the raw input data into it
+        dt = cast("VeriflowDataTree", xr.DataTree(name="veriflow-datatree"))
+        dt.veriflow.add_input_data(
             [datasource.dataset for datasource in datasources],
         )
 
         msg = "Successfully loaded all data from sources."
         logger.info(msg)
 
-        # Initialize the output dataset
-        output_datatree = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
         for verification_pair in config.general.verification_pairs:
-            obs, sim = input_dataset.get_pair(verification_pair)
-            output_datatree.veriflow.add_staged_input_data(
+            obs, sim = dt.veriflow.get_pair(verification_pair)
+            dt.veriflow.add_staged_input_data(
                 verification_pair=verification_pair,
                 obs=obs,
                 sim=sim,
@@ -244,7 +242,7 @@ def run_pipeline(
                 ),
             )
             for verification_pair in score.config.verification_pairs:
-                obs, sim = input_dataset.get_pair(verification_pair)
+                obs, sim = dt.veriflow.get_pair(verification_pair)
 
                 # Align the CRS of obs and sim. When a target CRS is configured on the score,
                 # reproject both to it (results are then expressed in that CRS). Otherwise, obs
@@ -257,13 +255,15 @@ def run_pipeline(
                 # BaseScore, and we want to keep the compute function signature of BaseScore simple
                 # without optional arguments that are only required for categorical scores.
                 if isinstance(score, BaseCategoricalScore):
-                    thresholds = input_dataset.get_thresholds_array(verification_pair.variable)
+                    thresholds = dt.veriflow.get_thresholds_array(
+                        verification_pair.variable,
+                    )
                     result = score.validate_and_compute(obs=obs, sim=sim, thresholds=thresholds)
                 else:
                     result = score.validate_and_compute(obs=obs, sim=sim)
 
                 # Add the output of the score to the output dataset
-                output_datatree.veriflow.add_score(
+                dt.veriflow.add_score(
                     verification_pair=verification_pair,
                     result=result,
                     name=score_config.score_adapter,
@@ -283,7 +283,7 @@ def run_pipeline(
                     kind=datasink_config.export_adapter,
                 )
                 datasink = sink_kind.from_config(datasink_config.model_dump())  # type: ignore[misc] # Allow Any
-                datasink.write_data(output_datatree)
+                datasink.write_data(dt)
                 msg = f"Successfully wrote data using datasink {datasink_config.export_adapter}."
                 logger.info(msg)
 
@@ -291,4 +291,4 @@ def run_pipeline(
     logger.info(msg)
 
     # Return the output dataset by default
-    return output_datatree
+    return dt

@@ -22,7 +22,7 @@ __all__ = [
 
 
 class Zarr(BaseDatasource):
-    """A datasource for reading Zarr stores compatible with the internal datamodel.
+    """A datasource for reading Zarr stores compatible with the internal datatree.
 
     Wraps :func:`xarray.open_zarr` and supports both local filesystem paths and remote
     URLs (currently ``s3://`` is exercised). For S3 stores, credentials are taken from a
