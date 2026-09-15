@@ -19,7 +19,7 @@ A reproducible verification pipeline for evaluating model outputs and forecasts.
 - 📝 Writing results
 
 <br>
-<img src="_static/pipeline.svg" alt="Schematic overview of veriflow pipeline" width="80%">
+<img src="https://deltares.github.io/veriflow/_static/pipeline.svg" alt="Schematic overview of veriflow pipeline" width="80%">
 
 
 ## Key features
