@@ -59,6 +59,9 @@ class CFCompliantZarr(BaseDatasink):
             include_output=self.config.include_output,
         )
 
+        # Persist the `xr.DataTree` attributes to the filtered DataTree
+        filtered_dt.attrs = dt.attrs.copy()  # type: ignore[misc]
+
         filtered_dt.to_zarr(
             self.config.path,
             storage_options=self.config.storage_options,

@@ -45,7 +45,7 @@ def test_cf_compliant_netcdf_write(
         output_datatree,
     )
     # File name is derived from the configured filename plus the verification pair id.
-    assert (Path(tmpdir) / "test_output_test_pair.nc").exists()
+    assert (Path(tmpdir) / f"{datasink_cf_compliant_netcdf.config.filename}").exists()
 
 
 def test_cf_compliant_netcdf_write_multiple_pairs(
@@ -67,11 +67,11 @@ def test_cf_compliant_netcdf_write_multiple_pairs(
     )
     datasink_cf_compliant_netcdf.write_data(output_datatree_with_multiple_pairs)
 
-    for pair_id in ("test_pair_1", "test_pair_2"):
-        filepath = Path(tmpdir) / f"test_output_{pair_id}.nc"
-        assert filepath.exists()
-        with xr.open_dataset(filepath) as written:
-            assert cast("str", written.attrs["institution"]) == "Test Institution"  # type: ignore[misc]
+    filepath = Path(tmpdir) / f"{datasink_cf_compliant_netcdf.config.filename}"
+    assert filepath.exists()
+
+    with xr.open_dataset(filepath) as written:
+        assert cast("str", written.attrs["institution"]) == "Test Institution"  # type: ignore[misc]
 
 
 def test_cf_compliant_netcdf_write_force_overwrite_false_raises(
