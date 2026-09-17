@@ -380,8 +380,8 @@ class ZarrCache:
 
         if not hasattr(ds, "data_type"):
             msg = (
-                f"Dataset for source '{source}' in {list(self.config.path)} is missing the 'data_type' "
-                "attribute. This is required for proper sorting of the dataset."
+                f"Dataset for source '{source}' in {list(self.config.path)} is missing the "
+                "'data_type' attribute. This is required for proper sorting of the dataset."
             )
             raise ValueError(msg)
 
