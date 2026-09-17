@@ -211,6 +211,11 @@ def run_pipeline(
         # Get data for each datasource
         for datasource in datasources:
             datasource.get_data()
+            msg = (
+                f"Dataset (source_id={datasource.config.source_id}) successfully loaded and "
+                "validated."
+            )
+            logger.info(msg)
 
         # Initialize the output datatree and load the raw input data into it
         dt = cast("VeriflowDataTree", xr.DataTree(name="veriflow-datatree"))
