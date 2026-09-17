@@ -243,8 +243,6 @@ class BaseDatasource(Base):
     def validate_fetched_data(self) -> None:
         """Validate that the dataset is consistent with the config."""
         self._validate_data_type()
-        self._persist_configured_source_id_to_attrs()
-        self._persist_configured_spatial_type_to_attrs()
         self._validate_dataset_structure_against_schema()
         self._validate_lead_times()
 
@@ -262,11 +260,22 @@ class BaseDatasource(Base):
     def fetch_validate_filter_cache(self, *, clear_cache: bool = False) -> Self:
         """High-level wrapper to fetch, validate, filter and apply id mapping to the dataset."""
         self.fetch_data()
-        self.validate_fetched_data()
-        self.dataset = self.filter_dataset(self.dataset)
 
+        # Persist the configured source ID and spatial type to the dataset attributes
+        #   this ensures that the dataset carries the correct metadata prior to any further
+        #   processing steps like id mapping, validation, and filtering.
+        self._persist_configured_source_id_to_attrs()
+        self._persist_configured_spatial_type_to_attrs()
+
+        # Apply id mapping if it is configured
         if self.config.id_mapping is not None:
             self.dataset = self.config.id_mapping.apply(self.dataset)
+
+        # Validate the fetched dataset against the schema. The schema is linked to the data type.
+        self.validate_fetched_data()
+
+        # Filter the dataset based on lead times and the verification period.
+        self.dataset = self.filter_dataset(self.dataset)
 
         if self.cache is not None and self.cache.is_writable:
             if clear_cache:
@@ -433,7 +442,10 @@ class BaseDatasource(Base):
         """Get data and make use of cache if configured."""
         # If no cache is configured, or the data type is not cacheable, fetch and process the data
         # directly from the datasource, without using the cache.
-        msg = f"Starting data fetch for {self.config.source_id} from {self.__class__.__name__}."
+        msg = (
+            f"Starting dataset fetch (source_id={self.config.source_id}) from "
+            f"{self.__class__.__name__}."
+        )
         logger.info(msg)
 
         # Check if we should skip fetching data from the cache, and if so, fetch and process the
