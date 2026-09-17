@@ -13,9 +13,17 @@ specific to the veriflow DataTree structure. It can be used as follows:
     # The output of the veriflow pipeline is an instance of ``xr.DataTree``.
     dt: xr.DataTree = run_pipeline(...)
 
-    # The ``dt.veriflow`` accessor provides convenient methods to interact with the veriflow
-    # DataTree. Get the list of verification pair IDs.
+    # It has all the standard methods and attributes of an ``xarray.DataTree``.
+    dt.keys()  # Example of a standard xarray.DataTree method.
+
+    # The ``dt.veriflow`` accessor provides additional methods to interact with the veriflow
+    # DataTree.
+
+    # Example 1: Get the list of verification pair IDs.
     dt.veriflow.verification_pairs
+
+    # Example 2: List scores for a given verification_pair
+    dt.veriflow.list_scores("example_verification_pair_id")
 
 The VeriflowAccessor extends ``xarray.DataTree`` via the ``xr.register_datatree_accessor``
 decorator, as recommended by the `xarray documentation
@@ -57,13 +65,19 @@ class InputDatasetExtension:
 
     def __init__(self, xarray_obj: xr.Dataset) -> None:
         self._obj = xarray_obj
+        self.validate_attr_exists("data_type")
+        self.validate_attr_exists("source_id")
+
+    def validate_attr_exists(self, attr_name: str) -> None:
+        """Validate that the specified attribute exists in the dataset."""
+        if attr_name not in self._obj.attrs:  # type:ignore[misc]
+            msg = f"No {attr_name} set on {self._obj} attrs."
+            raise ValueError(msg)
 
     @property
     def data_type(self) -> DataType:
         """The data type of the dataset."""
-        if "data_type" not in self._obj.attrs:  # type:ignore[misc]
-            msg = f"No data type set on {self._obj} attrs."
-            raise ValueError(msg)
+        self.validate_attr_exists("data_type")
         return DataType(self._obj.attrs["data_type"])  # type:ignore[misc]
 
     @property
@@ -89,9 +103,7 @@ class InputDatasetExtension:
     @property
     def source_id(self) -> str:
         """The source ID."""
-        if "source_id" not in self._obj.attrs:  # type:ignore[misc]
-            msg = f"No source_id set on {self._obj} attrs."
-            raise ValueError(msg)
+        self.validate_attr_exists("source_id")
         return str(self._obj.attrs["source_id"])  # type:ignore[misc]
 
 
@@ -113,11 +125,12 @@ class VeriflowAccessor:
     The DataTree layout is as follows:
 
     - The root node is ``veriflow-datatree``.
-    - The first child node is ``input_data``, which holds the validated input datasets
-      as fetched from the configured datasources. They are instances of `xr.Dataset` keyed by
-      their ``source_id``.
-    - Each following child node represents a verification pair, identified by its unique ID.
-    - Each verification pair has two main child nodes: ``aligned_input`` and ``output``.
+    - The the root node's child nodes are ``input_data`` and one or more verification pairs.
+    - The ``input_data`` node holds the validated input datasets. These are instances of
+      `xr.Dataset`as fetched from the configured datasources. They are instances of `xr.Dataset`
+      keyed by their ``source_id``.
+    - Each ``verification_pair``  node represents a verification pair, identified by its unique ID,
+      and has two main child nodes: ``aligned_input`` and ``output``.
 
       - The ``aligned_input`` node contains data prepared for verification. The
         observation and simulation data are aligned and ready for verification. For
@@ -129,7 +142,7 @@ class VeriflowAccessor:
         under the ``output`` node is a dataset containing one or more data
         variables corresponding to different aspects of the output.
 
-    Schematic representation of the DataTree structure::
+    An example of the DataTree structure::
 
         veriflow-datatree
         ├── input_data
@@ -156,10 +169,6 @@ class VeriflowAccessor:
             └── output
                 └── ...
 
-    The ``input_data`` node holds the raw, validated datasets as loaded from each configured
-    datasource, keyed by their ``source_id``. It is populated via ``add_input_data`` before
-    verification pairs are staged, and is read by ``get_pair``/``get_thresholds_array`` at
-    runtime to build the ``aligned_input`` nodes of each verification pair.
     """
 
     def __init__(self, dt: xr.DataTree) -> None:
@@ -268,29 +277,29 @@ class VeriflowAccessor:
         obs = obs_ds[variable]
         sim = sim_ds[variable]
 
-        # Propagate dataset-level data_type onto each extracted DataArray, so downstream code
-        # (scores etc.) can read it via the data array's attrs.
-        obs.attrs.setdefault("data_type", obs_ds.attrs.get("data_type"))  # type:ignore[misc]
-        sim.attrs.setdefault("data_type", sim_ds.attrs.get("data_type"))  # type:ignore[misc]
-        # Likewise propagate spatial_type (defaulting to point) so the full data type is known.
-        obs_spatial = obs_ds.attrs.get("spatial_type", SpatialType.point)  # type:ignore[misc]
-        sim_spatial = sim_ds.attrs.get("spatial_type", SpatialType.point)  # type:ignore[misc]
-        obs.attrs.setdefault("spatial_type", obs_spatial)  # type:ignore[misc]
-        sim.attrs.setdefault("spatial_type", sim_spatial)  # type:ignore[misc]
-        # Propagate the CRS so downstream reprojection knows the source CRS. Every validated
-        # dataset is guaranteed to carry a ``crs`` attribute (defaulting to EPSG:4326).
-        obs.attrs.setdefault(StandardAttribute.crs, obs_ds.attrs[StandardAttribute.crs])  # type:ignore[misc]
-        sim.attrs.setdefault(StandardAttribute.crs, sim_ds.attrs[StandardAttribute.crs])  # type:ignore[misc]
+        def _propagate_attrs(da: xr.DataArray, ds: xr.Dataset) -> None:
+            """Propagate dataset-level attrs needed downstream onto the extracted DataArray."""
+            # data_type, so downstream code (scores etc.) can read it via the data array's attrs.
+            da.attrs.setdefault("data_type", ds.attrs.get("data_type"))  # type:ignore[misc]
+            # spatial_type, defaulting to point so the full data type is known.
+            da.attrs.setdefault(  # type:ignore[misc]
+                "spatial_type",
+                ds.attrs.get("spatial_type", SpatialType.point),  # type:ignore[misc]
+            )
+            # CRS, so downstream reprojection knows the source CRS. Every validated dataset is
+            # guaranteed to carry a ``crs`` attribute (defaulting to EPSG:4326).
+            da.attrs.setdefault(  # type:ignore[misc]
+                StandardAttribute.crs,
+                ds.attrs[StandardAttribute.crs],  # type:ignore[misc]
+            )
+            # source_id
+            da.attrs.setdefault(  # type:ignore[misc]
+                StandardAttribute.source_id,
+                ds.attrs.get(StandardAttribute.source_id),  # type:ignore[misc]
+            )
 
-        # Set the source id on the datasets
-        obs.attrs.setdefault(  # type:ignore[misc]
-            StandardAttribute.source_id,
-            obs_ds.attrs.get(StandardAttribute.source_id),  # type:ignore[misc]
-        )
-        sim.attrs.setdefault(  # type:ignore[misc]
-            StandardAttribute.source_id,
-            sim_ds.attrs.get(StandardAttribute.source_id),  # type:ignore[misc]
-        )
+        _propagate_attrs(obs, obs_ds)
+        _propagate_attrs(sim, sim_ds)
 
         if sim_ds.verification.is_forecast:  # type:ignore[misc]
             # Map historical into forecast space upon score computation
@@ -382,8 +391,8 @@ class VeriflowAccessor:
         base_path_in_dt = f"{verification_pair.id}/{DataTreeNode.ALIGNED_INPUT}"
         self._validate_path_does_not_exist(base_path_in_dt)
 
-        # Add reference data. We use `to_dataset()` to preserve the variable names and ensure
-        # consistency in the DataTree structure.
+        # Add observations and simulations data. We use `to_dataset()` to preserve the variable
+        # names and ensure consistency in the DataTree structure.
         self.dt[f"{base_path_in_dt}/{DataTreeNode.OBSERVATIONS}"] = obs.to_dataset()
         self.dt[f"{base_path_in_dt}/{DataTreeNode.SIMULATIONS}"] = sim.to_dataset()
 
