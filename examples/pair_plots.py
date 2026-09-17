@@ -963,6 +963,8 @@ def forecast_scroller(
     show_spread: bool = True,
     spread_quantiles: tuple[float, float] = (0.1, 0.9),
     play_speed: float = 1.0,
+    y_min: float | None = None,
+    y_max: float | None = None,
     template: go.layout.Template = PLOT_TEMPLATE,
 ) -> go.Figure:
     """Build an interactive figure to scroll through individual forecasts over time.
@@ -983,19 +985,27 @@ def forecast_scroller(
     of re-deriving it from every forecast's valid-time grid (as :func:`forecast_pair_plot` does
     for its continuous historical line).
 
-    ``obs_before``/``obs_after`` set how many hours of observed data are shown before/after
-    each forecast's own valid-time span; when not given, both default to the forecast's own
-    horizon length, so the observed context is as wide as the forecast itself on each side. Both
-    the forecast and the observed window are plotted in hours relative to each forecast's own
-    reference time (rather than absolute dates), so the forecast always sits at the exact same
-    x-position and never appears to move as you scroll or play through forecasts; the actual
-    date is shown in the slider label and on hover. ``play_speed`` scales the animation speed
-    of the play button (2.0 plays twice as fast, 0.5 half as fast).
+    ``obs_before`` sets how many hours of observed data are shown before each forecast's own
+    valid-time span; when not given, it defaults to the forecast's own horizon length. The
+    observed window's upper bound is not scoped to the current forecast: it always extends up
+    to the last forecast_reference_time in ``ds`` plus the maximum lead time, so scrolling to an
+    earlier forecast still shows every observation available up to the most recent forecast,
+    instead of cutting off shortly after that earlier forecast's own horizon. ``obs_after`` adds
+    extra hours on top of that fixed end point (default 0). Both the forecast and the observed
+    window are plotted in hours relative to each forecast's own reference time (rather than
+    absolute dates), so the forecast always sits at the exact same x-position and never appears
+    to move as you scroll or play through forecasts; the actual date is shown in the slider
+    label and on hover. ``play_speed`` scales the animation speed of the play button (2.0 plays
+    twice as fast, 0.5 half as fast).
 
     The simulated variable may carry a ``realization`` dimension (an ensemble) or not
     (deterministic), as in :func:`forecast_pair_plot`: the ensemble mean is drawn, with an
     optional shaded ``spread_quantiles`` band and, with ``show_members``, faint individual
     member lines.
+
+    ``y_min``/``y_max`` fix the y-axis range; either can be left as ``None`` to fall back to
+    the min/max of the observed and simulated values shown, so a single bound can be pinned
+    (e.g. ``y_min=0``) while the other still auto-scales to the data.
     """
     ds = _squeeze_to_single_station(ds)
     ds = ds.sortby("forecast_reference_time")
@@ -1018,15 +1028,21 @@ def forecast_scroller(
     lead_hours = lead_time_hours(ds)
     horizon_hours = float(lead_hours.max() - lead_hours.min()) if lead_hours.size else 0.0
     before_hours = obs_before if obs_before is not None else horizon_hours
-    after_hours = obs_after if obs_after is not None else horizon_hours
     window_start_offset = np.timedelta64(round(lead_hours.min() * 3600), "s") - np.timedelta64(
         round(before_hours * 3600),
         "s",
     )
-    window_end_offset = np.timedelta64(round(lead_hours.max() * 3600), "s") + np.timedelta64(
-        round(after_hours * 3600),
-        "s",
+
+    # Fixed upper bound for every frame's observed window: the last forecast's own valid-time
+    # end, rather than a number of hours past each individual forecast, so scrolling to an
+    # earlier forecast keeps showing observations all the way up to the most recent forecast.
+    last_valid_time = (
+        reference_times[-1] + np.timedelta64(round(float(lead_hours.max()) * 3600), "s")
+        if lead_hours.size
+        else reference_times[-1]
     )
+    if obs_after is not None:
+        last_valid_time = last_valid_time + np.timedelta64(round(obs_after * 3600), "s")
 
     # Pre-extract plain numpy arrays and window bounds for every forecast at once: this makes
     # building each frame pure numpy indexing, instead of repeating a comparatively expensive
@@ -1039,9 +1055,18 @@ def forecast_scroller(
     sim_values[sim_values == MISSING_VALUE_MARKER] = np.nan
 
     window_starts = reference_times + window_start_offset
-    window_ends = reference_times + window_end_offset
+    window_ends = np.full(n_forecasts, last_valid_time, dtype=reference_times.dtype)
     obs_slice_starts = np.searchsorted(obs_time_at_reference, window_starts, side="left")
     obs_slice_ends = np.searchsorted(obs_time_at_reference, window_ends, side="right")
+
+    # Each frame's own x-axis upper bound: since it's expressed in hours relative to that
+    # frame's own reference time, and last_valid_time is a single fixed point in absolute time,
+    # this shrinks the closer a forecast is to the end of the record. Computed per frame (rather
+    # than once for the widest/earliest case) so a forecast near the end still fills the plot
+    # instead of being squeezed into a sliver of a range sized for the earliest forecast.
+    frame_end_hours = (last_valid_time - reference_times) / np.timedelta64(1, "h")
+    lead_hours_min = float(lead_hours.min()) if lead_hours.size else 0.0
+    x_start = lead_hours_min - before_hours
 
     spread_label = (
         f"ensemble spread ({int(spread_quantiles[0] * 100)}-{int(spread_quantiles[1] * 100)}%)"
@@ -1070,14 +1095,25 @@ def forecast_scroller(
             go.Frame(
                 data=traces,
                 name=str(index),
-                layout=go.Layout(title=f"Forecast issued {issued}"),
+                layout=go.Layout(
+                    title=f"Forecast issued {issued}",
+                    xaxis={"range": [x_start, float(frame_end_hours[index])]},
+                ),
             ),
         )
 
     units = str(obs.attrs.get("units", ""))
     y_title = f"{obs_var} / {sim_var}" + (f" ({units})" if units else "")
-    lead_hours_min = float(lead_hours.min()) if lead_hours.size else 0.0
-    lead_hours_max = float(lead_hours.max()) if lead_hours.size else 0.0
+
+    yaxis: dict[str, object] = {"title": y_title}
+    if y_min is not None or y_max is not None:
+        # Fall back to the data's own min/max for whichever bound was left unset.
+        data_min = float(np.nanmin([np.nanmin(sim_values), np.nanmin(obs_at_reference)]))
+        data_max = float(np.nanmax([np.nanmax(sim_values), np.nanmax(obs_at_reference)]))
+        yaxis["range"] = [
+            y_min if y_min is not None else data_min,
+            y_max if y_max is not None else data_max,
+        ]
 
     fig = go.Figure(
         data=frames[0].data,
@@ -1085,9 +1121,9 @@ def forecast_scroller(
             title=frames[0].layout.title,
             xaxis={
                 "title": "Hours relative to forecast issue time",
-                "range": [lead_hours_min - before_hours, lead_hours_max + after_hours],
+                "range": frames[0].layout.xaxis.range,
             },
-            yaxis={"title": y_title},
+            yaxis=yaxis,
             template=template,
             hovermode="x unified",
         ),

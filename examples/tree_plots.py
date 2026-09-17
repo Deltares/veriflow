@@ -1,7 +1,7 @@
 """Multi-pair Plotly figures composed from a whole verification ``xr.DataTree``.
 
 This module provides ``get_pair_dataset``/``get_score_dataset`` (plot-ready ``xr.Dataset``
-builders for a single verification pair) and the high-level figure builders (``crps_plot``,
+builders for a single verification pair) and the high-level figure builders (``plot_score_vs_lead_time``,
 ``scatter_plot``, ``rank_histogram_plot``, ``rank_histogram_3d_plot``,
 ``reanalysis_timeseries_plot``, ``forecast_timeseries_plot``): each figure builder takes the
 ``xr.DataTree`` itself (see ``veriflow.datatree.datatree.VeriflowAccessor``), fetches every
@@ -22,7 +22,7 @@ Typical usage::
     ds = get_pair_dataset(dt, pair_id)
 
     scatter_plot(dt, lead_time=ds.coords["lead_time"][0])
-    crps_plot(dt, stations=["station-a", "station-b"])
+    plot_score_vs_lead_time(dt, stations=["station-a", "station-b"])
     reanalysis_timeseries_plot(dt, station="some-station", error_var="mean_error")
 """
 
@@ -243,7 +243,7 @@ def scatter_plot(
     return grid
 
 
-def crps_plot(
+def plot_score_vs_lead_time(
     dt: VeriflowDataTree,
     *,
     pair_ids: Sequence[str] | None = None,
