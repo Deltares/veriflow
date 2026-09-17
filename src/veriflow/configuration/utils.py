@@ -193,14 +193,33 @@ class VerificationPair(BaseModel):
     verified.
     """
 
-    id: str
-    observations_source_id: Source
-    simulations_source_id: Source
-    variable: Variable
+    id: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Unique identifier for the verification pair. All strings are allowed, but "
+            "'input_data' is reserved. And can not be used.",
+        ),
+    ]
+    observations_source_id: Annotated[Source, Field(description="Source ID for the observations.")]
+    simulations_source_id: Annotated[Source, Field(description="Source ID for the simulations.")]
+    variable: Annotated[
+        Variable,
+        Field(description="The (internal) physical variable to be verified."),
+    ]
 
     model_config = {
         "frozen": True,
     }
+
+    @field_validator("id", mode="after")
+    @classmethod
+    def id_not_reserved(cls, v: str) -> str:
+        """Reject 'input_data', reserved as the DataTree node name for raw input datasets."""
+        if v == "input_data":
+            msg = "'input_data' is a reserved id and cannot be used as a verification pair id."
+            raise ValueError(msg)
+        return v
 
     def __eq__(self, other: object) -> bool:
         """Test equality of id's between pairs."""
