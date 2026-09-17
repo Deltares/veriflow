@@ -1236,25 +1236,27 @@
       "description": "Configuration for a verification pair.\n\nThe id uniquely identifies the verification pair.\nThe observations_source_id and simulations_source_id fields reference the respective data\nsources and should match with the configured source_id in the datasource configuration.\nThe variable field specifies the (internal; i.e. after id mapping) physical variable to be\nverified.",
       "properties": {
         "id": {
+          "description": "Unique identifier for the verification pair. All strings are allowed, but 'input_data' is reserved. And can not be used.",
+          "minLength": 1,
           "title": "Id",
           "type": "string"
         },
         "observations_source_id": {
-          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "description": "Source ID for the observations.",
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
           "title": "Observations Source Id",
           "type": "string"
         },
         "simulations_source_id": {
-          "description": "The source indicates the origin of the data. For simulated data this may, for example, refer to the model that produced the data. For observation this may, for example, be simply 'observed' or 'my_validated_observations_database'. The source should start with a letter, consists of only letters, digits and underscores. Spaces or punctuation are disallowed.",
+          "description": "Source ID for the simulations.",
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
           "title": "Simulations Source Id",
           "type": "string"
         },
         "variable": {
-          "description": "The variable name references a physical variable to be verified. Must match the variable definition in the datasource. IdMapping can be set in the general config, to map external variables to an internal definition. This is needed when you want to verify data from different sources, where the variable definition is not equal.",
+          "description": "The (internal) physical variable to be verified.",
           "minLength": 1,
           "title": "Variable",
           "type": "string"
