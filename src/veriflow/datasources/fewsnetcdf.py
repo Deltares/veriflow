@@ -580,7 +580,8 @@ class FewsNetCDF(BaseDatasource):
             )
             time_end = datetime.now()  # noqa: DTZ005
             msg = (
-                f"Opened dataset for source '{self.config.source_id}' from {self.config.paths} "
+                f"Opened dataset for source '{self.config.source_id}' from "
+                f"{list(self.config.paths)} "
                 f"(took {(time_end - time_start).total_seconds():.2f} seconds)"
             )
             logger.info(msg)
