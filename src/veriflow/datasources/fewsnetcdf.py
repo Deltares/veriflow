@@ -20,6 +20,7 @@ from veriflow.constants import (
 )
 from veriflow.datasources.base import BaseDatasource
 from veriflow.types import DataSpec
+from veriflow.utils import convert_byte_string_coords_to_utf8
 
 __all__ = [
     "FewsNetCDF",
@@ -59,22 +60,6 @@ class Preprocessor:
         self.variables = filter_variables
         self.stations = filter_stations
         self.lead_times = filter_lead_times
-
-    @staticmethod
-    def convert_byte_string_coord_to_utf8(
-        dataset: xr.Dataset,
-        coords: list[FewsNetcdfCoord],
-    ) -> xr.Dataset:
-        """Convert byte strings."""
-        for coord in coords:
-            dataset[coord] = xr.DataArray(
-                [  # type:ignore[misc]
-                    v.decode("utf-8") if isinstance(v, bytes) else v  # type:ignore[misc]
-                    for v in dataset[coord].to_numpy()  # type:ignore[misc]
-                ],
-                dims=dataset[coord].dims,
-            )
-        return dataset
 
     @staticmethod
     def rename_to_internal(
@@ -170,10 +155,7 @@ class Preprocessor:
     def __call__(self, dataset: xr.Dataset) -> xr.Dataset:
         """Sequence of processing tasks."""
         # Decode byte-string coords
-        dataset = Preprocessor.convert_byte_string_coord_to_utf8(
-            dataset,
-            coords=[FewsNetcdfCoord.station_id],
-        )
+        dataset = convert_byte_string_coords_to_utf8(dataset, [FewsNetcdfCoord.station_id])
 
         # Rename dims/coords to internal definitions
         dataset = Preprocessor.rename_to_internal(
@@ -425,10 +407,7 @@ def parse_lead_time_netcdf_files(
     dataset = dataset.sortby(StandardDim.lead_time)
 
     # Decode byte-string coords
-    dataset = Preprocessor.convert_byte_string_coord_to_utf8(
-        dataset,
-        coords=[FewsNetcdfCoord.station_id],
-    )
+    dataset = convert_byte_string_coords_to_utf8(dataset, [FewsNetcdfCoord.station_id])
 
     # Rename dims/coords to internal definitions
     dataset = Preprocessor.rename_to_internal(
@@ -538,12 +517,12 @@ class FewsNetCDF(BaseDatasource):
             if (
                 self.config.id_mapping is not None
                 and self.config.id_mapping.variable is not None
-                and self.config.source in self.config.id_mapping.variable.sources
+                and self.config.source_id in self.config.id_mapping.variable.sources
                 and "_" in var_name
                 and var_name.replace("_", ".")
                 in list(
                     self.config.id_mapping.variable.get_external_to_internal_mapping(
-                        self.config.source,
+                        self.config.source_id,
                     ),
                 )
             ):
@@ -601,7 +580,8 @@ class FewsNetCDF(BaseDatasource):
             )
             time_end = datetime.now()  # noqa: DTZ005
             msg = (
-                f"Opened dataset for source '{self.config.source}' from {self.config.paths} "
+                f"Opened dataset for source '{self.config.source_id}' from "
+                f"{list(self.config.paths)} "
                 f"(took {(time_end - time_start).total_seconds():.2f} seconds)"
             )
             logger.info(msg)
@@ -637,7 +617,7 @@ class FewsNetCDF(BaseDatasource):
             if dataset[StandardDim.time].size == 0:
                 msg = (
                     "No time steps found in the dataset after applying the verification period "
-                    f"filter. Dataset source: {self.config.source} no time steps between "
+                    f"filter. Dataset source: {self.config.source_id} no time steps between "
                     f"{self.config.verification_period_on_time.start} to "
                     f"{self.config.verification_period_on_time.end}"
                 )

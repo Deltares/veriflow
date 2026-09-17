@@ -7,11 +7,11 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from veriflow.configuration.base import BaseDatasourceConfig
 from veriflow.configuration.utils import (
+    BaseZarrConfig,
     CRSString,
     FewsWebserviceAuthConfig,
     LocalFile,
     LocalFiles,
-    S3AuthConfig,
 )
 from veriflow.constants import DataSourceKind, DataType
 
@@ -51,7 +51,7 @@ FewsWebserviceVersionString = Annotated[
 class FewsWebserviceVersion(BaseModel):
     """Configuration of FEWS Webservice version."""
 
-    year: Annotated[int, Field(gt=2012, lt=2100, type=int)]
+    year: Annotated[int, Field(gt=2012, lt=2100)]
     subversion: Literal[1, 2]
 
     @property
@@ -145,7 +145,7 @@ class NetCDFConfig(BaseDatasourceConfig, LocalFiles):
     variables: Annotated[list[str] | None, Field(min_length=1)] = None
 
 
-class ZarrConfig(BaseDatasourceConfig):
+class ZarrConfig(BaseDatasourceConfig, BaseZarrConfig):
     """A Zarr config element.
 
     Reads a single Zarr store via :func:`xarray.open_zarr`. The ``path`` may point to a
@@ -157,41 +157,6 @@ class ZarrConfig(BaseDatasourceConfig):
     """
 
     import_adapter: Literal[DataSourceKind.ZARR]
-    path: Annotated[
-        str,
-        Field(
-            min_length=1,
-            description="Path to a single Zarr store. Local filesystem path (absolute or "
-            "relative) or a remote URL such as 's3://bucket/key/store.zarr'.",
-        ),
-    ]
-    auth_config: Annotated[
-        S3AuthConfig | None,
-        Field(
-            default=None,
-            description="Authentication configuration for remote stores. Only consulted "
-            "when 'path' points to an 's3://' location. Credentials are loaded from "
-            "S3_-prefixed environment variables; instantiate as 'auth_config: {}' in YAML "
-            "to enable env-based loading.",
-        ),
-    ] = None
-    storage_options: Annotated[
-        dict[str, str] | None,
-        Field(
-            default=None,
-            description="Additional storage_options forwarded to xr.open_zarr. Merged on "
-            "top of the options derived from 'auth_config'. Use this for advanced "
-            "fsspec / s3fs settings not exposed by S3AuthConfig.",
-        ),
-    ] = None
-    consolidated: Annotated[
-        bool | None,
-        Field(
-            default=None,
-            description="Whether to use consolidated metadata when opening the store. "
-            "Forwarded to xr.open_zarr. Default ('None') lets xarray auto-detect.",
-        ),
-    ] = None
     crs: Annotated[
         CRSString | None,
         Field(

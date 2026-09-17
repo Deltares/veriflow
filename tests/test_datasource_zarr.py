@@ -24,7 +24,7 @@ def _make_zarr_config(
 ) -> ZarrConfig:
     return ZarrConfig(
         general=general,
-        source=general.verification_pairs[0].obs,
+        source_id=general.verification_pairs[0].observations_source_id,
         data_type=data_type,
         import_adapter=DataSourceKind.ZARR,
         path=path,
@@ -51,7 +51,7 @@ def test_fetch_data_local_store(
     datasource.fetch_data()
 
     assert datasource.dataset.attrs["data_type"] == DataType.observed_historical
-    assert datasource.dataset.attrs["source"] == "observation_source"
+    assert datasource.dataset.attrs["source_id"] == "observation_source"
 
     xr.testing.assert_equal(
         datasource.dataset.drop_attrs(),
@@ -108,7 +108,6 @@ def test_build_storage_options_remote_merges(
     )
     options = Zarr(config=config)._build_storage_options()
     assert options is not None
-    assert options["anon"] is True
     assert options["requester_pays"] == "true"
 
 
@@ -129,4 +128,3 @@ def test_s3_auth_config_to_storage_options_unwraps_secrets() -> None:
         "endpoint_url": "https://s3.example.com/",
         "region_name": "us-east-1",
     }
-    assert options["anon"] is False

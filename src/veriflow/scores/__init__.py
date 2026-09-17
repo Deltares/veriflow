@@ -1,4 +1,4 @@
-"""The various verification scores that can be requested to be applied to the datamodel."""
+"""The various verification scores that can be requested to be applied to the datatree."""
 
 from .base import BaseCategoricalScore, BaseScore, BaseScoreConfig
 from .categorical import CategoricalScores, CategoricalScoresConfig

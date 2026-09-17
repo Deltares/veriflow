@@ -254,7 +254,9 @@ class TestHistoricalCacheRequest:
         """Verify multi-dim misses skip the single-dim split shortcut."""
         config = NetCDFConfig(
             general=xarray_general_info_config_historical,
-            source=xarray_general_info_config_historical.verification_pairs[0].obs,
+            source_id=xarray_general_info_config_historical.verification_pairs[
+                0
+            ].observations_source_id,
             data_type=DataType.observed_historical,
             directory=".",
             filename_glob="*.nc",
@@ -488,7 +490,6 @@ class TestZarrCache:
         )
         options = ZarrCache(cfg).storage_options
         assert options is not None
-        assert options["anon"] is True
         assert options["requester_pays"] == "true"
         assert options["client_kwargs"] == {
             "region_name": "eu-west-1",

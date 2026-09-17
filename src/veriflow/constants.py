@@ -28,6 +28,7 @@ class DataSinkKind(StrEnum):
 
     fews_netcdf = "fewsnetcdf"
     cf_compliant_netcdf = "cf_compliant_netcdf"
+    cf_compliant_zarr = "cf_compliant_zarr"
 
 
 @unique
@@ -289,6 +290,7 @@ class StandardAttribute:
     timestep = "timestep"
     featuretype = "featureType"
     crs = "crs"
+    source_id = "source_id"
 
 
 def _set_version_info() -> tuple[str, str]:

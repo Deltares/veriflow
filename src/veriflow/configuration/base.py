@@ -159,7 +159,7 @@ class IdMappingConfig(BaseModel):
         Variable names (data variable names) and station identifiers are renamed from the
         external (source-specific) definition to the internal definition.
         """
-        source = str(dataset.attrs.get("source", ""))  # type:ignore[misc]
+        source = str(dataset.attrs.get("source_id", ""))  # type:ignore[misc]
 
         # Re-assign variable definitions, if mapping is provided for source
         if self.variable is not None:
@@ -215,7 +215,7 @@ class BaseDatasourceConfig(BaseConfig):
     """
 
     import_adapter: str
-    source: Source
+    source_id: Source
     data_type: DataType
     spatial_type: SpatialType = SpatialType.point
     general: SkipJsonSchema[GeneralInfoConfig]  # Do not serialize to json schema, since general
@@ -251,15 +251,40 @@ class BaseDatasinkConfig(BaseConfig):
     """
 
     export_adapter: str
-
-    force_overwrite: bool = True
-
+    force_overwrite: Annotated[
+        bool,
+        Field(description="Whether to force overwrite existing output files."),
+    ] = True
+    include_output: Annotated[
+        bool,
+        Field(description="Whether to include output in the output."),
+    ] = True
+    include_aligned_input_data: Annotated[
+        bool,
+        Field(
+            description="Whether to include aligned input data in the output (per verification "
+            "pair). "
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+        ),
+    ] = True
+    include_input_data: Annotated[
+        bool,
+        Field(
+            description="Whether to include the input data in the output. This "
+            "is the raw and validated input data as provided by the datasource(s)."
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+        ),
+    ] = False
     crs: Annotated[
         CRSString | None,
         Field(
             default=None,
             description="Optional coordinate reference system for the output. When set, the "
-            "results' coordinates are reprojected to this CRS before writing.",
+            "results' coordinates are reprojected to this CRS before writing."
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
         ),
     ] = None
 
@@ -293,7 +318,8 @@ class BaseScoreConfig(BaseConfig):
             default=None,
             description="Optional coordinate reference system for score computation. When set, "
             "obs and sim coordinates are reprojected to this CRS before computing the score and "
-            "the results are expressed in it. When omitted, obs and sim must share the same CRS.",
+            "the results are expressed in it. When omitted, observations and simulations must "
+            "share the same CRS.",
         ),
     ] = None
 

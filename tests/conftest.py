@@ -8,6 +8,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -50,12 +51,12 @@ from veriflow.constants import (
     StandardCoord,
     StandardDim,
 )
-from veriflow.datamodel.main import InputDataset
 from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from veriflow.datasources.csv import Csv
 from veriflow.datasources.fewsnetcdf import FewsNetCDF, FewsNetCDFKind
 from veriflow.datasources.fewswebservice import FewsWebservice, ForecastRetrievalMethod
 from veriflow.datasources.netcdf import NetCDF
+from veriflow.datatree.datatree import VeriflowDataTree
 from veriflow.types import DataSpec
 
 TESTS_DATA_DIR = Path(__file__).parent / "data"
@@ -175,7 +176,9 @@ def xarray_observed_historical() -> xr.Dataset:
         coords=coords,
         attrs={
             "data_type": DataType.observed_historical,
-            "source": DummySource.observation_source,
+            "source_id": DummySource.observation_source,
+            "crs": "dummy_crs",
+            "spatial_type": SpatialType.point,
         },
     )
 
@@ -195,7 +198,7 @@ def xarray_observed_historical_datasource(
     datasource = NetCDF(
         config=NetCDFConfig(
             general=xarray_general_info_config,
-            source=xarray_general_info_config.verification_pairs[0].obs,
+            source_id=xarray_general_info_config.verification_pairs[0].observations_source_id,
             data_type=DataType.observed_historical,
             directory=str(tmp_path),
             filename_glob="observations.nc",
@@ -208,7 +211,7 @@ def xarray_observed_historical_datasource(
 
 @pytest.fixture
 def xarray_simulated_forecast_ensemble() -> xr.Dataset:
-    """Return example simulations compatible with the internal datamodel.
+    """Return example simulations compatible with the internal datatree.
 
     Uses lead_time as dimension and coordinates.
     """
@@ -245,14 +248,16 @@ def xarray_simulated_forecast_ensemble() -> xr.Dataset:
         coords=coords,
         attrs={
             "data_type": DataType.simulated_forecast_ensemble,
-            "source": DummySource.simulation_ensemble_source,
+            "source_id": DummySource.simulation_ensemble_source,
+            "crs": "dummy_crs",
+            "spatial_type": SpatialType.point,
         },
     )
 
 
 @pytest.fixture
 def xarray_simulated_forecast_single() -> xr.Dataset:
-    """Return example simulations compatible with the internal datamodel.
+    """Return example simulations compatible with the internal datatree.
 
     Uses lead_time as dimension and coordinates.
     """
@@ -287,7 +292,9 @@ def xarray_simulated_forecast_single() -> xr.Dataset:
         coords=coords,
         attrs={
             "data_type": DataType.simulated_forecast_single,
-            "source": DummySource.simulation_single_source,
+            "source_id": DummySource.simulation_single_source,
+            "crs": "dummy_crs",
+            "spatial_type": SpatialType.point,
         },
     )
 
@@ -315,7 +322,7 @@ def xarray_observed_historical_gridded() -> xr.Dataset:
             "data_type": DataType.observed_historical,
             "spatial_type": SpatialType.gridded,
             "crs": grid_crs,
-            "source": DummySource.observation_source,
+            "source_id": DummySource.observation_source,
         },
     )
 
@@ -353,7 +360,7 @@ def xarray_simulated_forecast_single_gridded() -> xr.Dataset:
             "data_type": DataType.simulated_forecast_single,
             "spatial_type": SpatialType.gridded,
             "crs": grid_crs,
-            "source": DummySource.simulation_single_source,
+            "source_id": DummySource.simulation_single_source,
         },
     )
 
@@ -393,7 +400,7 @@ def xarray_simulated_forecast_ensemble_gridded() -> xr.Dataset:
             "data_type": DataType.simulated_forecast_ensemble,
             "spatial_type": SpatialType.gridded,
             "crs": grid_crs,
-            "source": DummySource.simulation_ensemble_source,
+            "source_id": DummySource.simulation_ensemble_source,
         },
     )
 
@@ -413,7 +420,7 @@ def xarray_observed_forecast_single_datasource(
     datasource = NetCDF(
         config=NetCDFConfig(
             general=xarray_general_info_config,
-            source=xarray_general_info_config.verification_pairs[0].sim,
+            source_id=xarray_general_info_config.verification_pairs[0].simulations_source_id,
             data_type=DataType.simulated_forecast_single,
             directory=str(tmp_path),
             filename_glob="forecast_single.nc",
@@ -455,8 +462,8 @@ def fews_general_info_config_single() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="source_single",
+                observations_source_id="observed",
+                simulations_source_id="source_single",
                 variable="discharge",
             ),
         ],
@@ -475,8 +482,8 @@ def xarray_general_info_config() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="source_single",
+                observations_source_id="observation_source",
+                simulations_source_id="simulation_ensemble_source",
                 variable="var_1",
             ),
         ],
@@ -495,8 +502,8 @@ def xarray_general_info_config_historical() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="source_single",
+                observations_source_id="observation_source",
+                simulations_source_id="simulation_ensemble_source",
                 variable="var_1",
             ),
         ],
@@ -515,8 +522,8 @@ def fews_general_info_config_ensemble() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="source_ensemble",
+                observations_source_id="observed",
+                simulations_source_id="source_ensemble",
                 variable="discharge",
             ),
         ],
@@ -535,8 +542,8 @@ def fews_general_info_config_probabilistic() -> GeneralInfoConfig:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="source_probabilistic",
+                observations_source_id="observed",
+                simulations_source_id="source_probabilistic",
                 variable="discharge",
             ),
         ],
@@ -572,7 +579,7 @@ def fews_webservice_observed_historical(
     """Fewsnetcdf datasource sim config."""
     config = FewsWebserviceConfig(
         import_adapter="fewswebservice",
-        source="observed",
+        source_id="observed",
         data_type="observed_historical",
         location_ids=["H-RN-0001", "H-RN-0689"],
         parameter_ids=["Q_m"],
@@ -594,7 +601,7 @@ def fews_webservice_simulated_forecast_ensemble_frt(
     """Fewsnetcdf datasource sim config."""
     config = FewsWebserviceConfig(
         import_adapter="fewswebservice",
-        source="source_ensemble",
+        source_id="source_ensemble",
         data_type="simulated_forecast_ensemble",
         location_ids=["H-RN-0001", "H-RN-0689"],
         parameter_ids=["Q_fs"],
@@ -632,7 +639,7 @@ def fews_webservice_simulated_forecast_single_frt(
     """Fewsnetcdf datasource sim config."""
     config = FewsWebserviceConfig(
         import_adapter="fewswebservice",
-        source="source_single",
+        source_id="source_single",
         data_type=DataType.simulated_forecast_single,
         location_ids=test_data_meuse_locations,
         parameter_ids=test_data_meuse_parameters,
@@ -668,7 +675,7 @@ def fews_webservice_simulated_forecast_probabilistic_frt(
     """Fewsnetcdf datasource sim config."""
     config = FewsWebserviceConfig(
         import_adapter="fewswebservice",
-        source="source_probabilistic",
+        source_id="source_probabilistic",
         data_type=DataType.simulated_forecast_probabilistic,
         location_ids=test_data_meuse_locations,
         parameter_ids=["discharge"],
@@ -724,7 +731,7 @@ def fews_netcdf_observed_historical(
             "directory": "tests/data/webservice_responses_netcdf/observations",
             "filename_glob": "*.nc",
             "station_ids": ["H-RN-0001", "H-RN-0689"],
-            "source": "observed",
+            "source_id": "observed",
             "general": fews_general_info_config_ensemble.model_dump(),
             "id_mapping": id_mapping_config_fewsnetcdf.model_dump(),
         },
@@ -743,8 +750,8 @@ def fews_netcdf_simulated_historical() -> FewsNetCDF:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="source_ensemble",
+                observations_source_id="observed",
+                simulations_source_id="source_ensemble",
                 variable="discharge",
             ),
         ],
@@ -757,7 +764,7 @@ def fews_netcdf_simulated_historical() -> FewsNetCDF:
             "directory": "tests/data/webservice_responses_netcdf/simulated_historical",
             "filename_glob": "*.nc",
             "station_ids": ["T508HMS", "T509HMS"],
-            "source": "some_simulated_historical_source",
+            "source_id": "some_simulated_historical_source",
             "general": general.model_dump(),
         },
     )
@@ -776,7 +783,7 @@ def fews_netcdf_simulated_forecast_ensemble_frt(
             "netcdf_kind": FewsNetCDFKind.simulated_forecast_per_forecast_reference_time,
             "directory": "tests/data/webservice_responses_netcdf/simulations_per_forecast_reference_time/ensemble",  # noqa: E501
             "filename_glob": "*.nc",
-            "source": "source_ensemble",
+            "source_id": "source_ensemble",
             "general": fews_general_info_config_ensemble.model_dump(),
             "id_mapping": id_mapping_config_fewsnetcdf.model_dump(),
         },
@@ -809,7 +816,7 @@ def fews_netcdf_simulated_forecast_single_frt(
             "netcdf_kind": FewsNetCDFKind.simulated_forecast_per_forecast_reference_time,
             "directory": "tests/data/webservice_responses_netcdf/simulations_per_forecast_reference_time/single",  # noqa: E501
             "filename_glob": "*.nc",
-            "source": "source_single",
+            "source_id": "source_single",
             "general": fews_general_info_config_single.model_dump(),
             "id_mapping": id_mapping_config_fewsnetcdf.model_dump(),
         },
@@ -841,7 +848,7 @@ def fews_netcdf_simulated_forecast_probabilistic_frt(
             "netcdf_kind": FewsNetCDFKind.simulated_forecast_per_forecast_reference_time,
             "directory": "tests/data/webservice_responses_netcdf/simulations_per_forecast_reference_time/probabilistic",  # noqa: E501
             "filename_glob": "*.nc",
-            "source": "source_probabilistic",
+            "source_id": "source_probabilistic",
             "general": fews_general_info_config_probabilistic.model_dump(),
         },
     )
@@ -878,28 +885,14 @@ def fews_netcdf_compliant_file(
 
 
 @pytest.fixture
-def input_dataset_dummy_data_forecast_reference_time(
+def input_data_datatree(
     xarray_observed_historical: xr.Dataset,
     xarray_simulated_forecast_ensemble: xr.Dataset,
-) -> InputDataset:
-    """Initialize datamodel with observations and forecasts (based on frt)."""
-    return InputDataset(
-        data=[xarray_observed_historical, xarray_simulated_forecast_ensemble],
-    )
-
-
-@pytest.fixture
-def input_dataset_fews_netcdf_simulated_forecast_ensemble(
-    fews_netcdf_observed_historical: FewsNetCDF,
-    fews_netcdf_simulated_forecast_ensemble_frt: FewsNetCDF,
-) -> InputDataset:
-    """Initialize datamodel with observations and forecasts (based on frt)."""
-    return InputDataset(
-        data=[
-            fews_netcdf_observed_historical.get_data().dataset,
-            fews_netcdf_simulated_forecast_ensemble_frt.get_data().dataset,
-        ],
-    )
+) -> VeriflowDataTree:
+    """Initialize a datatree with observations and forecasts (based on frt) as input data."""
+    dt = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
+    dt.veriflow.add_input_data([xarray_observed_historical, xarray_simulated_forecast_ensemble])
+    return dt
 
 
 # Score fixtures
@@ -1031,7 +1024,7 @@ class FakeDatasource(BaseDatasource):
 
     def fetch_data(self) -> "FakeDatasource":
         """Slice the registered seed dataset and store the result on ``self.dataset``."""
-        seed = _FAKE_SEEDS[(str(self.config.source), str(self.config.data_type))]
+        seed = _FAKE_SEEDS[(str(self.config.source_id), str(self.config.data_type))]
         ds = seed
         # variables
         ds = ds[list(self.config.variables)]
@@ -1064,7 +1057,7 @@ class FakeDatasource(BaseDatasource):
 
         ds = ds.copy()
         ds.attrs["data_type"] = self.config.data_type
-        ds.attrs["source"] = self.config.source
+        ds.attrs["source_id"] = self.config.source_id
         self.dataset = ds
         return self
 
@@ -1222,7 +1215,7 @@ def xarray_thresholds(
     config = CsvConfig(
         import_adapter=DataSourceKind.CSV,
         data_type=DataType.threshold,
-        source="threshold_source",
+        source_id="threshold_source",
         general=fews_general_info_config_single,
         directory=file_path.parent,
         filename=file_path.name,
@@ -1247,8 +1240,8 @@ def cli_dummy_pipeline_config_yaml(tmp_path: Path) -> Path:
         verification_pairs=[
             VerificationPair(
                 id="pair1",
-                obs="observed",
-                sim="simulated",
+                observations_source_id="observed",
+                simulations_source_id="simulated",
                 variable="variable_1",
             ),
         ],
@@ -1256,7 +1249,7 @@ def cli_dummy_pipeline_config_yaml(tmp_path: Path) -> Path:
 
     datasource_config = CsvConfig(
         import_adapter=DataSourceKind.CSV,
-        source="threshold_source",
+        source_id="threshold_source",
         data_type=DataType.threshold,
         general=general,
         directory=tmp_path,
@@ -1292,3 +1285,93 @@ def cli_dummy_pipeline_config_yaml(tmp_path: Path) -> Path:
     destination = tmp_path / "config.yaml"
     destination.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     return destination
+
+
+# ----------------------------------------------------------------------------
+# Fake output dataset fixtures (for output dataset and datasinks tests)
+# ----------------------------------------------------------------------------
+
+
+@pytest.fixture
+def xarray_fake_score_result() -> xr.DataArray:
+    """Fixture for a fake score result."""
+    return xr.DataArray(
+        data=[1, 2, 3],
+        dims=["station"],
+        coords={"station": ["station_1", "station_2", "station_3"]},
+        name="fake_score",
+    )
+
+
+@pytest.fixture
+def output_datatree_without_scores(
+    input_data_datatree: VeriflowDataTree,
+) -> VeriflowDataTree:
+    """Fixture for an OutputDataset instance."""
+    # Initialize the output dataset
+    output_dataset = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
+    verification_pair = VerificationPair(
+        observations_source_id="observation_source",
+        simulations_source_id="simulation_ensemble_source",
+        id="test_pair",
+        variable="var_0",
+    )
+    obs, sim = input_data_datatree.veriflow.get_pair(verification_pair)
+    output_dataset.veriflow.add_staged_input_data(
+        verification_pair=verification_pair,
+        obs=obs,
+        sim=sim,
+    )
+    return output_dataset
+
+
+@pytest.fixture
+def fake_verification_pair() -> VerificationPair:
+    """Fixture for a fake verification pair."""
+    return VerificationPair(
+        observations_source_id="observation_source",
+        simulations_source_id="simulation_ensemble_source",
+        id="test_pair",
+        variable="var_0",
+    )
+
+
+@pytest.fixture
+def output_datatree_with_scores(
+    output_datatree_without_scores: VeriflowDataTree,
+    fake_verification_pair: VerificationPair,
+) -> VeriflowDataTree:
+    """Fixture for an OutputDataset instance."""
+    output_datatree_without_scores.veriflow.add_score(
+        verification_pair=fake_verification_pair,
+        result=xr.DataArray(
+            data=[1, 2, 3],
+            dims=["station"],
+            coords={"station": ["station_1", "station_2", "station_3"]},
+            name="fake_score",
+        ),
+        name="fake_score",
+    )
+    return output_datatree_without_scores
+
+
+@pytest.fixture
+def output_datatree_with_multiple_pairs(
+    input_data_datatree: VeriflowDataTree,
+) -> VeriflowDataTree:
+    """Fixture for an OutputDataset instance with two verification pairs."""
+    output_dataset = cast("VeriflowDataTree", xr.DataTree(name="veriflow_output"))
+    for pair_id in ("test_pair_1", "test_pair_2"):
+        verification_pair = VerificationPair(
+            observations_source_id="observation_source",
+            simulations_source_id="simulation_ensemble_source",
+            id=pair_id,
+            variable="var_0",
+        )
+        obs, sim = input_data_datatree.veriflow.get_pair(verification_pair)
+        output_dataset.veriflow.add_staged_input_data(
+            verification_pair=verification_pair,
+            obs=obs,
+            sim=sim,
+        )
+    return output_dataset

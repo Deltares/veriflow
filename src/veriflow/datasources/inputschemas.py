@@ -380,7 +380,6 @@ GriddedForecastEnsembleDataVars = RootModel[dict[CFCompliantName, GriddedForecas
 
 
 class BaseAttrs(BaseModel):
-    source: str
     data_type: str
     spatial_type: SpatialType = SpatialType.point
     crs: str = "EPSG:4326"

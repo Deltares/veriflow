@@ -56,7 +56,7 @@ class BaseDatasource(Base):
 
     @property
     def data_type(self) -> DataType:
-        """Whether the instance represents sim or obs data."""
+        """Whether the instance represents simulations or observations data."""
         return self.config.data_type
 
     @data_type.setter
@@ -150,10 +150,10 @@ class BaseDatasource(Base):
             and self.config.id_mapping.variable is not None
             and self.configured_variables is not None
         ):
-            if self.config.source in self.config.id_mapping.variable.sources:
+            if self.config.source_id in self.config.id_mapping.variable.sources:
                 return self.config.id_mapping.variable.rename_external_to_internal(
                     self.configured_variables,
-                    self.config.source,
+                    self.config.source_id,
                 )
         else:
             return self.configured_variables
@@ -177,9 +177,9 @@ class BaseDatasource(Base):
             )
             raise ValueError(msg)
 
-    def _persist_configured_source_to_attrs(self) -> None:
+    def _persist_configured_source_id_to_attrs(self) -> None:
         # Make sure the source attribute is set to the expected source
-        self.dataset.attrs["source"] = self.config.source  # type:ignore[misc]
+        self.dataset.attrs["source_id"] = self.config.source_id  # type:ignore[misc]
 
     def _persist_configured_spatial_type_to_attrs(self) -> None:
         # Always persist spatial_type so the full (temporal + spatial) data type is
@@ -243,8 +243,6 @@ class BaseDatasource(Base):
     def validate_fetched_data(self) -> None:
         """Validate that the dataset is consistent with the config."""
         self._validate_data_type()
-        self._persist_configured_source_to_attrs()
-        self._persist_configured_spatial_type_to_attrs()
         self._validate_dataset_structure_against_schema()
         self._validate_lead_times()
 
@@ -262,24 +260,35 @@ class BaseDatasource(Base):
     def fetch_validate_filter_cache(self, *, clear_cache: bool = False) -> Self:
         """High-level wrapper to fetch, validate, filter and apply id mapping to the dataset."""
         self.fetch_data()
-        self.validate_fetched_data()
-        self.dataset = self.filter_dataset(self.dataset)
 
+        # Persist the configured source ID and spatial type to the dataset attributes
+        #   this ensures that the dataset carries the correct metadata prior to any further
+        #   processing steps like id mapping, validation, and filtering.
+        self._persist_configured_source_id_to_attrs()
+        self._persist_configured_spatial_type_to_attrs()
+
+        # Apply id mapping if it is configured
         if self.config.id_mapping is not None:
             self.dataset = self.config.id_mapping.apply(self.dataset)
+
+        # Validate the fetched dataset against the schema. The schema is linked to the data type.
+        self.validate_fetched_data()
+
+        # Filter the dataset based on lead times and the verification period.
+        self.dataset = self.filter_dataset(self.dataset)
 
         if self.cache is not None and self.cache.is_writable:
             if clear_cache:
                 msg = (
-                    f"Clearing existing cache for source '{self.config.source}' before writing "
+                    f"Clearing existing cache for source '{self.config.source_id}' before writing "
                     f"the full requested dataset."
                 )
-                self.cache.clear(source=self.config.source)
+                self.cache.clear(source=self.config.source_id)
                 logger.info(msg)
-            msg = f"Writing fetched dataset to cache for source '{self.config.source}'."
+            msg = f"Writing fetched dataset to cache for source '{self.config.source_id}'."
             self.cache.append(
                 self.dataset,
-                source=self.config.source,
+                source=self.config.source_id,
             )
             logger.info(msg)
         return self
@@ -372,7 +381,8 @@ class BaseDatasource(Base):
 
         if len(subset.data_vars) == 0:
             msg = (
-                f"No data found in cache for source '{config.source}' with the requested variables."
+                f"No data found in cache for source '{config.source_id}' with the requested "
+                "variables."
             )
             raise ValueError(msg)
 
@@ -409,8 +419,8 @@ class BaseDatasource(Base):
             return "no cache configured"
         if self.data_type not in CACHABLE_DATA_TYPES:  # type:ignore[misc]
             return f"data type '{self.data_type}' is not cacheable"
-        if self.config.source not in self.cache.sources:
-            return f"source '{self.config.source}' is not registered in the cache"
+        if self.config.source_id not in self.cache.sources:
+            return f"source '{self.config.source_id}' is not registered in the cache"
         if self.configured_stations is None:
             return "configured stations are None"
         if self.configured_variables is None:
@@ -432,7 +442,10 @@ class BaseDatasource(Base):
         """Get data and make use of cache if configured."""
         # If no cache is configured, or the data type is not cacheable, fetch and process the data
         # directly from the datasource, without using the cache.
-        msg = f"Starting data fetch for {self.config.source} from {self.__class__.__name__}."
+        msg = (
+            f"Starting dataset fetch (source_id={self.config.source_id}) from "
+            f"{self.__class__.__name__}."
+        )
         logger.info(msg)
 
         # Check if we should skip fetching data from the cache, and if so, fetch and process the
@@ -453,7 +466,7 @@ class BaseDatasource(Base):
 
         # Get the cached dataset for the configured source.
         cached_dataset: xr.Dataset = self.cache.get_dataset(  # type:ignore[assignment]
-            source=self.config.source,
+            source=self.config.source_id,
         )
 
         # Validate and cast type of the cached dataset to ensure it is an xarray Dataset.
@@ -466,8 +479,8 @@ class BaseDatasource(Base):
         # datasource.
         if cache_request.missing_count == 0:
             msg = (
-                f"All requested data is available in the cache for source '{self.config.source}', "
-                "skipping fetch from datasource."
+                "All requested data is available in the cache for source "
+                f"'{self.config.source_id}', skipping fetch from datasource."
             )
             logger.info(msg)
             cached_dataset = self.get_cached_data(
@@ -484,9 +497,9 @@ class BaseDatasource(Base):
         split_result = cache_request.split_config(self)
         if split_result is None:
             msg = (
-                f"Some requested data is missing from the cache for source '{self.config.source}', "
-                "but the datasource cannot be split to fetch only the missing data. Fetching the "
-                "full requested dataset from the datasource."
+                "Some requested data is missing from the cache for source "
+                f"'{self.config.source_id}', but the datasource cannot be split to fetch only the "
+                "missing data. Fetching the full requested dataset from the datasource."
             )
             logger.info(msg)
             return self.fetch_validate_filter_cache(clear_cache=True)
@@ -495,7 +508,7 @@ class BaseDatasource(Base):
         fetch_from_datasource, fetch_from_cache = split_result
 
         msg = (
-            f"Some requested data is missing from the cache for source '{self.config.source}', "
+            f"Some requested data is missing from the cache for source '{self.config.source_id}', "
             f"fetching only the missing slice along dim '{missing_dim}' from the datasource."
         )
         logger.info(msg)
@@ -509,7 +522,7 @@ class BaseDatasource(Base):
             # lazily from the updated store.
             msg = (
                 f"Writing newly fetched slice along dim '{missing_dim}' to cache for source "
-                f"'{self.config.source}'."
+                f"'{self.config.source_id}'."
             )
             logger.info(msg)
 
@@ -518,19 +531,19 @@ class BaseDatasource(Base):
             append_dim = missing_dim if missing_dim != "variable" else None
             self.cache.append(
                 new_dataset=newly_fetched_dataset,
-                source=self.config.source,
+                source=self.config.source_id,
                 append_dim=append_dim,  # type: ignore[arg-type]
             )
             self.dataset: xr.Dataset = self.get_cached_data(  # type: ignore[no-redef]
                 cached_dataset=self.cache.get_dataset(  # type:ignore[arg-type]
-                    source=self.config.source,
+                    source=self.config.source_id,
                 ),
                 datasource=self,
             )
         else:
             msg = (
                 f"Cache is read-only, skipping write of newly fetched slice along dim "
-                f"'{missing_dim}' for source '{self.config.source}'."
+                f"'{missing_dim}' for source '{self.config.source_id}'."
             )
             logger.info(msg)
             # Read-only cache: combine the lazily-loaded cached slice with the freshly fetched
@@ -544,6 +557,6 @@ class BaseDatasource(Base):
                 fetched_dataset=newly_fetched_dataset,
                 dim=missing_dim,
             )
-        msg = f"Successfully got {self.config.source} data from {self.__class__.__name__}."
+        msg = f"Successfully got {self.config.source_id} data from {self.__class__.__name__}."
         logger.info(msg)
         return self

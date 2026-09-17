@@ -8,14 +8,14 @@ general:
   verification_pairs:
     - variable: PC
       id: PC
-      obs: observed
-      sim: simulated
+      observations_source_id: observed
+      simulations_source_id: simulated
   lead_times:
     unit: D
     values: [1, 2, 3, 4, 5, 6, 7]
 datasources:
   - import_adapter: fewswebservice
-    source: observed
+    source_id: observed
     data_type: observed_historical
     location_ids:
       - "3031092"
@@ -40,7 +40,7 @@ datasources:
     webservice_version: "2025.02"
   
   - import_adapter: fewswebservice
-    source: simulated
+    source_id: simulated
     data_type: simulated_forecast_single
     location_ids:
       - "3031092"

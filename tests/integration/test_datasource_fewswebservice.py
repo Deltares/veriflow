@@ -185,8 +185,8 @@ def test_get_data_for_simulated_historical() -> None:
         verification_pairs=[
             VerificationPair(
                 id="idtest",
-                obs="observed_historical",
-                sim="simulated_historical",
+                observations_source_id="observed_historical",
+                simulations_source_id="simulated_historical",
                 variable="Qsim",
             ),
         ],
@@ -194,7 +194,7 @@ def test_get_data_for_simulated_historical() -> None:
     config = FewsWebserviceConfig(
         general=general,
         import_adapter="fewswebservice",
-        source="source_single",
+        source_id="source_single",
         data_type="simulated_historical",
         location_ids=["T508HMS", "T509HMS"],
         parameter_ids=["Q.sim"],

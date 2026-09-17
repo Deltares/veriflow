@@ -1,5 +1,7 @@
 """Test the functions in the pipeline module."""
 
+from typing import TYPE_CHECKING, cast
+
 import pytest
 from pytest_lazy_fixtures import lf
 
@@ -25,6 +27,9 @@ from veriflow.datasources.csv import Csv
 from veriflow.datasources.fewsnetcdf import FewsNetCDF
 from veriflow.datasources.netcdf import NetCDF
 from veriflow.pipeline import run_pipeline
+
+if TYPE_CHECKING:
+    import xarray as xr
 
 
 @pytest.mark.parametrize(
@@ -99,7 +104,7 @@ def test_pipeline_historical_data_only(
     # Create a dummy datasource, by copying the observed historical
     # For testing purposes, set the data_type to "simulated_historical"
     dummy_config = xarray_observed_historical_datasource.config.model_copy()
-    dummy_config.source = "source_single"
+    dummy_config.source_id = "simulation_ensemble_source"
     dummy_config.data_type = DataType.simulated_historical
 
     config = Config(
@@ -112,16 +117,19 @@ def test_pipeline_historical_data_only(
         scores=[continuous_score_config],
         datasinks=[datasink_cf_compliant_netcdf.config],
     )
-    output_dataset = run_pipeline(config)
-    verification_pair = next(iter(output_dataset.verification_pairs))
-    dataset = output_dataset.get(verification_pair)
+    output_datatree = run_pipeline(config)
+    pair_id = next(iter(output_datatree.veriflow.verification_pairs))
+    path_in_dt = f"{pair_id}/output/{continuous_score_config.score_adapter}"
+    score_dataset = cast("xr.DataTree", output_datatree[path_in_dt])
+
+    # Load into memory
+    score_dataset.load()
 
     # Test wether the pipeline runs successfully and produces the expected output dataset.
     # Since the two datasources are identical, we expect perfect scores.
-
-    assert "rmse" in dataset.data_vars
-    assert dataset["rmse"].dims == ("station",)
-    assert all(dataset["rmse"] == 0)
-    assert "mae" in dataset.data_vars
-    assert dataset["mae"].dims == ("station",)
-    assert all(dataset["mae"] == 0)
+    assert "rmse" in score_dataset.data_vars
+    assert score_dataset["rmse"].dims == ("station",)
+    assert all(score_dataset["rmse"] == 0)
+    assert "mae" in score_dataset.data_vars
+    assert score_dataset["mae"].dims == ("station",)
+    assert all(score_dataset["mae"] == 0)

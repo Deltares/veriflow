@@ -4,7 +4,6 @@ import pytest
 import xarray as xr
 
 from veriflow.constants import DataType, StandardDim
-from veriflow.datasinks.fewsnetcdf import FewsNetcdfOutputSchema
 from veriflow.datasources.fewsnetcdf import FewsNetCDF
 from veriflow.datasources.inputschemas import INPUT_SCHEMAS, validate_input_data
 
@@ -14,13 +13,6 @@ def test_get_data_compliant_file_happy(
 ) -> None:
     """Check that the imported fewsnetcdf gives an xarray with the expected content."""
     _ = fews_netcdf_compliant_file
-
-
-def test_fewsnetcdf_output_schema_compliant_file(xarray_dataset_fews_compliant: xr.Dataset) -> None:
-    """Test FEWS-compliant file is compliant with schema."""
-    dataset_dict = xarray_dataset_fews_compliant.to_dict()  # type: ignore[misc] # Yes, the dict could have any content, it will be checked against the FewsNetcdfSchema
-    # This will throw an error when not compliant
-    FewsNetcdfOutputSchema.model_validate(dataset_dict)  # type: ignore[misc] # See above
 
 
 # Observed Historical

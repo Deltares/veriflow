@@ -1,57 +1,175 @@
 """Module for tests of datasinks."""
 
 from pathlib import Path
+from typing import cast
 
-from veriflow.configuration.default.scores import CrpsForEnsembleConfig
-from veriflow.datamodel.main import InputDataset, OutputDataset
-from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
-from veriflow.scores.probabilistic import CrpsForEnsemble
+import pytest
+import xarray as xr
+
+from veriflow.configuration.base import GeneralInfoConfig
+from veriflow.constants import DataSinkKind
+from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF, CFCompliantNetCDFConfig
+from veriflow.datasinks.cf_compliant_zarr import CFCompliantZarr, CFCompliantZarrConfig
+from veriflow.datatree.datatree import VeriflowDataTree
 
 
-def test_write_data_cf_compliant_netcdf_no_scores(
-    tmp_path: Path,
-    input_dataset_fews_netcdf_simulated_forecast_ensemble: InputDataset,
-    datasink_cf_compliant_netcdf: CFCompliantNetCDF,
+@pytest.mark.parametrize(
+    "dt_fixture",
+    [
+        "output_datatree_without_scores",
+        "output_datatree_with_scores",
+    ],
+)
+def test_cf_compliant_netcdf_write(
+    request: pytest.FixtureRequest,
+    dt_fixture: str,
+    tmpdir: Path,
+    xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
-    """Test writing data in cf-compliant NetCDF."""
-    # Initialize output dataset
-    output_dataset = OutputDataset(input_dataset_fews_netcdf_simulated_forecast_ensemble)
+    """Test writing data to a cf-compliant NetCDF file."""
+    output_datatree: VeriflowDataTree = request.getfixturevalue(dt_fixture)
+    datasink_cf_compliant_netcdf = CFCompliantNetCDF(
+        CFCompliantNetCDFConfig(
+            institution="Test Institution",
+            comment="Test Comment",
+            export_adapter=DataSinkKind.cf_compliant_netcdf,
+            crs="EPSG:4326",
+            directory=Path(tmpdir),
+            filename="test_output.nc",
+            general=xarray_general_info_config,
+        ),
+    )
+    assert output_datatree is not None
+    assert isinstance(output_datatree, xr.DataTree)
+    datasink_cf_compliant_netcdf.write_data(
+        output_datatree,
+    )
+    # File name is derived from the configured filename plus the verification pair id.
+    assert (Path(tmpdir) / f"{datasink_cf_compliant_netcdf.config.filename}").exists()
 
-    for verification_pair in datasink_cf_compliant_netcdf.config.general.verification_pairs:
-        # Write data from the output dataset
-        fn = f"test_{verification_pair.id}"
-        datasink_cf_compliant_netcdf.config.filename = fn
-        datasink_cf_compliant_netcdf.write_data(
-            output_dataset.get(verification_pair),
-        )
-        assert (tmp_path / fn).exists()
 
-
-def test_write_data_cf_compliant_netcdf_crps(
-    tmp_path: Path,
-    input_dataset_fews_netcdf_simulated_forecast_ensemble: InputDataset,
-    score_config_crps: CrpsForEnsembleConfig,
-    datasink_cf_compliant_netcdf: CFCompliantNetCDF,
+def test_cf_compliant_netcdf_write_multiple_pairs(
+    output_datatree_with_multiple_pairs: VeriflowDataTree,
+    tmpdir: Path,
+    xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
-    """Test writing data in cf-compliant NetCDF."""
-    # Initialize output dataset
-    output_dataset = OutputDataset(input_dataset_fews_netcdf_simulated_forecast_ensemble)
+    """Test that one distinct NetCDF file is written per verification pair."""
+    datasink_cf_compliant_netcdf = CFCompliantNetCDF(
+        CFCompliantNetCDFConfig(
+            institution="Test Institution",
+            comment="Test Comment",
+            export_adapter=DataSinkKind.cf_compliant_netcdf,
+            crs="EPSG:4326",
+            directory=Path(tmpdir),
+            filename="test_output.nc",
+            general=xarray_general_info_config,
+        ),
+    )
+    datasink_cf_compliant_netcdf.write_data(output_datatree_with_multiple_pairs)
 
-    for verification_pair in score_config_crps.general.verification_pairs:
-        # Add a crps computation to the output dataset
-        score = CrpsForEnsemble(score_config_crps)
-        obs, sim = input_dataset_fews_netcdf_simulated_forecast_ensemble.get_pair(verification_pair)
-        crps_result = score.validate_and_compute(
-            obs,
-            sim,
-        )
-        # Write data from the output dataset
-        output_dataset.add_score(score=crps_result, verification_pair=verification_pair)
+    filepath = Path(tmpdir) / f"{datasink_cf_compliant_netcdf.config.filename}"
+    assert filepath.exists()
 
-        # Write the data
-        fn = f"test_{verification_pair.id}"
-        datasink_cf_compliant_netcdf.config.filename = fn
-        datasink_cf_compliant_netcdf.write_data(
-            output_dataset.get(verification_pair),
-        )
-        assert (tmp_path / fn).exists()
+    with xr.open_dataset(filepath) as written:
+        assert cast("str", written.attrs["institution"]) == "Test Institution"  # type: ignore[misc]
+
+
+def test_cf_compliant_netcdf_write_force_overwrite_false_raises(
+    output_datatree_without_scores: VeriflowDataTree,
+    tmpdir: Path,
+    xarray_general_info_config: GeneralInfoConfig,
+) -> None:
+    """Test that an existing per-pair file raises FileExistsError when force_overwrite=False."""
+    # Pre-create the file that would be written for verification pair "test_pair".
+    (Path(tmpdir) / "test_output_test_pair.nc").touch()
+    datasink_cf_compliant_netcdf = CFCompliantNetCDF(
+        CFCompliantNetCDFConfig(
+            institution="Test Institution",
+            comment="Test Comment",
+            export_adapter=DataSinkKind.cf_compliant_netcdf,
+            crs="EPSG:4326",
+            directory=Path(tmpdir),
+            filename="test_output.nc",
+            force_overwrite=False,
+            general=xarray_general_info_config,
+        ),
+    )
+    with pytest.raises(FileExistsError, match="already exists"):
+        datasink_cf_compliant_netcdf.write_data(output_datatree_without_scores)
+
+
+@pytest.mark.parametrize(
+    "dt_fixture",
+    [
+        "output_datatree_without_scores",
+        "output_datatree_with_scores",
+    ],
+)
+def test_cf_compliant_zarr_write_local(
+    request: pytest.FixtureRequest,
+    dt_fixture: str,
+    tmpdir: Path,
+    xarray_general_info_config: GeneralInfoConfig,
+) -> None:
+    """Test writing data to a cf-compliant Zarr store."""
+    output_datatree: VeriflowDataTree = request.getfixturevalue(dt_fixture)
+    datasink_cf_compliant_zarr = CFCompliantZarr(
+        CFCompliantZarrConfig(
+            institution="Test Institution",
+            comment="Test Comment",
+            export_adapter=DataSinkKind.cf_compliant_zarr,
+            crs="EPSG:4326",
+            path=f"{tmpdir!s}/test_output.zarr",
+            general=xarray_general_info_config,
+        ),
+    )
+    assert output_datatree is not None
+    assert isinstance(output_datatree, xr.DataTree)
+    datasink_cf_compliant_zarr.write_data(
+        output_datatree,
+    )
+    assert (Path(datasink_cf_compliant_zarr.config.path)).exists()
+
+
+def test_cf_compliant_zarr_write_explicit_consolidated(
+    output_datatree_without_scores: VeriflowDataTree,
+    tmpdir: Path,
+    xarray_general_info_config: GeneralInfoConfig,
+) -> None:
+    """Test that an explicit (non-None) consolidated value is passed through as-is."""
+    datasink_cf_compliant_zarr = CFCompliantZarr(
+        CFCompliantZarrConfig(
+            institution="Test Institution",
+            comment="Test Comment",
+            export_adapter=DataSinkKind.cf_compliant_zarr,
+            crs="EPSG:4326",
+            path=f"{tmpdir!s}/test_output.zarr",
+            consolidated=False,
+            general=xarray_general_info_config,
+        ),
+    )
+    datasink_cf_compliant_zarr.write_data(output_datatree_without_scores)
+    assert Path(datasink_cf_compliant_zarr.config.path).exists()
+
+
+def test_cf_compliant_zarr_write_force_overwrite_false_raises(
+    output_datatree_without_scores: VeriflowDataTree,
+    tmpdir: Path,
+    xarray_general_info_config: GeneralInfoConfig,
+) -> None:
+    """Test that an existing store raises FileExistsError when force_overwrite=False."""
+    store_path = Path(tmpdir) / "test_output.zarr"
+    store_path.mkdir()
+    datasink_cf_compliant_zarr = CFCompliantZarr(
+        CFCompliantZarrConfig(
+            institution="Test Institution",
+            comment="Test Comment",
+            export_adapter=DataSinkKind.cf_compliant_zarr,
+            crs="EPSG:4326",
+            path=str(store_path),
+            force_overwrite=False,
+            general=xarray_general_info_config,
+        ),
+    )
+    with pytest.raises(FileExistsError, match="already exists"):
+        datasink_cf_compliant_zarr.write_data(output_datatree_without_scores)

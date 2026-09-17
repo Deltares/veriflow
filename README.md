@@ -9,12 +9,18 @@
 # Veriflow
 
 A reproducible verification pipeline for evaluating model outputs and forecasts.
+
+> **Warning:** Veriflow is currently in the a minor-version stage (0.x.x). Breaking changes may
+> occur in minor releases while the public API continues to mature. A first major
+> release is planned for 2027. Interested in contributing? See our contributing guide.
+
 - 📥 Fetching data
 - 🧮 Computing scores
 - 📝 Writing results
 
 <br>
-<img src="_static/pipeline.svg" alt="Schematic overview of veriflow pipeline" width="80%">
+<img src="https://deltares.github.io/veriflow/_static/pipeline.svg" alt="Schematic overview of veriflow pipeline" width="80%">
+
 
 ## Key features
 - ✅ Full control over the verification pipeline via configuration
@@ -51,25 +57,13 @@ from pathlib import Path
 path_to_config = Path("./config.yml")
 
 # Run your verification pipeline in just one line of code
-run_pipeline((path_to_config, "yaml"))
+dt: xr.DataTree = run_pipeline((path_to_config, "yaml"))
 ```
 
-If it's your wish to further analyze the input data and verification results in an interactive Python session, assign the returned `OutputDataset` from `run_pipeline` to a Python variable. For each each configured `verification_pair`*, the `output_dataset` contains an `xarray.Dataset` with the results. By default, the input data will be included in the output.
+If it's your wish to further analyze the input data and verification results in an interactive Python session, assign the returned `xr.DataTree` from `run_pipeline` to a Python variable as in the code block above. For each each configured `verification_pair`*, the datatree contains input and output data for each verification pair.
+This allows for easy post-hoc analysis, visualization and further connection to external applications such as dashboards. See our [API documentation](https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html) for a detailed overview of the datatree structure.
 
-*_a verification pair is definition of two datasources (e.g. observed and simulated) for one pysical variable (e.g. discharge or temperature)_
-```python
-# Alternatively, assign the returned `output_dataset` to a Python variable.
-output_dataset = run_pipeline((path_to_config, "yaml"))
-
-# List the verification_pairs in the output_dataset
-verification_pairs = output_dataset.verification_pairs
-
-# Retrieve the verification results for a verification_pair from the output_dataset
-first_verification_pair = verification_pairs[0]
-dataset = output_dataset.get(first_verification_pair) # An instance of xarray.Dataset
-```
-
-For more advanced documentation, please refer to our [user guide](https://deltares.github.io/veriflow/user_guide.html).
+*_a verification pair defines two data arrays: a reference data array and a evaluation data array. An example verification pair could be a combination of observed data and simulated forecast data for a given physical variable._
 
 ## 👥 Who Is This For?
 

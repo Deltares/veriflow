@@ -9,7 +9,7 @@ api/configuration
 api/datasources
 api/scores
 api/datasinks
-api/datamodel
+api/datatree
 api/constants
 api/cache
 ```

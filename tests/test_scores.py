@@ -16,8 +16,8 @@ from veriflow.configuration.default.scores import (
     SALScoreConfig,
 )
 from veriflow.constants import DataType, ScoreKind, SpatialType, StandardDim
-from veriflow.datamodel.main import InputDataset
 from veriflow.datasources.fewsnetcdf import FewsNetCDF
+from veriflow.datatree.datatree import VeriflowAccessor
 from veriflow.scores.categorical import CategoricalScores
 from veriflow.scores.continuous import ContinuousScores
 from veriflow.scores.probabilistic import CrpsCDF, CrpsForEnsemble, RankHistogram
@@ -44,7 +44,7 @@ def test_ensemble_crps(
     sim = xarray_simulated_forecast_ensemble[variable]
     obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
     sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
-    obs_reprojected = InputDataset.map_historical_into_forecast_space(obs, sim)
+    obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
 
     result = CrpsForEnsemble(score_config_crps).validate_and_compute(
         obs=obs_reprojected,
@@ -64,7 +64,7 @@ def test_ensemble_rank_histogram(
     sim = xarray_simulated_forecast_ensemble[variable]
     obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
     sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
-    obs_reprojected = InputDataset.map_historical_into_forecast_space(obs, sim)
+    obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
 
     result = RankHistogram(score_config_rank_histogram).validate_and_compute(
         obs=obs_reprojected,
@@ -116,7 +116,7 @@ def test_single_continuous_scores(
     sim = xarray_simulated_forecast_single[variable]
     obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
     sim.attrs["data_type"] = xarray_simulated_forecast_single.attrs["data_type"]
-    obs_reprojected = InputDataset.map_historical_into_forecast_space(obs, sim)
+    obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
 
     result = ContinuousScores(score_config_continuous).validate_and_compute(
         obs=obs_reprojected,

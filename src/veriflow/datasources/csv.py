@@ -101,6 +101,6 @@ class Csv(BaseDatasource):
 
         # Set the data type and source as attributes for later use in the verification process
         dataset.attrs["data_type"] = "threshold"  # type:ignore[misc]
-        dataset.attrs["source"] = self.config.source  # type:ignore[misc]
+        dataset.attrs["source_id"] = self.config.source_id  # type:ignore[misc]
         self.dataset = dataset
         return self

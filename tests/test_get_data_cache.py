@@ -47,7 +47,7 @@ def _make_fake_forecast_config(
     """Build a ``FakeDatasourceConfig`` for forecast data."""
     return FakeDatasourceConfig(
         general=general,
-        source=source,
+        source_id=source,
         data_type=DataType.simulated_forecast_ensemble,
         variables=variables,
         stations=stations,
@@ -64,7 +64,7 @@ def _make_fake_historical_config(
     """Build a ``FakeDatasourceConfig`` for historical data."""
     return FakeDatasourceConfig(
         general=general,
-        source=source,
+        source_id=source,
         data_type=DataType.observed_historical,
         variables=variables,
         stations=stations,

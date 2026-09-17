@@ -5,14 +5,14 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from veriflow.configuration.base import BaseDatasinkConfig
-from veriflow.configuration.utils import LocalFile
+from veriflow.configuration.utils import BaseZarrConfig, LocalFile
 from veriflow.constants import NAME, DataSinkKind
 
 # TODO(JB): Make output / internal datamodel CF compliant.  # noqa: FIX002
 # https://github.com/Deltares/veriflow/issues/84
 
 
-class BaseCFCompliantConfig(LocalFile, BaseDatasinkConfig):
+class BaseCFCompliantConfig(BaseDatasinkConfig):
     """A base cf-compliant NetCDF output config element."""
 
     conventions: Literal["CF-1.7"] = "CF-1.7"
@@ -33,13 +33,19 @@ class BaseCFCompliantConfig(LocalFile, BaseDatasinkConfig):
     ] = f"Verification results created by {NAME}"
 
 
-class FewsNetCDFOutputConfig(BaseCFCompliantConfig):
+class FewsNetCDFOutputConfig(BaseCFCompliantConfig, LocalFile):
     """A fews NetCDF output config element."""
 
     export_adapter: Literal[DataSinkKind.fews_netcdf]
 
 
-class CFCompliantNetCDFConfig(BaseCFCompliantConfig):
+class CFCompliantNetCDFConfig(BaseCFCompliantConfig, LocalFile):
     """A cf-compliant NetCDF output config element."""
 
     export_adapter: Literal[DataSinkKind.cf_compliant_netcdf]
+
+
+class CFCompliantZarrConfig(BaseCFCompliantConfig, BaseZarrConfig):
+    """A cf-compliant Zarr output config element."""
+
+    export_adapter: Literal[DataSinkKind.cf_compliant_zarr]

@@ -244,7 +244,7 @@ class FewsWebservice(BaseDatasource):
                         if self.config.data_type == DataType.observed_historical
                         else FewsNetCDFKind.simulated_historical,
                         id_mapping=self.config.id_mapping,
-                        source=self.config.source,
+                        source_id=self.config.source_id,
                         parameter_ids=self.config.parameter_ids,
                         station_ids=self.config.location_ids,
                     ),
@@ -411,7 +411,7 @@ class FewsWebservice(BaseDatasource):
                         general=self.config.general,
                         netcdf_kind=FewsNetCDFKind.simulated_forecast_per_forecast_reference_time,
                         id_mapping=self.config.id_mapping,
-                        source=self.config.source,
+                        source_id=self.config.source_id,
                         parameter_ids=self.config.parameter_ids,
                         station_ids=self.config.location_ids,
                     ),
@@ -469,7 +469,7 @@ class FewsWebservice(BaseDatasource):
                         general=self.config.general,
                         netcdf_kind=FewsNetCDFKind.simulated_forecast_per_lead_time,
                         id_mapping=self.config.id_mapping,
-                        source=self.config.source,
+                        source_id=self.config.source_id,
                     ),
                 )
 

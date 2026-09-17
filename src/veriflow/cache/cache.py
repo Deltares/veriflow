@@ -371,7 +371,7 @@ class ZarrCache:
             )
             time_end = datetime.now()  # noqa: DTZ005
             msg = (
-                f"Opened dataset for source '{source}' from {self.config.path} "
+                f"Opened dataset for source '{source}' from {list(self.config.path)} "
                 f"(took {(time_end - time_start).total_seconds():.2f} seconds)"
             )
             logger.info(msg)
@@ -380,8 +380,8 @@ class ZarrCache:
 
         if not hasattr(ds, "data_type"):
             msg = (
-                f"Dataset for source '{source}' in {self.config.path} is missing the 'data_type' "
-                "attribute. This is required for proper sorting of the dataset."
+                f"Dataset for source '{source}' in {list(self.config.path)} is missing the "
+                "'data_type' attribute. This is required for proper sorting of the dataset."
             )
             raise ValueError(msg)
 

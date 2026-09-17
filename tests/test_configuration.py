@@ -22,6 +22,7 @@ from veriflow.configuration.utils import (
     LeadTimes,
     Range,
     TimeUnits,
+    VerificationPair,
 )
 from veriflow.constants import SCHEMA_VERSION, StandardDim
 
@@ -235,3 +236,17 @@ def test_reduce_dims_validates_spatial_dimensions() -> None:
         match="Cannot configure both spatial dimensions \\(x, y\\) and station together",
     ):
         _ = ReduceDims(reduce_dims=[StandardDim.station, StandardDim.x, StandardDim.y])
+
+
+def test_not_accepted_verification_pair_id_raised() -> None:
+    """Test that a not accepted verification pair ID raises an error."""
+    with pytest.raises(
+        ValueError,
+        match="input_data' is a reserved id and cannot be used as a verification pair id",
+    ):
+        VerificationPair(
+            id="input_data",
+            observations_source_id="some_source",
+            simulations_source_id="some_source",
+            variable="some_variable",
+        )

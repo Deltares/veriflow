@@ -36,5 +36,4 @@ how well the ensemble captures uncertainty, and the effect of post-processing.
 :hidden:
 
 ../examples/The Rhine Case/1a_basics
-../examples/The Rhine Case/1b_interpretation
 ```
