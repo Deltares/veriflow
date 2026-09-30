@@ -497,7 +497,7 @@ class ZarrCache:
 
         If ``source`` is specified, only the corresponding subgroup is deleted.
         """
-        options = self.config.storage_options or {}
+        options = self.storage_options or {}
 
         # Automatically infers protocol (e.g., 's3' or 'file') from the path
         fs, clean_path = fsspec.core.url_to_fs(self.config.path, **options)  # type:ignore[misc]
