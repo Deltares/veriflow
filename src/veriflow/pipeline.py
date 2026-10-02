@@ -217,6 +217,11 @@ def run_pipeline(
             )
             logger.info(msg)
 
+        if config.scores is None or len(config.scores) == 0:
+            msg = "No scores configured. Aborting pipeline."
+            logger.warning(msg)
+            return None
+
         # Initialize the output datatree and load the raw input data into it
         dt = cast("VeriflowDataTree", xr.DataTree(name="veriflow-datatree"))
         dt.veriflow.add_input_data(

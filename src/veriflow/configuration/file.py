@@ -57,8 +57,9 @@ class ConfigFile:
                 datasource.update({"id_mapping": yamlcontent["id_mapping"]})  # type: ignore[attr-defined]
 
         # Propagate the general config to scores
-        for score in yamlcontent["scores"]:
-            score.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
+        if "scores" in yamlcontent:
+            for score in yamlcontent["scores"]:
+                score.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
 
         # Propagate the general config to sinks
         if "datasinks" in yamlcontent:
