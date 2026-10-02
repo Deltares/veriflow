@@ -90,7 +90,7 @@ class Config(BaseModel):
     version: SupportedSchemaVersion = SupportedSchemaVersion.V0
     general: GeneralInfoConfig
     datasources: Annotated[Sequence[BaseDatasourceConfig], Field(min_length=1)]
-    scores: Annotated[Sequence[BaseScoreConfig], Field(min_length=1)]
+    scores: Annotated[Sequence[BaseScoreConfig] | None, Field(min_length=1)] = None
     datasinks: Annotated[Sequence[BaseDatasinkConfig] | None, Field(min_length=1)] = None
     id_mapping: IdMappingConfig | None = None
 
