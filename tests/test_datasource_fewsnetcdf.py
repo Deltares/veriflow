@@ -1,8 +1,14 @@
 """Test the fewsnetcdf module of the veriflow.datasources package."""
 
+from datetime import datetime, timezone
+from pathlib import Path
+
 import pytest
 import xarray as xr
 
+from veriflow.configuration.base import GeneralInfoConfig
+from veriflow.configuration.default.datasources import FewsNetCDFConfig, FewsNetCDFKind
+from veriflow.configuration.utils import VerificationPair, VerificationPeriod
 from veriflow.constants import DataType, StandardDim
 from veriflow.datasources.fewsnetcdf import FewsNetCDF
 from veriflow.datasources.inputschemas import INPUT_SCHEMAS, validate_input_data
@@ -92,3 +98,36 @@ def test_get_data_retrieval_methods_return_equal_data_arrays(
     b = ds_b.get_data().dataset
 
     xr.testing.assert_equal(a, b)
+
+
+def test_get_data_with_secondary_analysis_time_dim() -> None:
+    """Check that the imported fewsnetcdf gives an xarray without crashing on the secondary analysis time dimension."""
+    general = GeneralInfoConfig(
+        verification_period=VerificationPeriod(
+            start=datetime(1900, 1, 1, tzinfo=timezone.utc),
+            end=datetime(2100, 1, 1, tzinfo=timezone.utc),
+            dimension=StandardDim.time,
+        ),
+        verification_pairs=[
+            VerificationPair(
+                id="pair1",
+                observations_source_id="observed",
+                simulations_source_id="source_ensemble",
+                variable="discharge",
+            ),
+        ],
+    )
+    datasource = FewsNetCDF(
+        FewsNetCDFConfig(
+            import_adapter="fewsnetcdf",
+            data_type=DataType.simulated_historical,
+            netcdf_kind=FewsNetCDFKind.simulated_historical,
+            directory=str(Path(__file__).parent / "data"),
+            filename_glob="gtsm_test_double_analysis_time_dim.nc",
+            source_id="source_ensemble",
+            general=general,
+        ),
+    )
+
+    result = datasource.get_data().dataset
+    validate_input_data(result)
