@@ -380,7 +380,7 @@ class BaseDatasource(Base):
                 ),
                 stations=DataRequest(
                     requested=self.configured_stations,
-                    cached=set(cached_dataset[StandardDim.station].values),  # type: ignore[misc]
+                    cached=set(cached_dataset[StandardDim.station].to_numpy()),  # type: ignore[misc]
                 ),
                 time_period=DataRequest(
                     requested=TimePeriod(
@@ -389,10 +389,10 @@ class BaseDatasource(Base):
                     ),
                     cached=TimePeriod(
                         start=pd.Timestamp(
-                            cached_dataset[StandardDim.time].min().item(),  # type: ignore[misc]
+                            cached_dataset[StandardDim.time].min().to_numpy().item(),  # type: ignore[misc]
                         ).to_pydatetime(),
                         end=pd.Timestamp(
-                            cached_dataset[StandardDim.time].max().item(),  # type: ignore[misc]
+                            cached_dataset[StandardDim.time].max().to_numpy().item(),  # type: ignore[misc]
                         ).to_pydatetime(),
                     ),
                 ),
@@ -418,10 +418,16 @@ class BaseDatasource(Base):
                     ),
                     cached=TimePeriod(
                         start=pd.Timestamp(
-                            cached_dataset[StandardDim.forecast_reference_time].min().item(),  # type: ignore[misc]
+                            cached_dataset[StandardDim.forecast_reference_time]  # type: ignore[misc]
+                            .min()
+                            .to_numpy()
+                            .item(),
                         ).to_pydatetime(),
                         end=pd.Timestamp(
-                            cached_dataset[StandardDim.forecast_reference_time].max().item(),  # type: ignore[misc]
+                            cached_dataset[StandardDim.forecast_reference_time]  # type: ignore[misc]
+                            .max()
+                            .to_numpy()
+                            .item(),
                         ).to_pydatetime(),
                     ),
                 ),
