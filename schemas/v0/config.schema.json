@@ -538,6 +538,11 @@
           ],
           "default": null,
           "title": "Parameter Ids"
+        },
+        "filter_stations": {
+          "default": true,
+          "title": "Filter Stations",
+          "type": "boolean"
         }
       },
       "required": [
@@ -564,7 +569,7 @@
     },
     "FewsWebserviceAuthConfig": {
       "additionalProperties": false,
-      "description": "Get url, username and password safely from environment variables.\n\nThis config class inherits from :class:`pydantic_settings.BaseSettings`,\nthat will try to infer field values from environment variables.\n\nEnvironment variables:\n\n- ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).\n- ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to \"\" if not required).\n- ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to \"\" if not required).\n\nsee: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage\n\nNotes\n-----\nFor local development, an easy and recommended way to set environment variables is to\nuse a ``.env`` file in the project root with the required environment variables, and they\nwill be automatically loaded when you instantiate this config class. For example:\n\n.. code-block:: python\n\n    from dotenv import load_dotenv\n    load_dotenv()  # Load environment variables from .env file\n\n    # You can check that the variables are loaded correctly\n    import os\n    print(os.getenv(\"FEWSWEBSERVICE_URL\"))",
+      "description": "Get url, username and password safely from environment variables.\n\nThis config class inherits from :class:`pydantic_settings.BaseSettings`,\nthat will try to infer field values from environment variables.\n\nEnvironment variables:\n\n- ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).\n- ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to \"\" if not required).\n- ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to \"\" if not required).\n- ``FEWSWEBSERVICE_VERIFY``: TLS certificate verification. Either ``true``/``false``, or a\n  path to a CA bundle file/directory to use instead of the system default. Defaults to\n  ``true``. Only disable this for trusted internal networks with self-signed certificates;\n  prefer pointing it at a CA bundle instead.\n\nsee: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage\n\nNotes\n-----\nFor local development, an easy and recommended way to set environment variables is to\nuse a ``.env`` file in the project root with the required environment variables, and they\nwill be automatically loaded when you instantiate this config class. For example:\n\n.. code-block:: python\n\n    from dotenv import load_dotenv\n    load_dotenv()  # Load environment variables from .env file\n\n    # You can check that the variables are loaded correctly\n    import os\n    print(os.getenv(\"FEWSWEBSERVICE_URL\"))",
       "properties": {
         "url": {
           "format": "uri",
@@ -583,6 +588,18 @@
           "title": "Password",
           "type": "string",
           "writeOnly": true
+        },
+        "verify": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "title": "Verify"
         }
       },
       "required": [
@@ -1313,6 +1330,19 @@
           "title": "Path",
           "type": "string"
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Group within the Zarr store to open. Corresponds to the 'group' parameter in xr.open_zarr.",
+          "title": "Group"
+        },
         "auth_config": {
           "anyOf": [
             {
@@ -1375,6 +1405,19 @@
           "minLength": 1,
           "title": "Path",
           "type": "string"
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Group within the Zarr store to open. Corresponds to the 'group' parameter in xr.open_zarr.",
+          "title": "Group"
         },
         "auth_config": {
           "anyOf": [
