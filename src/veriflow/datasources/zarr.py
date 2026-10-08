@@ -109,6 +109,7 @@ class Zarr(BaseDatasource):
         storage_options = self._build_storage_options()
         dataset = xr.open_zarr(  # type:ignore[misc] # xarray's stubs are loose here
             self.config.path,
+            group=self.config.group,
             storage_options=storage_options,
             consolidated=self.config.consolidated,
         )
