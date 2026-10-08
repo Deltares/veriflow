@@ -22,6 +22,7 @@ from veriflow.configuration.default.datasources import (
     FewsWebserviceConfig,
     ForecastRetrievalMethod,
 )
+from veriflow.configuration.utils import TimePeriod
 from veriflow.constants import FORECAST_DATA_TYPES, DataSourceKind, DataType, SpatialType
 from veriflow.datasources.base import BaseDatasource
 from veriflow.datasources.fewsnetcdf import (
@@ -139,6 +140,57 @@ class FewsWebservice(BaseDatasource):
         """
         self.config.parameter_ids = list(variables)
 
+    def _fetch_forecast_reference_times(self, frt_period: TimePeriod) -> list[datetime]:
+        """Query the webservice for the forecast reference times available in a period.
+
+        Branches on 'archive_kind', since the external storage archive and the open archive
+        expose forecast reference times through different webservice endpoints.
+        """
+        if self.config.archive_kind == ArchiveKind.external_storage_archive:
+            return self.client.get_netcdf_storage_forecast_reference_times(
+                start_time=frt_period.start,
+                end_time=frt_period.end,
+                module_instance_ids=self.config.module_instance_id,
+            )
+
+        response = self.client.get_timeseries(
+            location_ids=self.config.location_ids,
+            parameter_ids=self.config.parameter_ids,
+            module_instance_ids=self.config.module_instance_id,
+            ensemble_id=self.config.ensemble_id,
+            start_forecast_time=frt_period.start,
+            end_forecast_time=frt_period.end,
+            document_format=DocumentFormat.PI_JSON,
+            forecast_count=FORECAST_COUNT_WHEN_SEARCHING_FOR_FORECAST_REFERENCE_TIMES,
+            only_headers=True,
+        )
+        return self.client.parse_forecast_reference_times_from_json_headers(
+            response.json(),  # type:ignore[misc]
+            module_instance_id=self.config.module_instance_id,
+        )
+
+    def resolve_available_forecast_reference_time_period(self) -> TimePeriod | None:
+        """Return the forecast reference time period available in the webservice.
+
+        Querying only the configured window (rather than the source's whole history) lets the
+        caller tell apart data that is available at the source but not yet cached (the returned
+        period covers the configured window, so clamping is a no-op) from data that is already
+        fully cached but has fallen out of the window the service can currently still serve (the
+        returned period is narrower, so the configured period gets clamped to it). Only forecast
+        data types are supported.
+        """
+        if self.config.data_type not in FORECAST_DATA_TYPES:
+            return None
+
+        forecast_reference_times = self._fetch_forecast_reference_times(
+            self.config.verification_period_on_frt,
+        )
+
+        if len(forecast_reference_times) == 0:
+            return None
+
+        return TimePeriod(start=min(forecast_reference_times), end=max(forecast_reference_times))
+
     @staticmethod
     def write_netcdf_response_to_dir(
         response: requests.Response,
@@ -208,7 +260,7 @@ class FewsWebservice(BaseDatasource):
         netcdf_path.write_bytes(netcdf_data)
         return write_dir
 
-    def fetch_data(self) -> Self:  # noqa: C901, PLR0915
+    def fetch_data(self) -> Self:
         """Retrieve :py::class`~xarray.Dataset` from Delft-FEWS Webservice."""
         # Get external_historical or simulated_historical data
         if self.config.data_type in [DataType.observed_historical, DataType.simulated_historical]:
@@ -276,31 +328,9 @@ class FewsWebservice(BaseDatasource):
             == ForecastRetrievalMethod.retrieve_all_forecast_data
         ):
             # Get all relevant forecast reference times, based on the configured verification period
-            if self.config.archive_kind == ArchiveKind.external_storage_archive:
-                forecast_reference_times = self.client.get_netcdf_storage_forecast_reference_times(
-                    start_time=self.config.verification_period_on_frt.start,
-                    end_time=self.config.verification_period_on_frt.end,
-                    module_instance_ids=self.config.module_instance_id,
-                )
-
-            # Standard Open Archive
-            else:
-                response = self.client.get_timeseries(
-                    location_ids=self.config.location_ids,
-                    parameter_ids=self.config.parameter_ids,
-                    module_instance_ids=self.config.module_instance_id,
-                    ensemble_id=self.config.ensemble_id,
-                    start_forecast_time=self.config.verification_period_on_frt.start,
-                    end_forecast_time=self.config.verification_period_on_frt.end,
-                    document_format=DocumentFormat.PI_JSON,
-                    forecast_count=FORECAST_COUNT_WHEN_SEARCHING_FOR_FORECAST_REFERENCE_TIMES,
-                )
-                forecast_reference_times = (
-                    self.client.parse_forecast_reference_times_from_json_headers(
-                        response.json(),  # type:ignore[misc]
-                        module_instance_id=self.config.module_instance_id,
-                    )
-                )
+            forecast_reference_times = self._fetch_forecast_reference_times(
+                self.config.verification_period_on_frt,
+            )
 
             if len(forecast_reference_times) == 0:
                 msg = (

@@ -78,21 +78,23 @@ class DataRequest(BaseModel):
                 C      ####
                 missing:   R               available: (none)
 
-            (4) left overlap (R starts before C)
+            (4) left overlap (R starts before C, C covers R's end)
                 R   ######
-                C       ######
+                C       ########
                 missing:   R.start .. C.start
                 available: C.start .. R.end
 
-            (5) right overlap (R starts inside C)
-                R       ######
+            (5) right overlap (C covers R's start, R ends after C)
+                R       ########
                 C   ######
                 missing:   C.end .. R.end
                 available: R.start .. C.end
+
+        An edge shared exactly between R and C (e.g. ``R.end == C.end``) counts as covered on
+        that side, not as a gap - this matters because R.end routinely resolves to the same
+        rolling-archive boundary that was already cached on a previous run, and treating that
+        as "still missing" would discard an already-cached range and re-fetch everything.
         """
-        # Requested fully contained in (or equal to) cached → nothing missing.
-        if requested.start >= cached.start and requested.end <= cached.end:
-            return None, requested
         #  RRRR
         #        CCCC
         if requested.end <= cached.start:
@@ -101,26 +103,27 @@ class DataRequest(BaseModel):
         #  CCCC
         if requested.start >= cached.end:
             return requested, None
+        # Requested fully contained in (or equal to) cached → nothing missing.
+        if requested.start >= cached.start and requested.end <= cached.end:
+            return None, requested
         #  RRRR
-        #   CC      (cached strictly inside requested)
-        if requested.start <= cached.start and requested.end >= cached.end:
+        #   CC      (cached strictly inside requested on both sides - can't be expressed as a
+        #            single missing/available pair, so treat all of it as missing)
+        if requested.start < cached.start and requested.end > cached.end:
             return requested, None
         # RRRR
-        #   CCCC    (left overlap: requested starts before cached, ends inside cached)
-        if requested.start < cached.start <= requested.end < cached.end:
+        #   CCCC    (left overlap: only the start is missing, cache covers up to/past R.end)
+        if requested.start < cached.start:
             return TimePeriod(start=requested.start, end=cached.start), TimePeriod(
                 start=cached.start,
                 end=requested.end,
             )
         #   RRRR
-        # CCCC      (right overlap: requested starts inside cached, ends after cached)
-        if cached.start < requested.start <= cached.end < requested.end:
-            return TimePeriod(start=cached.end, end=requested.end), TimePeriod(
-                start=requested.start,
-                end=cached.end,
-            )
-        msg = "Unexpected case of intersecting time periods."
-        raise ValueError(msg)
+        # CCCC      (right overlap: only the end is missing, cache covers from/before R.start)
+        return TimePeriod(start=cached.end, end=requested.end), TimePeriod(
+            start=requested.start,
+            end=cached.end,
+        )
 
     @staticmethod
     def _to_lead_times(values: list[np.timedelta64]) -> LeadTimes:
