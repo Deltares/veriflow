@@ -263,9 +263,25 @@ class BaseDatasource(Base):
         """Filter forecast dataset on lead times."""
         if dataset.attrs["data_type"] in FORECAST_DATA_TYPES and lead_times is not None:  # type:ignore[misc]
             # Select only relevant lead times for simulations
-            dataset = dataset.sel(
-                lead_time=lead_times.timedelta64,
-            )
+            try:
+                dataset = dataset.sel(
+                    lead_time=lead_times.timedelta64,
+                )
+            except KeyError as e:
+                requested_lead_times = lead_times.timedelta64
+                dataset_lead_times = dataset[StandardDim.lead_time].to_numpy()  # type:ignore[misc]
+
+                # Express the lead times as hours for easier comparison and readability
+                requested_lead_times = [
+                    lt.astype("timedelta64[h]") for lt in lead_times.timedelta64
+                ]
+                dataset_lead_times = [lt.astype("timedelta64[h]") for lt in dataset_lead_times]  # type:ignore[misc, assignment]
+
+                msg = (
+                    f"Requested lead times {requested_lead_times} are not available in the dataset."
+                    f" Available lead times: {dataset_lead_times}"  # type:ignore[misc]
+                )
+                raise KeyError(msg) from e
         return dataset
 
     @staticmethod
