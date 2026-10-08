@@ -83,30 +83,9 @@ class Zarr(BaseDatasource):
         """
         self.config.variables = list(variables) if variables is not None else None
 
-    def _build_storage_options(self) -> dict[str, object] | None:
-        """Build storage_options for xr.open_zarr based on path and config.
-
-        Returns ``None`` for non-remote (local) paths so that xarray opens the store
-        directly from the local filesystem.
-        """
-        if not self._is_remote_path(self.config.path):
-            return None
-
-        options: dict[str, object] = {}
-        if self.config.auth_config is not None:
-            options.update(self.config.auth_config.to_storage_options())
-        if self.config.storage_options is not None:
-            options.update(self.config.storage_options)
-        return options
-
-    @staticmethod
-    def _is_remote_path(path: str) -> bool:
-        """Return True if ``path`` looks like a remote/fsspec URL (e.g. ``s3://``)."""
-        return "://" in path
-
     def fetch_data(self) -> Self:
         """Retrieve the configured Zarr store as an xarray Dataset."""
-        storage_options = self._build_storage_options()
+        storage_options = self.config.resolved_storage_options
         dataset = xr.open_zarr(  # type:ignore[misc] # xarray's stubs are loose here
             self.config.path,
             group=self.config.group,
