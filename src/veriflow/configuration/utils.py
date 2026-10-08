@@ -393,6 +393,14 @@ class BaseZarrConfig(BaseModel):
             "relative) or a remote URL such as 's3://bucket/key/store.zarr'.",
         ),
     ]
+    group: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Group within the Zarr store to open. Corresponds to the 'group' "
+            "parameter in xr.open_zarr.",
+        ),
+    ] = None
     auth_config: Annotated[
         S3AuthConfig | None,
         Field(
