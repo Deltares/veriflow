@@ -7,6 +7,7 @@ from typing import Union
 
 import requests
 import requests.auth
+import urllib3
 from pydantic_core import Url
 
 logger = logging.getLogger(__name__)
@@ -37,9 +38,26 @@ class FewsWebserviceClient:
 
     datetime_format = "%Y-%m-%dT%H:%M:%SZ"
 
-    def __init__(self, url: str | Url, username: str | None, password: str | None) -> None:
+    def __init__(
+        self,
+        url: str | Url,
+        username: str | None,
+        password: str | None,
+        *,
+        verify: bool | str = True,
+    ) -> None:
         self.url = url
         self.session = requests.Session()
+        # Applies to all requests made with this session unless overridden per-call.
+        self.session.verify = verify
+        if verify is False:
+            verify_warning = (
+                f"TLS certificate verification is disabled for {FewsWebserviceClient.__name__} "
+                f"requests to {url}. This is insecure and should only be used for trusted "
+                "internal networks; prefer passing a CA bundle path instead."
+            )
+            logger.warning(verify_warning)
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         if username is not None and password is not None:
             self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
         elif not (username is None and password is None):
@@ -112,6 +130,7 @@ class FewsWebserviceClient:
             "showThresholds": show_thresholds,
             "documentFormat": document_format,
             "onlyHeaders": only_headers,
+            "omitEmptyTimeSeries": True,
         }
 
         if document_format == DocumentFormat.PI_NETCDF:
@@ -121,7 +140,11 @@ class FewsWebserviceClient:
         else:
             headers = {}
 
-        response = self.session.get(url=f"{self.url}/timeseries", params=params, headers=headers)  # type:ignore[arg-type]
+        response = self.session.get(
+            url=f"{self.url}/timeseries",
+            params=params,  # type:ignore[arg-type]
+            headers=headers,
+        )
         response.raise_for_status()
 
         msg = f"Download successful from URL: {response.url}"

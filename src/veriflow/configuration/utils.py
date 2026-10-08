@@ -268,6 +268,10 @@ class FewsWebserviceAuthConfig(BaseSettings):
     - ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).
     - ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to "" if not required).
     - ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to "" if not required).
+    - ``FEWSWEBSERVICE_VERIFY``: TLS certificate verification. Either ``true``/``false``, or a
+      path to a CA bundle file/directory to use instead of the system default. Defaults to
+      ``true``. Only disable this for trusted internal networks with self-signed certificates;
+      prefer pointing it at a CA bundle instead.
 
     see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage
 
@@ -292,6 +296,9 @@ class FewsWebserviceAuthConfig(BaseSettings):
     url: AnyUrl
     username: SecretStr
     password: SecretStr
+    # union_mode="left_to_right" is required: otherwise pydantic's "smart" union mode matches
+    # any env var string (e.g. "false") against the `str` branch before trying `bool` coercion.
+    verify: Annotated[bool | str, Field(union_mode="left_to_right")] = True
 
 
 class S3AuthConfig(BaseSettings):
