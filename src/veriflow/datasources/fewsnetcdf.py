@@ -198,7 +198,16 @@ class Preprocessor:
         ):
             # Filter the relevant lead_times to maximize memory efficiency
             selector = {StandardDim.lead_time: self.lead_times}
-            dataset = dataset.sel(selector)
+            try:
+                dataset = dataset.sel(selector)
+            except KeyError as e:
+                requested_lead_times = self.lead_times
+                dataset_lead_times = dataset[StandardDim.lead_time].to_numpy()  # type:ignore[misc]
+                msg = (
+                    f"Requested lead times {requested_lead_times} are not available in the "
+                    f"dataset. Available lead times: {dataset_lead_times}"  # type:ignore[misc]
+                )
+                raise KeyError(msg) from e
 
         return dataset
 
