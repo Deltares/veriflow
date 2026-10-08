@@ -14,6 +14,7 @@ from zarr.errors import GroupNotFoundError
 from veriflow.cache.config import ReadWriteMode, ZarrCacheConfig
 from veriflow.configuration.utils import LeadTimes, TimePeriod
 from veriflow.constants import FORECAST_DATA_TYPES, HISTORICAL_DATA_TYPES, StandardDim, TimeUnits
+from veriflow.utils import drop_chunk_encoding, get_chunk_settings_along_forecast_reference_time
 
 logger = logging.getLogger(__name__)
 
@@ -342,25 +343,9 @@ class ZarrCache:
         config: ZarrCacheConfig,
     ) -> None:
         self.config = config
-        self.storage_options = self._build_storage_options()
+        self.storage_options = self.config.resolved_storage_options
         msg = f"Zarr cache initialized with path: {self.config.path}"
         logger.info(msg)
-
-    def _build_storage_options(self) -> dict[str, object] | None:
-        """Build storage_options for xr.open_zarr based on path and config.
-
-        Returns ``None`` for non-remote (local) paths so that xarray opens the store
-        directly from the local filesystem.
-        """
-        if not self.config.is_remote_path():
-            return None
-
-        options: dict[str, object] = {}
-        if self.config.auth_config is not None:
-            options.update(self.config.auth_config.to_storage_options())
-        if self.config.storage_options is not None:
-            options.update(self.config.storage_options)
-        return options
 
     def get_dataset(self, source: str) -> xr.Dataset | None:
         """Open a dataset from the cache."""
@@ -452,6 +437,15 @@ class ZarrCache:
             if not bool(is_new.any()):
                 return
             to_add = new_dataset.sel({append_dim: incoming[is_new]})  # type: ignore[misc]
+
+        # Variables combined from multiple source files (e.g. one per forecast_reference_time)
+        # can end up with irregular dask chunking along shared dims even though every slice has
+        # the same length; Zarr requires all chunks but the last to be equal size, so normalize
+        # the chunking before writing. Stale 'chunks'/'preferred_chunks' encoding (e.g. on the
+        # auxiliary 'time' coordinate, inherited from the source files) must be cleared first,
+        # otherwise it overrides the new dask chunking and to_zarr rejects the mismatch.
+        drop_chunk_encoding(to_add)
+        to_add = to_add.chunk(get_chunk_settings_along_forecast_reference_time(to_add))
 
         to_add.to_zarr(  # type: ignore[call-overload]
             self.config.path,
