@@ -433,6 +433,28 @@ class BaseZarrConfig(BaseModel):
         """Return True if ``path`` looks like a remote/fsspec URL (e.g. ``s3://``)."""
         return "://" in self.path
 
+    @property
+    def resolved_storage_options(self) -> dict[str, object] | None:
+        """Build the final storage_options for ``xr.open_zarr``/``to_zarr``.
+
+        Merges 'auth_config' (auto-populated from S3_-prefixed environment variables for
+        remote paths) with the explicit 'storage_options' override. Returns ``None`` for
+        local paths so that xarray opens the store directly from the local filesystem. This
+        is the single place that should ever build storage_options from a ``BaseZarrConfig``
+        - duplicating this logic elsewhere risks silently dropping 'auth_config' (and thus
+        falling back to boto3's default credential discovery instead of the configured
+        S3_-prefixed credentials).
+        """
+        if not self.is_remote_path():
+            return None
+
+        options: dict[str, object] = {}
+        if self.auth_config is not None:
+            options.update(self.auth_config.to_storage_options())
+        if self.storage_options is not None:
+            options.update(self.storage_options)
+        return options
+
     @model_validator(mode="after")
     def validate_zarr_path_accessible(self) -> Self:
         """Check that a local cache dir exists, or initialize S3 auth for remote paths."""

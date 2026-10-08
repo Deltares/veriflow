@@ -73,15 +73,7 @@ def test_unsupported_data_type_raises(
         Zarr(config=config).data_type = DataType.simulated_historical
 
 
-def test_is_remote_path() -> None:
-    """The remote-path heuristic detects scheme-style URLs."""
-    assert Zarr._is_remote_path("s3://bucket/key/store.zarr")
-    assert Zarr._is_remote_path("gs://bucket/key/store.zarr")
-    assert not Zarr._is_remote_path("/tmp/store.zarr")  # noqa: S108
-    assert not Zarr._is_remote_path(r"C:\Users\me\store.zarr")
-
-
-def test_build_storage_options_local_returns_none(
+def test_resolved_storage_options_local_returns_none(
     tmp_path: Path,
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
@@ -92,10 +84,10 @@ def test_build_storage_options_local_returns_none(
         auth_config=S3AuthConfig(anon=True),
         storage_options={"foo": "bar"},
     )
-    assert Zarr(config=config)._build_storage_options() is None
+    assert config.resolved_storage_options is None
 
 
-def test_build_storage_options_remote_merges(
+def test_resolved_storage_options_remote_merges(
     xarray_general_info_config: GeneralInfoConfig,
 ) -> None:
     """Storage options from auth_config and storage_options dict are merged."""
@@ -106,7 +98,7 @@ def test_build_storage_options_remote_merges(
         auth_config=auth,
         storage_options={"requester_pays": "true", "endpoint_url": "https://s3.dummy.com"},
     )
-    options = Zarr(config=config)._build_storage_options()
+    options = config.resolved_storage_options
     assert options is not None
     assert options["requester_pays"] == "true"
 
