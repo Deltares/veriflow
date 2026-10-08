@@ -106,6 +106,7 @@ class FewsWebservice(BaseDatasource):
             url=self.config.auth_config.url.unicode_string(),
             username=self.config.auth_config.username.get_secret_value(),
             password=self.config.auth_config.password.get_secret_value(),
+            verify=self.config.auth_config.verify,
         )
 
     @property
