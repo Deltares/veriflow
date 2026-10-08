@@ -556,7 +556,7 @@ class FewsNetCDF(BaseDatasource):
         # Configure pre-processing
         preprocessor = Preprocessor(
             fews_netcdf_kind=self.config.netcdf_kind,
-            filter_stations=self.config.station_ids,
+            filter_stations=self.config.station_ids if self.config.filter_stations else None,
             filter_lead_times=self.config.lead_times.timedelta64
             if self.config.lead_times is not None
             else None,

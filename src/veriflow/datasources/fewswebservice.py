@@ -299,6 +299,8 @@ class FewsWebservice(BaseDatasource):
                         source_id=self.config.source_id,
                         parameter_ids=self.config.parameter_ids,
                         station_ids=self.config.location_ids,
+                        filter_stations=False,  # The query to the webservice already filters
+                        # stations
                     ),
                 )
                 datasource.cache = None
