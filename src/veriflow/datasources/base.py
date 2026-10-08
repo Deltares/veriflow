@@ -163,6 +163,63 @@ class BaseDatasource(Base):
     def fetch_data(self) -> Self:
         """Fetch data from datasource."""
 
+    def resolve_available_forecast_reference_time_period(self) -> TimePeriod | None:
+        """Return the period actually available from the source right now, if resolvable.
+
+        Used to clamp an open-ended/rolling configured verification period (e.g. "up to now")
+        to what the source can currently serve, so operational runs don't fail by requesting
+        data that hasn't been produced (yet) or has fallen outside the source's retention.
+        Returns None by default, meaning the configured verification period is used as-is.
+
+        When implemented, this method is used during caching. In a standard veriflow run, the
+        period for which to fetch data is defined in the configuration. However, the actual
+        available period from the datasource may differ, and this method allows Veriflow to
+        adjust the verification period accordingly. As a result, we never request data outside
+        the source's actual availability and the cache is only updated with new data if it is
+        available in the datasource.
+        """
+        return None
+
+    def clamp_verification_period_on_frt_to_available_period(self, available: TimePeriod) -> None:
+        """Clamp the configured verification period to the source's currently available period."""
+        verification_period = self.config.general.verification_period
+
+        # In veriflow, users can define the verification period along two dimensions.
+        # If the verification period was originally defined along the time dimension,
+        # we switch it to the forecast_reference_time dimension before clamping.
+        # This is valid, because we currently only resolve the available forecasts and
+        # do not support checking the available data for historical or observed datasources.
+        if verification_period.dimension == "time":
+            # Switch the dimension to forecast reference time
+            verification_period.dimension = "forecast_reference_time"
+            # Reset the start and end based on the verification period on the forecast
+            # reference time dimension. Note: this will compute the period based on the
+            # configured lead times.
+            verification_period.start = self.config.verification_period_on_frt.start
+            verification_period.end = self.config.verification_period_on_frt.end
+
+        clamped_start = max(verification_period.start, available.start)
+        clamped_end = min(verification_period.end, available.end)
+        if clamped_start > clamped_end:
+            msg = (
+                f"Configured verification period ({verification_period.start} to "
+                f"{verification_period.end}) does not overlap with the period available from "
+                f"source '{self.config.source_id}' ({available.start} to {available.end})."
+            )
+            raise ValueError(msg)
+        if clamped_start != verification_period.start or clamped_end != verification_period.end:
+            msg = (
+                f"Configured verification period ({verification_period.start} to "
+                f"{verification_period.end}) exceeds what source '{self.config.source_id}' has "
+                f"available ({available.start} to {available.end}); clamping to "
+                f"({clamped_start} to {clamped_end})."
+            )
+            logger.info(msg)
+
+            # Now clamp the verification period to the available range.
+            verification_period.start = clamped_start
+            verification_period.end = clamped_end
+
     def _validate_data_type(self) -> None:
         # Check that the datatype is defined, and consistent with the config
         if "data_type" not in self.dataset.attrs:  # type:ignore[misc]
@@ -447,6 +504,12 @@ class BaseDatasource(Base):
             f"{self.__class__.__name__}."
         )
         logger.info(msg)
+
+        # Clamp the configured verification period to what the source actually has available,
+        # before it is used to build the cache request or fetch data.
+        available_period = self.resolve_available_forecast_reference_time_period()
+        if available_period is not None:
+            self.clamp_verification_period_on_frt_to_available_period(available_period)
 
         # Check if we should skip fetching data from the cache, and if so, fetch and process the
         # data directly from the datasource.
