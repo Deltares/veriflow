@@ -52,7 +52,7 @@ def align_crs(
     sim_crs = cast("str", sim.attrs[StandardAttribute.crs])  # type: ignore[misc]
     # Fast path: identical CRS strings need no reprojection and no pyproj. Only when the
     # strings differ do we parse them (requiring pyproj) to check for semantic equality.
-    if obs_crs != sim_crs and parse_crs(obs_crs) != parse_crs(sim_crs):
+    if obs_crs != sim_crs and parse_crs(obs_crs) != parse_crs(sim_crs):  # type:ignore[misc]
         msg = (
             f"Observation CRS ('{obs_crs}') and simulation CRS ('{sim_crs}') differ, but no "
             "target CRS is configured on the score. Set 'crs' on the score configuration to "
