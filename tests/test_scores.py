@@ -155,18 +155,30 @@ def test_categorical_scores(
     "Windows for Python 3.13/3.14)",
 )
 @pytest.mark.pysteps
+@pytest.mark.parametrize("ensemble", [False, True])
 def test_sal_score_computes(
     xarray_simulated_forecast_single_gridded: xr.Dataset,
     xarray_general_info_config: object,
+    *,
+    ensemble: bool,
 ) -> None:
-    """The SAL score computes structure/amplitude/location on gridded forecasts."""
+    """SAL preserves non-spatial dimensions and evaluates each member independently."""
     pytest.importorskip("pysteps")
 
     variable = "var_0"
     sim = xarray_simulated_forecast_single_gridded[variable]
     obs = xarray_simulated_forecast_single_gridded["var_1"]
+    if ensemble:
+        sim = xr.concat([sim, sim * 2], dim=xr.IndexVariable("realization", [3, 7]))
     sim.attrs.update(
-        {"data_type": DataType.simulated_forecast_single, "spatial_type": SpatialType.gridded},
+        {
+            "data_type": (
+                DataType.simulated_forecast_ensemble
+                if ensemble
+                else DataType.simulated_forecast_single
+            ),
+            "spatial_type": SpatialType.gridded,
+        },
     )
     obs.attrs.update(
         {"data_type": DataType.observed_historical, "spatial_type": SpatialType.gridded},
@@ -176,10 +188,26 @@ def test_sal_score_computes(
         score_adapter=ScoreKind.sal,
         general=xarray_general_info_config.model_dump(),
     )
-    result = SALScore(config).validate_and_compute(obs=obs, sim=sim)
+    score = SALScore(config)
+    result = score.validate_and_compute(obs=obs, sim=sim)
 
     assert isinstance(result, xr.Dataset)
     assert set(result.data_vars) == {"structure", "amplitude", "location"}
+    expected_dims = tuple(dim for dim in sim.dims if dim not in (StandardDim.y, StandardDim.x))
+    for component in result.data_vars.values():
+        assert component.dims == expected_dims
+        for dim in expected_dims:
+            xr.testing.assert_equal(component[dim], sim[dim])
+
+    if ensemble:
+        for realization in sim.realization.values:
+            member = sim.sel(realization=realization, drop=True)
+            member.attrs["data_type"] = DataType.simulated_forecast_single
+            expected = score.validate_and_compute(obs=obs, sim=member)
+            xr.testing.assert_allclose(result.sel(realization=realization, drop=True), expected)
+        assert not result.amplitude.sel(realization=3, drop=True).equals(
+            result.amplitude.sel(realization=7, drop=True),
+        )
 
 
 def test_ensemble_crps_gridded(
