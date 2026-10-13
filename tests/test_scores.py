@@ -7,14 +7,18 @@ from copy import deepcopy
 import pytest
 import xarray as xr
 
+from veriflow.configuration.base import GeneralInfoConfig
 from veriflow.configuration.default.scores import (
     CategoricalScoresConfig,
     ContinuousScoresConfig,
     CrpsCDFConfig,
     CrpsForEnsembleConfig,
+    EventOperator,
     RankHistogramConfig,
     SALScoreConfig,
+    ThresholdEvent,
 )
+from veriflow.configuration.utils import LeadTimes, VerificationPair, VerificationPeriod
 from veriflow.constants import DataType, ScoreKind, SpatialType, StandardDim
 from veriflow.datasources.fewsnetcdf import FewsNetCDF
 from veriflow.datatree.datatree import VeriflowAccessor
@@ -25,12 +29,12 @@ from veriflow.scores.spatial import SALScore
 
 # mypy: disable-error-code="misc"
 # mypy: disable-error-code="attr-defined"
+# mypy: disable-error-code="list-item"
+# mypy: disable-error-code="no-untyped-call"
 
 pysteps_available = importlib.util.find_spec("pysteps") is not None
 
-_SKIP_PYSTEPS = (
-    sys.version_info >= (3, 13) or not pysteps_available
-)  # pysteps pip install build fails on Windows for Python 3.13/3.14
+_SKIP_PYSTEPS = pysteps_available is False
 
 
 def test_ensemble_crps(
@@ -129,24 +133,176 @@ def test_single_continuous_scores(
     assert "kge" in result
 
 
-def test_categorical_scores(
-    score_config_categorical: CategoricalScoresConfig,
-    xarray_observed_historical: xr.Dataset,
-    xarray_simulated_forecast_single: xr.Dataset,
-    xarray_thresholds: xr.DataArray,
-) -> None:
-    """Test the categorical scores config."""
-    variable = "var_1"
-    obs = xarray_observed_historical[variable]
-    sim = xarray_simulated_forecast_single[variable]
-    obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
-    sim.attrs["data_type"] = xarray_simulated_forecast_single.attrs["data_type"]
-    instance = CategoricalScores(config=score_config_categorical)
-    instance.validate_and_compute(
-        obs=obs,
-        sim=sim,
-        thresholds=xarray_thresholds.dataset[variable],
-    )
+class TestCategoricalScores:
+    """Test suite for categorical scores."""
+
+    def generate_score_config(self, general: GeneralInfoConfig) -> CategoricalScoresConfig:
+        """Generate a categorical scores configuration based on the provided general info."""
+        return CategoricalScoresConfig(
+            score_adapter=ScoreKind.categorical_scores,
+            general=general,
+            scores=["accuracy", "false_alarm_rate"],
+            events=[ThresholdEvent(threshold="warn_2", operator=EventOperator.GREATER_THAN)],
+            reduce_dims=[StandardDim.forecast_reference_time],
+        )
+
+    def test_simulated_forecast_single_point(
+        self,
+        xarray_verification_period: VerificationPeriod,
+        xarray_lead_times: LeadTimes,
+        xarray_observed_historical: xr.Dataset,
+        xarray_simulated_forecast_single: xr.Dataset,
+        xarray_thresholds: xr.DataArray,
+    ) -> None:
+        """Test categorical scores for simulated forecast single point."""
+        variable = "var_1"
+        obs = xarray_observed_historical[variable]
+        sim = xarray_simulated_forecast_single[variable]
+
+        general_info_config = GeneralInfoConfig(
+            verification_period=xarray_verification_period,
+            lead_times=xarray_lead_times,
+            verification_pairs=[
+                VerificationPair(
+                    id="dummy_id",
+                    observations_source_id="observation_source",
+                    simulations_source_id="simulation_single_source",
+                    variable=variable,
+                ),
+            ],
+        )
+        obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
+        sim.attrs["data_type"] = xarray_simulated_forecast_single.attrs["data_type"]
+        instance = CategoricalScores(
+            config=self.generate_score_config(general_info_config),
+        )
+        instance.validate_and_compute(
+            obs=obs,
+            sim=sim,
+            thresholds=xarray_thresholds.dataset[variable],
+        )
+
+    def test_simulated_forecast_ensemble_point(
+        self,
+        xarray_verification_period: VerificationPeriod,
+        xarray_lead_times: LeadTimes,
+        xarray_observed_historical: xr.Dataset,
+        xarray_simulated_forecast_ensemble: xr.Dataset,
+        xarray_thresholds: xr.DataArray,
+    ) -> None:
+        """Test categorical scores for simulated forecast ensemble point."""
+        variable = "var_1"
+        obs = xarray_observed_historical[variable]
+        sim = xarray_simulated_forecast_ensemble[variable]
+
+        general_info_config = GeneralInfoConfig(
+            verification_period=xarray_verification_period,
+            lead_times=xarray_lead_times,
+            verification_pairs=[
+                VerificationPair(
+                    id="dummy_id",
+                    observations_source_id="observation_source",
+                    simulations_source_id="simulation_ensemble_source",
+                    variable=variable,
+                ),
+            ],
+        )
+        obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
+        sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
+        instance = CategoricalScores(
+            config=self.generate_score_config(general_info_config),
+        )
+        result = instance.validate_and_compute(
+            obs=obs,
+            sim=sim,
+            thresholds=xarray_thresholds.dataset[variable],
+        )
+        assert "realization" in result.dims
+        for realization in sim.realization.values:
+            member_sim = sim.sel(realization=realization, drop=True)
+            member_result = instance.validate_and_compute(
+                obs=obs,
+                sim=member_sim,
+                thresholds=xarray_thresholds.dataset[variable],
+            )
+            xr.testing.assert_equal(
+                result.sel(realization=realization, drop=True),
+                member_result,
+            )
+
+    def test_simulated_forecast_single_gridded(
+        self,
+        xarray_verification_period: VerificationPeriod,
+        xarray_lead_times: LeadTimes,
+        xarray_observed_historical_gridded: xr.Dataset,
+        xarray_simulated_forecast_single_gridded: xr.Dataset,
+        xarray_thresholds: xr.DataArray,
+    ) -> None:
+        """Test categorical scores for simulated forecast single gridded."""
+        variable = "var_1"
+        obs = xarray_observed_historical_gridded[variable]
+        sim = xarray_simulated_forecast_single_gridded[variable]
+
+        general_info_config = GeneralInfoConfig(
+            verification_period=xarray_verification_period,
+            lead_times=xarray_lead_times,
+            verification_pairs=[
+                VerificationPair(
+                    id="dummy_id",
+                    observations_source_id="observation_source",
+                    simulations_source_id="simulation_single_source",
+                    variable=variable,
+                ),
+            ],
+        )
+        obs.attrs["data_type"] = xarray_observed_historical_gridded.attrs["data_type"]
+        sim.attrs["data_type"] = xarray_simulated_forecast_single_gridded.attrs["data_type"]
+        instance = CategoricalScores(
+            config=self.generate_score_config(general_info_config),
+        )
+        result = instance.validate_and_compute(
+            obs=obs,
+            sim=sim,
+            thresholds=xarray_thresholds.dataset[variable],
+        )
+        assert "realization" not in result.dims
+
+    def test_simulated_forecast_ensemble_gridded(
+        self,
+        xarray_verification_period: VerificationPeriod,
+        xarray_lead_times: LeadTimes,
+        xarray_observed_historical_gridded: xr.Dataset,
+        xarray_simulated_forecast_ensemble_gridded: xr.Dataset,
+        xarray_thresholds: xr.DataArray,
+    ) -> None:
+        """Test categorical scores for simulated forecast ensemble gridded."""
+        variable = "var_1"
+        obs = xarray_observed_historical_gridded[variable]
+        sim = xarray_simulated_forecast_ensemble_gridded[variable]
+
+        general_info_config = GeneralInfoConfig(
+            verification_period=xarray_verification_period,
+            lead_times=xarray_lead_times,
+            verification_pairs=[
+                VerificationPair(
+                    id="dummy_id",
+                    observations_source_id="observation_source",
+                    simulations_source_id="simulation_ensemble_source",
+                    variable=variable,
+                ),
+            ],
+        )
+        obs.attrs["data_type"] = xarray_observed_historical_gridded.attrs["data_type"]
+        sim.attrs["data_type"] = xarray_simulated_forecast_ensemble_gridded.attrs["data_type"]
+        instance = CategoricalScores(
+            config=self.generate_score_config(general_info_config),
+        )
+        result = instance.validate_and_compute(
+            obs=obs,
+            sim=sim,
+            thresholds=xarray_thresholds.dataset[variable],
+        )
+        assert "realization" in result.dims
 
 
 @pytest.mark.skipif(
@@ -169,7 +325,7 @@ def test_sal_score_computes(
     sim = xarray_simulated_forecast_single_gridded[variable]
     obs = xarray_simulated_forecast_single_gridded["var_1"]
     if ensemble:
-        sim = xr.concat([sim, sim * 2], dim=xr.IndexVariable("realization", [3, 7]))
+        sim = xr.concat([sim, sim * 2], dim=xr.IndexVariable("realization", [3, 7]))  # type:ignore[assignment]
     sim.attrs.update(
         {
             "data_type": (

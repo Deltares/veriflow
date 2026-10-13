@@ -54,12 +54,15 @@ def assign_station_auxiliary_coords(
 def compute_reduce_and_preserve_dims(
     config_reduce_dims: Sequence[StandardDim],
     data_dims: Sequence[Hashable],
+    *,
+    allow_realization_dim: bool = False,
 ) -> tuple[list[StandardDim], list[StandardDim]]:
     """Compute reduce_dims and preserve_dims filtered by actual data dimensions.
 
     Args:
         config_reduce_dims: Dimensions to reduce from config (may not all exist in data)
         data_dims: Actual dimensions present in the data
+        allow_realization_dim: Whether to include the realization dimension in the computation.
 
     Returns
     -------
@@ -74,6 +77,11 @@ def compute_reduce_and_preserve_dims(
         StandardDim.x,
         StandardDim.y,
     ]
+
+    # Optionally include the realization dimension if allowed
+    if allow_realization_dim:
+        all_possible_dims.append(StandardDim.realization)
+
     # Filter config reduce_dims to only those present in data
     reduce_dims = [d for d in config_reduce_dims if d in data_dims]
     # Compute preserve_dims as all possible dims not in reduce_dims, filtered to data dims

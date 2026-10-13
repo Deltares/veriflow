@@ -115,6 +115,26 @@ grid_crs = "EPSG:4326"
 
 
 @pytest.fixture
+def xarray_verification_period() -> VerificationPeriod:
+    """Return the verification period as a VerificationPeriod object."""
+    return VerificationPeriod(
+        start=vp_start,
+        end=vp_end,
+        variable=variables[0],
+        dimension=StandardDim.forecast_reference_time,
+    )
+
+
+@pytest.fixture
+def xarray_lead_times() -> LeadTimes:
+    """Return the lead times as a LeadTimes object."""
+    return LeadTimes(
+        unit=fp_step,
+        values=list(lead_times.to_numpy()),
+    )
+
+
+@pytest.fixture
 def cache_dir_local(tmp_path: Path) -> Path:
     """Pytest cache directory."""
     return str(tmp_path / "sub")
