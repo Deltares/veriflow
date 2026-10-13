@@ -113,7 +113,8 @@ class Zarr(BaseDatasource):
             consolidated=self.config.consolidated,
         )
 
-        dataset = convert_byte_string_coords_to_utf8(dataset, [StandardDim.station])  # type:ignore[misc]
+        if self.config.spatial_type == SpatialType.point:
+            dataset = convert_byte_string_coords_to_utf8(dataset, [StandardDim.station])  # type:ignore[misc]
 
         # Filter the dataset by configured stations and variables, if any. Set the
         # data_type attribute to the configured value, if any.
