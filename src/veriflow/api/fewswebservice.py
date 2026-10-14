@@ -7,7 +7,6 @@ from typing import Union
 
 import requests
 import requests.auth
-import urllib3
 from pydantic_core import Url
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,6 @@ class FewsWebserviceClient:
                 "internal networks; prefer passing a CA bundle path instead."
             )
             logger.warning(verify_warning)
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         if username is not None and password is not None:
             self.session.auth = requests.auth.HTTPBasicAuth(username=username, password=password)
         elif not (username is None and password is None):
