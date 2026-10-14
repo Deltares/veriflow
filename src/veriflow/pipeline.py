@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore | BaseCategoricalScore)
 
 
-def _align_crs(
+def align_crs(
     obs: "xr.DataArray",
     sim: "xr.DataArray",
     target_crs: str | None,
@@ -82,6 +82,16 @@ def merge_user_and_default_items(
     if user_items is None:
         return list(default_items)
     return list(default_items) + list(user_items)
+
+
+def load_config(config: tuple[Path, ConfigKind] | Config) -> Config:
+    """Load a configuration from a file or return it directly if it's already a Config instance."""
+    if isinstance(config, Config):
+        return config
+    return ConfigFile(
+        config_file=config[0],
+        config_type=config[1],
+    ).content
 
 
 def run_pipeline(
@@ -155,12 +165,7 @@ def run_pipeline(
         user_datasinks,
     )
 
-    # Initialize the config instance from file when it's not directly provided
-    if not isinstance(config, Config):
-        config = ConfigFile(
-            config_file=config[0],
-            config_type=config[1],
-        ).content
+    config = load_config(config)
 
     # Log start message
     msg = (
@@ -219,6 +224,12 @@ def run_pipeline(
 
         # Initialize the output datatree and load the raw input data into it
         dt = cast("VeriflowDataTree", xr.DataTree(name="veriflow-datatree"))
+
+        if config.scores is None or len(config.scores) == 0:
+            msg = "No scores configured. Aborting pipeline and returning empty datatree."
+            logger.warning(msg)
+            return dt
+
         dt.veriflow.add_input_data(
             [datasource.dataset for datasource in datasources],
         )
@@ -252,7 +263,7 @@ def run_pipeline(
                 # Align the CRS of obs and sim. When a target CRS is configured on the score,
                 # reproject both to it (results are then expressed in that CRS). Otherwise, obs
                 # and sim must already share the same CRS.
-                obs, sim = _align_crs(obs, sim, score.config.crs)
+                obs, sim = align_crs(obs, sim, score.config.crs)
 
                 # Check if the score is a categorical score, because in that case we need to provide
                 # the thresholds array as well. We do this runtime check, because the contract of

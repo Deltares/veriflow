@@ -268,6 +268,10 @@ class FewsWebserviceAuthConfig(BaseSettings):
     - ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).
     - ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to "" if not required).
     - ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to "" if not required).
+    - ``FEWSWEBSERVICE_VERIFY``: TLS certificate verification. Either ``true``/``false``, or a
+      path to a CA bundle file/directory to use instead of the system default. Defaults to
+      ``true``. Only disable this for trusted internal networks with self-signed certificates;
+      prefer pointing it at a CA bundle instead.
 
     see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage
 
@@ -292,6 +296,9 @@ class FewsWebserviceAuthConfig(BaseSettings):
     url: AnyUrl
     username: SecretStr
     password: SecretStr
+    # union_mode="left_to_right" is required: otherwise pydantic's "smart" union mode matches
+    # any env var string (e.g. "false") against the `str` branch before trying `bool` coercion.
+    verify: Annotated[bool | str, Field(union_mode="left_to_right")] = True
 
 
 class S3AuthConfig(BaseSettings):
@@ -386,6 +393,14 @@ class BaseZarrConfig(BaseModel):
             "relative) or a remote URL such as 's3://bucket/key/store.zarr'.",
         ),
     ]
+    group: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Group within the Zarr store to open. Corresponds to the 'group' "
+            "parameter in xr.open_zarr.",
+        ),
+    ] = None
     auth_config: Annotated[
         S3AuthConfig | None,
         Field(
@@ -417,6 +432,28 @@ class BaseZarrConfig(BaseModel):
     def is_remote_path(self) -> bool:
         """Return True if ``path`` looks like a remote/fsspec URL (e.g. ``s3://``)."""
         return "://" in self.path
+
+    @property
+    def resolved_storage_options(self) -> dict[str, object] | None:
+        """Build the final storage_options for ``xr.open_zarr``/``to_zarr``.
+
+        Merges 'auth_config' (auto-populated from S3_-prefixed environment variables for
+        remote paths) with the explicit 'storage_options' override. Returns ``None`` for
+        local paths so that xarray opens the store directly from the local filesystem. This
+        is the single place that should ever build storage_options from a ``BaseZarrConfig``
+        - duplicating this logic elsewhere risks silently dropping 'auth_config' (and thus
+        falling back to boto3's default credential discovery instead of the configured
+        S3_-prefixed credentials).
+        """
+        if not self.is_remote_path():
+            return None
+
+        options: dict[str, object] = {}
+        if self.auth_config is not None:
+            options.update(self.auth_config.to_storage_options())
+        if self.storage_options is not None:
+            options.update(self.storage_options)
+        return options
 
     @model_validator(mode="after")
     def validate_zarr_path_accessible(self) -> Self:
