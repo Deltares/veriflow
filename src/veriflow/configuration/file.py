@@ -57,7 +57,7 @@ class ConfigFile:
                 datasource.update({"id_mapping": yamlcontent["id_mapping"]})  # type: ignore[attr-defined]
 
         # Propagate the general config to scores
-        if "scores" in yamlcontent:
+        if yamlcontent.get("scores") is not None:
             for score in yamlcontent["scores"]:
                 score.update({"general": yamlcontent["general"]})  # type: ignore[attr-defined]
 
