@@ -190,13 +190,10 @@ class BaseDatasource(Base):
         # This is valid, because we currently only resolve the available forecasts and
         # do not support checking the available data for historical or observed datasources.
         if verification_period.dimension == "time":
-            # Switch the dimension to forecast reference time
+            verification_period_on_frt = self.config.verification_period_on_frt
             verification_period.dimension = "forecast_reference_time"
-            # Reset the start and end based on the verification period on the forecast
-            # reference time dimension. Note: this will compute the period based on the
-            # configured lead times.
-            verification_period.start = self.config.verification_period_on_frt.start
-            verification_period.end = self.config.verification_period_on_frt.end
+            verification_period.start = verification_period_on_frt.start
+            verification_period.end = verification_period_on_frt.end
 
         clamped_start = max(verification_period.start, available.start)
         clamped_end = min(verification_period.end, available.end)
