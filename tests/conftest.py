@@ -23,8 +23,8 @@ from veriflow.configuration.default.datasinks import CFCompliantNetCDFConfig
 from veriflow.configuration.default.datasources import (
     ArchiveKind,
     CsvConfig,
-    FewsWebserviceAuthConfig,
     FewsWebserviceConfig,
+    FewsWebserviceSettings,
     NetCDFConfig,
 )
 from veriflow.configuration.default.scores import (
@@ -432,9 +432,9 @@ def xarray_observed_forecast_single_datasource(
 
 
 @pytest.fixture
-def fews_webservice_auth_config() -> FewsWebserviceAuthConfig:
+def fews_webservice_auth_config() -> FewsWebserviceSettings:
     """Read authorization config from environment."""
-    return FewsWebserviceAuthConfig()
+    return FewsWebserviceSettings()
 
 
 # Test data from Meuse
@@ -572,7 +572,7 @@ def id_mapping_config_fewsnetcdf() -> IdMappingConfig:
 
 @pytest.fixture
 def fews_webservice_observed_historical(
-    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+    fews_webservice_auth_config: FewsWebserviceSettings,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
     fews_general_info_config_ensemble: GeneralInfoConfig,
 ) -> FewsWebservice:
@@ -585,7 +585,7 @@ def fews_webservice_observed_historical(
         parameter_ids=["Q_m"],
         module_instance_id="Hydro_Prep",
         general=fews_general_info_config_ensemble,
-        auth_config=fews_webservice_auth_config,
+        fews_webservice_settings=fews_webservice_auth_config,
         id_mapping=id_mapping_config_fewsnetcdf,
         webservice_version="2025.01",
     )
@@ -594,7 +594,7 @@ def fews_webservice_observed_historical(
 
 @pytest.fixture
 def fews_webservice_simulated_forecast_ensemble_frt(
-    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+    fews_webservice_auth_config: FewsWebserviceSettings,
     id_mapping_config_fewsnetcdf: IdMappingConfig,
     fews_general_info_config_ensemble: GeneralInfoConfig,
 ) -> FewsWebservice:
@@ -610,7 +610,7 @@ def fews_webservice_simulated_forecast_ensemble_frt(
         archive_kind=ArchiveKind.external_storage_archive,
         forecast_retrieval_method=ForecastRetrievalMethod.retrieve_all_forecast_data,
         general=fews_general_info_config_ensemble,
-        auth_config=fews_webservice_auth_config,
+        fews_webservice_settings=fews_webservice_auth_config,
         id_mapping=id_mapping_config_fewsnetcdf,
         webservice_version="2025.01",
     )
@@ -633,7 +633,7 @@ def fews_webservice_simulated_forecast_ensemble_fp(
 
 @pytest.fixture
 def fews_webservice_simulated_forecast_single_frt(
-    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+    fews_webservice_auth_config: FewsWebserviceSettings,
     fews_general_info_config_single: GeneralInfoConfig,
 ) -> FewsWebservice:
     """Fewsnetcdf datasource sim config."""
@@ -647,7 +647,7 @@ def fews_webservice_simulated_forecast_single_frt(
         archive_kind=ArchiveKind.external_storage_archive,
         forecast_retrieval_method=ForecastRetrievalMethod.retrieve_all_forecast_data,
         general=fews_general_info_config_single.model_dump(),
-        auth_config=fews_webservice_auth_config,
+        fews_webservice_settings=fews_webservice_auth_config,
         webservice_version="2025.01",
     )
     return FewsWebservice(config)
@@ -669,7 +669,7 @@ def fews_webservice_simulated_forecast_single_fp(
 
 @pytest.fixture
 def fews_webservice_simulated_forecast_probabilistic_frt(
-    fews_webservice_auth_config: FewsWebserviceAuthConfig,
+    fews_webservice_auth_config: FewsWebserviceSettings,
     fews_general_info_config_probabilistic: GeneralInfoConfig,
 ) -> FewsWebservice:
     """Fewsnetcdf datasource sim config."""
@@ -686,7 +686,7 @@ def fews_webservice_simulated_forecast_probabilistic_frt(
         archive_kind=ArchiveKind.external_storage_archive,
         forecast_retrieval_method=ForecastRetrievalMethod.retrieve_all_forecast_data,
         general=fews_general_info_config_probabilistic.model_dump(),
-        auth_config=fews_webservice_auth_config,
+        fews_webservice_settings=fews_webservice_auth_config,
         webservice_version="2025.01",
     )
     return FewsWebservice(config)

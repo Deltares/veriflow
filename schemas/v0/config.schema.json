@@ -562,37 +562,6 @@
       "title": "FewsNetCDFKind",
       "type": "string"
     },
-    "FewsWebserviceAuthConfig": {
-      "additionalProperties": false,
-      "description": "Get url, username and password safely from environment variables.\n\nThis config class inherits from :class:`pydantic_settings.BaseSettings`,\nthat will try to infer field values from environment variables.\n\nEnvironment variables:\n\n- ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).\n- ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to \"\" if not required).\n- ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to \"\" if not required).\n\nsee: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage\n\nNotes\n-----\nFor local development, an easy and recommended way to set environment variables is to\nuse a ``.env`` file in the project root with the required environment variables, and they\nwill be automatically loaded when you instantiate this config class. For example:\n\n.. code-block:: python\n\n    from dotenv import load_dotenv\n    load_dotenv()  # Load environment variables from .env file\n\n    # You can check that the variables are loaded correctly\n    import os\n    print(os.getenv(\"FEWSWEBSERVICE_URL\"))",
-      "properties": {
-        "url": {
-          "format": "uri",
-          "minLength": 1,
-          "title": "Url",
-          "type": "string"
-        },
-        "username": {
-          "format": "password",
-          "title": "Username",
-          "type": "string",
-          "writeOnly": true
-        },
-        "password": {
-          "format": "password",
-          "title": "Password",
-          "type": "string",
-          "writeOnly": true
-        }
-      },
-      "required": [
-        "url",
-        "username",
-        "password"
-      ],
-      "title": "FewsWebserviceAuthConfig",
-      "type": "object"
-    },
     "FewsWebserviceConfig": {
       "additionalProperties": true,
       "description": "A fews webservice input config element.",
@@ -616,8 +585,8 @@
           "$ref": "#/$defs/SpatialType",
           "default": "point"
         },
-        "auth_config": {
-          "$ref": "#/$defs/FewsWebserviceAuthConfig"
+        "fews_webservice_settings": {
+          "$ref": "#/$defs/FewsWebserviceSettings"
         },
         "location_ids": {
           "items": {
@@ -669,6 +638,20 @@
           "default": null,
           "title": "Qualifier Ids"
         },
+        "time_step_id": {
+          "anyOf": [
+            {
+              "description": "For reference, see the Delft-FEWS API DOCS: https://fewsdocs.deltares.nl/webservices/rest-api/v1/#get-/timeseries Time Step Id. Filter time series by the time step that has been configured in the TimeSteps.xml. N.B.: It is not required to use the timeStepId's in the filter configurations to be able to use them as long as they have been configured in the TimeSteps.xml. Since: 2018.02. ",
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Step Id"
+        },
         "export_id_map": {
           "anyOf": [
             {
@@ -682,27 +665,10 @@
           "default": null,
           "title": "Export Id Map"
         },
-        "webservice_version": {
-          "description": "Please specify the version as 'YYYY.01' or 'YYYY.02",
-          "pattern": "^\\d{4}\\.(0[1-2])$",
-          "title": "Webservice Version",
-          "type": "string"
-        },
-        "archive_kind": {
-          "$ref": "#/$defs/ArchiveKind",
-          "default": "open_archive",
-          "description": "Archive kind. Defaults to a Delft-FEWS Open Archive, which is the Delft-FEWS standard."
-        },
         "forecast_retrieval_method": {
           "$ref": "#/$defs/ForecastRetrievalMethod",
           "default": "retrieve_all_forecast_data",
           "description": "Since Delft-FEWS 2025.01, the Delft-FEWS Webservice canretrieve forecasts for specific lead times (lead times). This avoid having to retrieve all forecast data outside of the configured lead times (lead times) for the verification pipeline. If not provided, the method will be automatically determined based on the configured webservice version."
-        },
-        "max_workers_in_thread_pool": {
-          "default": 2,
-          "description": "This datasource asynchronously retrieves data from the Delft-FEWS webservice. Define here the maximum workers it can use. Use 5-10 for gentle load on the server-side and keep below 30 to avoid instability and minimize the risk of internal server errors.",
-          "title": "Max Workers In Thread Pool",
-          "type": "integer"
         }
       },
       "required": [
@@ -711,10 +677,56 @@
         "data_type",
         "location_ids",
         "parameter_ids",
-        "module_instance_id",
-        "webservice_version"
+        "module_instance_id"
       ],
       "title": "FewsWebserviceConfig",
+      "type": "object"
+    },
+    "FewsWebserviceSettings": {
+      "additionalProperties": false,
+      "description": "Get the FEWS webservice settings safely from environment variables.\n\nThis config class inherits from :class:`pydantic_settings.BaseSettings`,\nthat will try to infer field values from environment variables.\n\nEnvironment variables:\n\n- ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).\n- ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (optional).\n- ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (optional).\n- ``FEWSWEBSERVICE_VERSION``: Version of the FEWS webservice (optional, defaults to \"2025.01\").\n- ``FEWSWEBSERVICE_MAX_WORKERS_IN_THREAD_POOL``: Maximum number of workers in the thread pool (optional, defaults to 2 if not required).\n- ``FEWSWEBSERVICE_ARCHIVE_KIND``: Archive kind of the FEWS webservice (optional, defaults to standard \"open archive\" if not required).\n\nsee: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage\n\nNotes\n-----\nFor local development, an easy and recommended way to set environment variables is to\nuse a ``.env`` file in the project root with the required environment variables, and they\nwill be automatically loaded when you instantiate this config class. For example:\n\n.. code-block:: python\n\n    from dotenv import load_dotenv\n    load_dotenv()  # Load environment variables from .env file\n\n    # You can check that the variables are loaded correctly\n    import os\n    print(os.getenv(\"FEWSWEBSERVICE_URL\"))",
+      "properties": {
+        "url": {
+          "format": "uri",
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "username": {
+          "format": "password",
+          "title": "Username",
+          "type": "string",
+          "writeOnly": true
+        },
+        "password": {
+          "format": "password",
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true
+        },
+        "version": {
+          "default": "2025.01",
+          "description": "Please specify the version as 'YYYY.01' or 'YYYY.02",
+          "pattern": "^\\d{4}\\.(0[1-2])$",
+          "title": "Version",
+          "type": "string"
+        },
+        "max_workers_in_thread_pool": {
+          "default": 2,
+          "title": "Max Workers In Thread Pool",
+          "type": "integer"
+        },
+        "archive_kind": {
+          "$ref": "#/$defs/ArchiveKind",
+          "default": "open_archive"
+        }
+      },
+      "required": [
+        "url",
+        "username",
+        "password"
+      ],
+      "title": "FewsWebserviceSettings",
       "type": "object"
     },
     "ForecastRetrievalMethod": {

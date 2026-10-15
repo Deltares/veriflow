@@ -3,13 +3,13 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import AnyUrl, BaseModel, Field, SecretStr, StringConstraints, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from veriflow.configuration.base import BaseDatasourceConfig
 from veriflow.configuration.utils import (
     BaseZarrConfig,
     CRSString,
-    FewsWebserviceAuthConfig,
     LocalFile,
     LocalFiles,
 )
@@ -47,6 +47,8 @@ FewsWebserviceVersionString = Annotated[
     Field(description="Please specify the version as 'YYYY.01' or 'YYYY.02"),
 ]
 
+API_DOCS_GET_TIMESERIES = "https://fewsdocs.deltares.nl/webservices/rest-api/v1/#get-/timeseries"
+
 
 class FewsWebserviceVersion(BaseModel):
     """Configuration of FEWS Webservice version."""
@@ -61,27 +63,79 @@ class FewsWebserviceVersion(BaseModel):
         return self.year >= year_of_implementation
 
 
+class FewsWebserviceSettings(BaseSettings):
+    """
+    Get the FEWS webservice settings safely from environment variables.
+
+    This config class inherits from :class:`pydantic_settings.BaseSettings`,
+    that will try to infer field values from environment variables.
+
+    Environment variables:
+
+    - ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).
+    - ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (optional).
+    - ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (optional).
+    - ``FEWSWEBSERVICE_VERSION``: Version of the FEWS webservice (optional, defaults to "2025.01").
+    - ``FEWSWEBSERVICE_MAX_WORKERS_IN_THREAD_POOL``: Maximum number of workers in the thread pool (optional, defaults to 2 if not required).
+    - ``FEWSWEBSERVICE_ARCHIVE_KIND``: Archive kind of the FEWS webservice (optional, defaults to standard "open archive" if not required).
+
+    see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage
+
+    Notes
+    -----
+    For local development, an easy and recommended way to set environment variables is to
+    use a ``.env`` file in the project root with the required environment variables, and they
+    will be automatically loaded when you instantiate this config class. For example:
+
+    .. code-block:: python
+
+        from dotenv import load_dotenv
+        load_dotenv()  # Load environment variables from .env file
+
+        # You can check that the variables are loaded correctly
+        import os
+        print(os.getenv("FEWSWEBSERVICE_URL"))
+    """  # noqa: E501
+
+    model_config = SettingsConfigDict(env_prefix="FEWSWEBSERVICE_")
+
+    url: AnyUrl
+    username: SecretStr
+    password: SecretStr
+    version: FewsWebserviceVersionString = "2025.01"
+    max_workers_in_thread_pool: int = 2
+    archive_kind: ArchiveKind = ArchiveKind.open_archive
+
+
 class FewsWebserviceConfig(BaseDatasourceConfig):
     """A fews webservice input config element."""
 
     import_adapter: Literal[DataSourceKind.FEWSWEBSERVICE]
-    auth_config: FewsWebserviceAuthConfig = Field(
-        default_factory=FewsWebserviceAuthConfig,  # type:ignore[misc]
+    fews_webservice_settings: FewsWebserviceSettings = Field(
+        default_factory=FewsWebserviceSettings,  # type:ignore[misc]
     )
     location_ids: Annotated[list[str], Field(min_length=1)]
     parameter_ids: Annotated[list[str], Field(min_length=1)]
     module_instance_id: Annotated[str, Field(min_length=1)]
     ensemble_id: Annotated[str, Field(min_length=1)] | None = None
     qualifier_ids: Annotated[list[str], Field(min_length=1)] | None = None
+    time_step_id: (
+        Annotated[
+            str,
+            Field(
+                min_length=1,
+                description=(
+                    f"For reference, see the Delft-FEWS API DOCS: {API_DOCS_GET_TIMESERIES} "
+                    "Time Step Id. Filter time series by the time step that has been configured "
+                    "in the TimeSteps.xml. N.B.: It is not required to use the timeStepId's in "
+                    "the filter configurations to be able to use them as long as they have been "
+                    "configured in the TimeSteps.xml. Since: 2018.02. "
+                ),
+            ),
+        ]
+        | None
+    ) = None
     export_id_map: Annotated[str, Field(min_length=1)] | None = None
-    webservice_version: FewsWebserviceVersionString
-    archive_kind: Annotated[
-        ArchiveKind,
-        Field(
-            description="Archive kind. Defaults to a Delft-FEWS Open Archive, "
-            "which is the Delft-FEWS standard.",
-        ),
-    ] = ArchiveKind.open_archive
     forecast_retrieval_method: Annotated[
         ForecastRetrievalMethod,
         Field(
@@ -92,15 +146,21 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
             "automatically determined based on the configured webservice version.",
         ),
     ] = ForecastRetrievalMethod.retrieve_all_forecast_data
-    max_workers_in_thread_pool: Annotated[
-        int,
-        Field(
-            description="This datasource asynchronously retrieves data from the "
-            "Delft-FEWS webservice. Define here the maximum workers it can use. "
-            "Use 5-10 for gentle load on the server-side and keep below 30 "
-            "to avoid instability and minimize the risk of internal server errors.",
-        ),
-    ] = 2
+
+    @property
+    def max_workers_in_thread_pool(self) -> int:
+        """Return the maximum number of workers in the thread pool."""
+        return self.fews_webservice_settings.max_workers_in_thread_pool
+
+    @property
+    def archive_kind(self) -> ArchiveKind:
+        """Return the archive kind."""
+        return self.fews_webservice_settings.archive_kind
+
+    @property
+    def webservice_version(self) -> str:
+        """Return the webservice version."""
+        return self.fews_webservice_settings.version
 
     @property
     def webservice_supports_lead_time_in_get_timeseries(self) -> bool:
