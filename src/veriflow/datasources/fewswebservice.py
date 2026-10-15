@@ -18,8 +18,8 @@ from veriflow.api.fewswebservice import DocumentFormat, FewsWebserviceClient, Ti
 from veriflow.configuration.default.datasources import (
     ArchiveKind,
     FewsNetCDFConfig,
-    FewsWebserviceAuthConfig,
     FewsWebserviceConfig,
+    FewsWebserviceSettings,
     ForecastRetrievalMethod,
 )
 from veriflow.constants import FORECAST_DATA_TYPES, DataSourceKind, DataType, SpatialType
@@ -30,10 +30,10 @@ from veriflow.datasources.fewsnetcdf import (
 )
 from veriflow.types import DataSpec
 
-__all__ = [  # noqa: RUF022
+__all__ = [
     "FewsWebservice",
     "FewsWebserviceConfig",
-    "FewsWebserviceAuthConfig",
+    "FewsWebserviceSettings",
 ]
 
 T = TypeVar("T")
@@ -102,9 +102,9 @@ class FewsWebservice(BaseDatasource):
 
         # Initialize the webservice client
         self.client = FewsWebserviceClient(
-            url=self.config.auth_config.url.unicode_string(),
-            username=self.config.auth_config.username.get_secret_value(),
-            password=self.config.auth_config.password.get_secret_value(),
+            url=self.config.fews_webservice_settings.url.unicode_string(),
+            username=self.config.fews_webservice_settings.username.get_secret_value(),
+            password=self.config.fews_webservice_settings.password.get_secret_value(),
         )
 
     @property

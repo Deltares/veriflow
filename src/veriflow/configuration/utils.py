@@ -256,44 +256,6 @@ class LocalFiles(BaseModel):
         return iter(sorted(Path(self.directory).rglob(self.filename_glob)))
 
 
-class FewsWebserviceAuthConfig(BaseSettings):
-    """
-    Get url, username and password safely from environment variables.
-
-    This config class inherits from :class:`pydantic_settings.BaseSettings`,
-    that will try to infer field values from environment variables.
-
-    Environment variables:
-
-    - ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).
-    - ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to "" if not required).
-    - ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to "" if not required).
-
-    see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage
-
-    Notes
-    -----
-    For local development, an easy and recommended way to set environment variables is to
-    use a ``.env`` file in the project root with the required environment variables, and they
-    will be automatically loaded when you instantiate this config class. For example:
-
-    .. code-block:: python
-
-        from dotenv import load_dotenv
-        load_dotenv()  # Load environment variables from .env file
-
-        # You can check that the variables are loaded correctly
-        import os
-        print(os.getenv("FEWSWEBSERVICE_URL"))
-    """
-
-    model_config = SettingsConfigDict(env_prefix="FEWSWEBSERVICE_")
-
-    url: AnyUrl
-    username: SecretStr
-    password: SecretStr
-
-
 class S3AuthConfig(BaseSettings):
     """
     Get S3 credentials and connection info safely from environment variables.

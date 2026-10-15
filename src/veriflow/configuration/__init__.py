@@ -22,4 +22,3 @@ from veriflow.configuration.default.scores import (
     RankHistogramConfig,
 )
 from veriflow.configuration.file import ConfigFile, ConfigKind
-from veriflow.configuration.utils import FewsWebserviceAuthConfig
