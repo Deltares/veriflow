@@ -47,6 +47,8 @@ FewsWebserviceVersionString = Annotated[
     Field(description="Please specify the version as 'YYYY.01' or 'YYYY.02"),
 ]
 
+API_DOCS_GET_TIMESERIES = "https://fewsdocs.deltares.nl/webservices/rest-api/v1/#get-/timeseries"
+
 
 class FewsWebserviceVersion(BaseModel):
     """Configuration of FEWS Webservice version."""
@@ -73,6 +75,22 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
     module_instance_id: Annotated[str, Field(min_length=1)]
     ensemble_id: Annotated[str, Field(min_length=1)] | None = None
     qualifier_ids: Annotated[list[str], Field(min_length=1)] | None = None
+    time_step_id: (
+        Annotated[
+            str,
+            Field(
+                min_length=1,
+                description=(
+                    f"For reference, see the Delft-FEWS API DOCS: {API_DOCS_GET_TIMESERIES} "
+                    "Time Step Id. Filter time series by the time step that has been configured "
+                    "in the TimeSteps.xml. N.B.: It is not required to use the timeStepId's in "
+                    "the filter configurations to be able to use them as long as they have been "
+                    "configured in the TimeSteps.xml. Since: 2018.02. "
+                ),
+            ),
+        ]
+        | None
+    ) = None
     export_id_map: Annotated[str, Field(min_length=1)] | None = None
     webservice_version: FewsWebserviceVersionString
     archive_kind: Annotated[
