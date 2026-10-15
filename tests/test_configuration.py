@@ -12,13 +12,13 @@ from pydantic import BaseModel
 
 from veriflow.configuration import Config
 from veriflow.configuration.base import IdMap, IdMappingConfig
+from veriflow.configuration.default.datasources import FewsWebserviceSettings
 from veriflow.configuration.default.scores import (
     ContinuousScoresConfig,
     CrpsForEnsembleConfig,
     ReduceDims,
 )
 from veriflow.configuration.utils import (
-    FewsWebserviceAuthConfig,
     LeadTimes,
     Range,
     TimeUnits,
@@ -33,15 +33,48 @@ def _mock_env(monkeypatch: Generator[pytest.MonkeyPatch, None, None]) -> None:
     monkeypatch.setenv("FEWSWEBSERVICE_URL", "https://fixture_url.test")  # type: ignore  # noqa: PGH003
     monkeypatch.setenv("FEWSWEBSERVICE_USERNAME", "fixture_user")  # type: ignore  # noqa: PGH003
     monkeypatch.setenv("FEWSWEBSERVICE_PASSWORD", "fixture_pass")  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_VERSION", "2026.01")  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_MAX_WORKERS_IN_THREAD_POOL", "2")  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_ARCHIVE_KIND", "open_archive")  # type: ignore  # noqa: PGH003
 
 
 @pytest.mark.usefixtures("_mock_env")
 def test_auth_config_from_fixture() -> None:
     """Test authorization configuration."""
-    config = FewsWebserviceAuthConfig()
+    config = FewsWebserviceSettings()
     assert str(config.url) == "https://fixture_url.test/"
     assert config.username.get_secret_value() == "fixture_user"
     assert config.password.get_secret_value() == "fixture_pass"
+
+
+@pytest.mark.usefixtures("_mock_env")
+def test_fews_webservice_settings_from_fixture() -> None:
+    """Test the full fews webservice settings configuration."""
+    test_max_workers = 2
+    test_archive_kind = "open_archive"
+    config = FewsWebserviceSettings()
+    assert str(config.url) == "https://fixture_url.test/"
+    assert config.username.get_secret_value() == "fixture_user"
+    assert config.password.get_secret_value() == "fixture_pass"
+    assert config.version == "2026.01"
+    assert config.max_workers_in_thread_pool == test_max_workers
+    assert config.archive_kind == test_archive_kind
+
+
+@pytest.mark.usefixtures("_mock_env")
+def test_fews_webservice_settings_overrides(
+    monkeypatch: Generator[pytest.MonkeyPatch, None, None],
+) -> None:
+    """Test that environment variable overrides are applied correctly."""
+    test_max_workers = 4
+    test_archive_kind = "external_storage_archive"
+    # Set some additional environment variables to test overrides
+    monkeypatch.setenv("FEWSWEBSERVICE_MAX_WORKERS_IN_THREAD_POOL", str(test_max_workers))  # type: ignore  # noqa: PGH003
+    monkeypatch.setenv("FEWSWEBSERVICE_ARCHIVE_KIND", test_archive_kind)  # type: ignore  # noqa: PGH003
+
+    config = FewsWebserviceSettings()
+    assert config.max_workers_in_thread_pool == test_max_workers
+    assert config.archive_kind == test_archive_kind
 
 
 def test_schema_up_to_date(tmp_path: Path) -> None:

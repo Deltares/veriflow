@@ -18,8 +18,8 @@ from veriflow.api.fewswebservice import DocumentFormat, FewsWebserviceClient, Ti
 from veriflow.configuration.default.datasources import (
     ArchiveKind,
     FewsNetCDFConfig,
-    FewsWebserviceAuthConfig,
     FewsWebserviceConfig,
+    FewsWebserviceSettings,
     ForecastRetrievalMethod,
 )
 from veriflow.configuration.utils import TimePeriod
@@ -31,10 +31,10 @@ from veriflow.datasources.fewsnetcdf import (
 )
 from veriflow.types import DataSpec
 
-__all__ = [  # noqa: RUF022
+__all__ = [
     "FewsWebservice",
     "FewsWebserviceConfig",
-    "FewsWebserviceAuthConfig",
+    "FewsWebserviceSettings",
 ]
 
 T = TypeVar("T")
