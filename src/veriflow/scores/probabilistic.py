@@ -10,8 +10,7 @@ For reference, see: https://scores.readthedocs.io/en/stable/included.html#probab
 from typing import ClassVar
 
 import xarray as xr
-from scores.probability import crps_cdf, crps_for_ensemble  # type: ignore[import-untyped]
-from xskillscore import rank_histogram  # type: ignore[import-untyped]
+from scores.probability import crps_cdf, crps_for_ensemble, rank_histogram  # type: ignore[import-untyped]
 
 from veriflow.configuration.default.scores import (
     CrpsCDFConfig,
