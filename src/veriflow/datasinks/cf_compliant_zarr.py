@@ -23,6 +23,10 @@ class CFCompliantZarr(BaseDatasink):
     will be stored as a separate group within the zarr store. Each subgroup corresponds to a
     specific verification pair and contains both input data and output data.
 
+    Dask chunks are aligned with the target Zarr chunks during export, including
+    coordinates whose storage encoding was inherited from an input store.
+    Chunk-safety validation remains enabled.
+
     .. note::
         CF-compliancy is not yet fully implemented.
     """
@@ -62,10 +66,19 @@ class CFCompliantZarr(BaseDatasink):
         # Persist the `xr.DataTree` attributes to the filtered DataTree
         filtered_dt.attrs = dt.attrs.copy()  # type: ignore[misc]
 
+        storage_options: dict[str, object] | None = None
+        if self.config.is_remote_path():
+            storage_options = {}
+            if self.config.auth_config is not None:
+                storage_options.update(self.config.auth_config.to_storage_options())
+            if self.config.storage_options is not None:
+                storage_options.update(self.config.storage_options)
+
         filtered_dt.to_zarr(
             self.config.path,
-            storage_options=self.config.storage_options,
+            storage_options=storage_options,
             # "None" means "let xarray auto-detect" only for reading; to_zarr requires a bool.
             consolidated=self.config.consolidated if self.config.consolidated is not None else True,
             mode="w" if self.config.force_overwrite else "w-",
+            align_chunks=True,
         )
