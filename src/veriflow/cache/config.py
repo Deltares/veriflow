@@ -41,3 +41,10 @@ class ZarrCacheConfig(BaseZarrConfig):
         ReadWriteMode.read,
         description="The read/write mode for the cache.",
     )
+    source_ids: list[str] | None = Field(
+    default=None,
+    description=(
+        "Datasource source_ids allowed to read from and write to the cache. "
+        "Null allows all sources; an empty list disables caching for all sources."
+    ),
+)

@@ -10,8 +10,7 @@ For reference, see: https://scores.readthedocs.io/en/stable/included.html#probab
 from typing import ClassVar
 
 import xarray as xr
-from scores.probability import crps_cdf, crps_for_ensemble  # type: ignore[import-untyped]
-from xskillscore import rank_histogram  # type: ignore[import-untyped]
+from scores.probability import crps_cdf, crps_for_ensemble, rank_histogram  # type: ignore[import-untyped]
 
 from veriflow.configuration.default.scores import (
     CrpsCDFConfig,
@@ -115,9 +114,9 @@ class RankHistogram(BaseScore):
         reduce_dims, _ = compute_reduce_and_preserve_dims(self.config.reduce_dims, sim.dims)
         # Pass empty list to preserve all dimensions, or the filtered reduce_dims
         result: xr.DataArray | xr.Dataset = rank_histogram(
-            observations=obs,
-            forecasts=sim,
-            dim=reduce_dims or [],
-            member_dim=StandardDim.realization.value,
+            obs=obs,
+            fcst=sim,
+            reduce_dims=reduce_dims or [],
+            ens_member_dim=StandardDim.realization.value,
         )
         return result
