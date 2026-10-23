@@ -186,7 +186,13 @@ def run_pipeline(
 
         # If caching is enabled, assign the cache to the datasource, so it can use it to store and
         # retrieve data
-        datasource.cache = cache
+        if cache is not None and (
+            cache.config.source_ids is None
+            or datasource.config.source_id in cache.config.source_ids
+        ):
+            datasource.cache = cache
+        else:
+            datasource.cache = None
 
         datasources.append(datasource)
 
