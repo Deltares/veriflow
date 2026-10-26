@@ -180,9 +180,6 @@ class FewsWebservice(BaseDatasource):
         returned period is narrower, so the configured period gets clamped to it). Only forecast
         data types are supported.
         """
-        if self.config.data_type not in FORECAST_DATA_TYPES:
-            return None
-
         forecast_reference_times = self._fetch_forecast_reference_times(
             self.config.verification_period_on_frt,
         )
