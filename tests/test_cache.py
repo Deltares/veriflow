@@ -25,6 +25,7 @@ from veriflow.datasources.netcdf import NetCDF
 _EXPECTED_MISSING_COUNT_MULTI = 2
 _EXPECTED_COMBINED_TIME_SIZE = 3
 _EXPECTED_FRT_SIZE = 4
+_EXPECTED_DEDUPLICATED_TIME_SIZE = 2
 
 # ---------------------------------------------------------------------------
 # DataRequest.get_missing_and_available
@@ -450,6 +451,99 @@ class TestZarrCache:
         )
         assert ZarrCache(cfg_w).is_writable
         assert not ZarrCache(cfg_r).is_writable
+
+    def test_append_observed_historical_along_time_over_three_days(
+        self,
+        cache_dir_local: str,
+    ) -> None:
+        """Verify overlapping seven-day windows extend the cache without duplicating history."""
+        store_path = Path(cache_dir_local) / "store_observations.zarr"
+        cfg = ZarrCacheConfig(
+            path=str(store_path),
+            read_write_mode=ReadWriteMode.read_write,
+        )
+        cache = ZarrCache(cfg)
+        times = np.arange(
+            np.datetime64("2020-01-01T00", "ns"),
+            np.datetime64("2020-01-11T00", "ns"),
+            np.timedelta64(1, "h"),
+        )
+        stations = ["s1", "s2"]
+        expected = xr.Dataset(
+            {
+                "v1": (
+                    ("time", "station"),
+                    np.arange(times.size * len(stations), dtype="float32").reshape(
+                        times.size,
+                        len(stations),
+                    ),
+                ),
+            },
+            coords={"time": times, "station": stations},
+            attrs={"data_type": DataType.observed_historical},
+        )
+        hours_per_day = 24
+        history_days = 7
+        initial = expected.isel(time=slice(0, history_days * hours_per_day))
+        cache.append(initial, source="observations", append_dim=StandardDim.time)
+        assert store_path.is_dir()
+        xr.testing.assert_equal(cache.get_dataset(source="observations"), initial)
+
+        for day in range(1, 4):
+            start = day * hours_per_day
+            end = (day + history_days) * hours_per_day
+            daily_observations = expected.isel(time=slice(start, end))
+            cache.append(
+                daily_observations,
+                source="observations",
+                append_dim=StandardDim.time,
+            )
+
+            result = cache.get_dataset(source="observations")
+            xr.testing.assert_equal(result, expected.isel(time=slice(0, end)))
+            with xr.open_zarr(store_path, group="datasets/observations") as persisted:
+                xr.testing.assert_equal(persisted, expected.isel(time=slice(0, end)))
+
+    def test_append_drops_duplicate_time_values_within_new_dataset(
+        self,
+        cache_dir_local: str,
+    ) -> None:
+        """Verify duplicate coordinate values within a single appended dataset are dropped.
+
+        Datasources can hand back a dataset with repeated time values (e.g. when combining
+        overlapping source files). ``append`` should keep only the first occurrence of each
+        duplicated time, rather than writing both copies to the store.
+        """
+        store_path = Path(cache_dir_local) / "store_duplicates.zarr"
+        cfg = ZarrCacheConfig(
+            path=str(store_path),
+            read_write_mode=ReadWriteMode.read_write,
+        )
+        cache = ZarrCache(cfg)
+        # "2020-01-01" is repeated; the second occurrence carries different (stale) values that
+        # should be dropped in favor of the first occurrence.
+        times = np.array(
+            ["2020-01-01", "2020-01-02", "2020-01-01"],
+            dtype="datetime64[ns]",
+        )
+        stations = ["s1", "s2"]
+        arr = np.arange(6, dtype="float32").reshape(3, 2)
+        ds_with_duplicates = xr.Dataset(
+            {"v1": (("time", "station"), arr)},
+            coords={"time": times, "station": stations},
+            attrs={"data_type": DataType.observed_historical},
+        )
+
+        cache.append(ds_with_duplicates, source="observations", append_dim=StandardDim.time)
+
+        result = cache.get_dataset(source="observations")
+        assert result["time"].size == _EXPECTED_DEDUPLICATED_TIME_SIZE
+        np.testing.assert_array_equal(
+            result["time"].to_numpy(),
+            np.array(["2020-01-01", "2020-01-02"], dtype="datetime64[ns]"),
+        )
+        # The first occurrence of the duplicated timestamp (row 0) must be the one kept.
+        np.testing.assert_array_equal(result["v1"].to_numpy()[0], arr[0])
 
     # ------------------------------------------------------------------
     # Remote (https / s3) cache configuration

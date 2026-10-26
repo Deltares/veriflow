@@ -399,6 +399,27 @@ class ZarrCache:
 
         return ds
 
+    @staticmethod
+    def _drop_duplicate_coords(dataset: xr.Dataset, dim: str) -> xr.Dataset:
+        """Drop duplicate coordinate values along ``dim``, keeping the first occurrence.
+
+        Datasources can hand back a dataset with repeated coordinate values along ``dim`` (e.g.
+        when combining multiple source files with overlapping time ranges). The ``is_new`` check
+        in :meth:`append` only compares incoming values against what is already cached, so it
+        would not catch duplicates that are already present within ``dataset`` itself - those
+        would otherwise be written to the store as-is and persist as duplicates on every
+        subsequent read.
+        """
+        deduplicated = dataset.drop_duplicates(dim, keep="first")
+        n_dropped = dataset.sizes[dim] - deduplicated.sizes[dim]
+        if n_dropped > 0:
+            msg = (
+                f"Dropping {n_dropped} duplicate coordinate value(s) along dimension '{dim}' "
+                "from the dataset before writing to the cache."
+            )
+            logger.warning(msg)
+        return deduplicated
+
     def append(
         self,
         new_dataset: xr.Dataset,
@@ -417,7 +438,13 @@ class ZarrCache:
         cached; the cached data itself is never loaded into memory, keeping the cache
         lazy-friendly. New coordinate values are appended along ``dim`` (``append_dim``), new
         variables are added in place (``mode="a"``), and an empty store is created from scratch.
+        Duplicate coordinate values within ``new_dataset`` itself along ``append_dim`` are
+        dropped (keeping the first occurrence) before writing, since the store is never
+        deduplicated after the fact.
         """
+        if append_dim is not None and append_dim in new_dataset.coords:
+            new_dataset = self._drop_duplicate_coords(new_dataset, append_dim)
+
         cached = self.get_dataset(source)
         group = f"datasets/{source}"
 
