@@ -78,7 +78,7 @@ class CFCompliantZarr(BaseDatasink):
         filtered_dt.to_zarr(
             self.config.path,
             storage_options=self.config.resolved_storage_options,
-            # "None" means "let xarray auto-detect" only for reading; to_zarr requires a bool.
+            group=self.config.group,
             consolidated=self.config.consolidated if self.config.consolidated is not None else True,
             mode="w" if self.config.force_overwrite else "w-",
         )
