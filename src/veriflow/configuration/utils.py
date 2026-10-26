@@ -169,6 +169,10 @@ class TimePeriod(BaseModel):
         """Get start as numpy format."""
         return np.datetime64(self.end)
 
+    def as_formatted_string(self) -> str:
+        """Get the time period as a formatted string."""
+        return f"{self.start.isoformat()} - {self.end.isoformat()}"
+
 
 class VerificationPeriod(TimePeriod):
     """Definition of the verification period."""

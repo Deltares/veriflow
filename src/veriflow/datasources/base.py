@@ -180,6 +180,13 @@ class BaseDatasource(Base):
         """
         return None
 
+    def _implements_frt_resolution(self) -> bool:
+        """Check if the datasource implements forecast reference time resolution."""
+        return (
+            type(self).resolve_available_forecast_reference_time_period
+            is not BaseDatasource.resolve_available_forecast_reference_time_period
+        )
+
     def clamp_verification_period_on_frt_to_available_period(self, available: TimePeriod) -> None:
         """Clamp the configured verification period to the source's currently available period."""
         verification_period = self.config.general.verification_period
@@ -526,9 +533,18 @@ class BaseDatasource(Base):
 
         # Clamp the configured verification period to what the source actually has available,
         # before it is used to build the cache request or fetch data.
-        available_period = self.resolve_available_forecast_reference_time_period()
-        if available_period is not None:
-            self.clamp_verification_period_on_frt_to_available_period(available_period)
+        if self.config.data_type in FORECAST_DATA_TYPES and self._implements_frt_resolution():
+            available_period = self.resolve_available_forecast_reference_time_period()
+            if available_period is not None:
+                self.clamp_verification_period_on_frt_to_available_period(available_period)
+            else:
+                msg = (
+                    f"No forecasts available for source '{self.config.source_id}' for "
+                    f"verification period: {self.config.verification_period_on_frt.as_formatted_string()}. "  # noqa: E501
+                    f"returning without fetching data from the datasource."
+                )
+                logger.warning(msg)
+                return self
 
         # Check if we should skip fetching data from the cache, and if so, fetch and process the
         # data directly from the datasource.
