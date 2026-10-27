@@ -51,6 +51,19 @@ def drop_chunk_encoding(obj: xr.Dataset | xr.DataTree) -> None:
             variable.encoding.pop("preferred_chunks", None)  # type:ignore[misc]
 
 
+def chunk_along_forecast_reference_time(obj: xr.Dataset | xr.DataTree) -> xr.Dataset | xr.DataTree:
+    """Chunk along the forecast reference time dimension with size 1.
+
+    This function first resets any existing chunk encoding on the dataset or DataTree,
+    by calling :func:`drop_chunk_encoding` and then chunks along the forecast reference
+    time dimension according to the settings returned by
+    :func:`get_chunk_settings_along_forecast_reference_time`. Chunks along all other dimensions
+    are set to -1 (i.e. unchunked).
+    """
+    drop_chunk_encoding(obj)
+    return obj.chunk(get_chunk_settings_along_forecast_reference_time(obj))
+
+
 def _decode_utf8(value: bytes | str) -> str:
     return value.decode("utf-8") if isinstance(value, bytes) else value
 
