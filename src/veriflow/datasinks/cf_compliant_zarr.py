@@ -7,7 +7,7 @@ from veriflow.configuration.default.datasinks import CFCompliantZarrConfig
 from veriflow.constants import NAME, VERSION
 from veriflow.datasinks.base import BaseDatasink
 from veriflow.datatree.datatree import VeriflowDataTree
-from veriflow.utils import drop_chunk_encoding, get_chunk_settings_along_forecast_reference_time
+from veriflow.utils import chunk_along_forecast_reference_time
 
 __all__ = [
     "CFCompliantZarr",
@@ -63,17 +63,8 @@ class CFCompliantZarr(BaseDatasink):
         # Persist the `xr.DataTree` attributes to the filtered DataTree
         filtered_dt.attrs = dt.attrs.copy()  # type: ignore[misc]
 
-        # Score/output variables are frequently built by combining per-forecast_reference_time
-        # slices (e.g. crps), which can leave irregular dask chunking along shared dims even
-        # though every slice has the same length; Zarr requires all chunks but the last to be
-        # equal size, so normalize the chunking before writing. Stale 'chunks'/'preferred_chunks'
-        # encoding (e.g. on the auxiliary 'time' coordinate, inherited from the source files)
-        # must be cleared first, otherwise it overrides the new dask chunking and to_zarr
-        # rejects the mismatch.
-        drop_chunk_encoding(filtered_dt)
-        filtered_dt = filtered_dt.chunk(
-            get_chunk_settings_along_forecast_reference_time(filtered_dt),
-        )
+        # Chunk the datatree along the forecast reference time dimension before writing to Zarr.
+        filtered_dt = chunk_along_forecast_reference_time(filtered_dt)
 
         filtered_dt.to_zarr(
             self.config.path,

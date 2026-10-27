@@ -14,7 +14,7 @@ from zarr.errors import GroupNotFoundError
 from veriflow.cache.config import ReadWriteMode, ZarrCacheConfig
 from veriflow.configuration.utils import LeadTimes, TimePeriod
 from veriflow.constants import FORECAST_DATA_TYPES, HISTORICAL_DATA_TYPES, StandardDim, TimeUnits
-from veriflow.utils import drop_chunk_encoding, get_chunk_settings_along_forecast_reference_time
+from veriflow.utils import chunk_along_forecast_reference_time
 
 logger = logging.getLogger(__name__)
 
@@ -465,14 +465,8 @@ class ZarrCache:
                 return
             to_add = new_dataset.sel({append_dim: incoming[is_new]})  # type: ignore[misc]
 
-        # Variables combined from multiple source files (e.g. one per forecast_reference_time)
-        # can end up with irregular dask chunking along shared dims even though every slice has
-        # the same length; Zarr requires all chunks but the last to be equal size, so normalize
-        # the chunking before writing. Stale 'chunks'/'preferred_chunks' encoding (e.g. on the
-        # auxiliary 'time' coordinate, inherited from the source files) must be cleared first,
-        # otherwise it overrides the new dask chunking and to_zarr rejects the mismatch.
-        drop_chunk_encoding(to_add)
-        to_add = to_add.chunk(get_chunk_settings_along_forecast_reference_time(to_add))
+        # Chunk the dataset along the forecast reference time dimension before writing to Zarr.
+        to_add = chunk_along_forecast_reference_time(to_add)
 
         to_add.to_zarr(  # type: ignore[call-overload]
             self.config.path,
