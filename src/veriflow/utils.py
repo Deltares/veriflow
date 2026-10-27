@@ -81,3 +81,38 @@ def convert_byte_string_coords_to_utf8(
     for coord in coords_to_convert:
         ds = ds.assign_coords({coord: convert_byte_string_coord_to_utf8(ds[coord])})  # type:ignore[misc]
     return ds
+
+
+def convert_timedelta64_list_to_largest_common_unit(time_deltas: list[np.timedelta64]) -> list[str]:
+    """Format a list of lead times as strings."""
+
+    def determine_smallest_unit(time_deltas: list[np.timedelta64]) -> str:
+        """Determine the largest time unit, in which all lead times can be expressed as integers."""
+        if not time_deltas:
+            msg = "Lead times list is empty."
+            raise ValueError(msg)
+
+        time_deltas = [lt.astype("timedelta64[ns]") for lt in time_deltas]  # Normalize to ns
+
+        units = ["D", "h", "m", "s", "ms", "us", "ns"]
+        for unit in units:
+            if all(
+                (lt / np.timedelta64(1, unit)).astype(int) * np.timedelta64(1, unit) == lt
+                for lt in time_deltas
+            ):
+                return unit
+
+        # If the unit cannot be determined, return minutes by default
+        return "m"
+
+    smallest_unit = determine_smallest_unit(time_deltas)
+    return [
+        str((lt / np.timedelta64(1, smallest_unit)).astype(int)) + smallest_unit
+        for lt in time_deltas
+    ]
+
+
+def stringify_timedelta64_list(time_deltas: list[np.timedelta64]) -> list[str]:
+    """Convert a list of np.timedelta64 objects to strings with the largest common unit."""
+    converted_time_deltas = convert_timedelta64_list_to_largest_common_unit(time_deltas)
+    return [str(td) for td in converted_time_deltas]

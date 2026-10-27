@@ -28,6 +28,7 @@ from veriflow.constants import (
 )
 from veriflow.datasources.inputschemas import validate_input_data
 from veriflow.types import DataSpec
+from veriflow.utils import convert_timedelta64_list_to_largest_common_unit
 
 logger = logging.getLogger(__name__)
 
@@ -275,15 +276,10 @@ class BaseDatasource(Base):
                 requested_lead_times = lead_times.timedelta64
                 dataset_lead_times = dataset[StandardDim.lead_time].to_numpy()  # type:ignore[misc]
 
-                # Express the lead times as hours for easier comparison and readability
-                requested_lead_times = [
-                    lt.astype("timedelta64[h]") for lt in lead_times.timedelta64
-                ]
-                dataset_lead_times = [lt.astype("timedelta64[h]") for lt in dataset_lead_times]  # type:ignore[misc, assignment]
-
                 msg = (
-                    f"Requested lead times {requested_lead_times} are not available in the dataset."
-                    f" Available lead times: {dataset_lead_times}"  # type:ignore[misc]
+                    f"Requested lead times {convert_timedelta64_list_to_largest_common_unit(requested_lead_times)} are "
+                    f"not available in the dataset."
+                    f" Available lead times: {convert_timedelta64_list_to_largest_common_unit(dataset_lead_times)}"  # type:ignore[misc]
                 )
                 raise KeyError(msg) from e
         return dataset
