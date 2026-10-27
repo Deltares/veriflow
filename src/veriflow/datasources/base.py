@@ -277,9 +277,9 @@ class BaseDatasource(Base):
                 dataset_lead_times = dataset[StandardDim.lead_time].to_numpy()  # type:ignore[misc]
 
                 msg = (
-                    f"Requested lead times {convert_timedelta64_list_to_largest_common_unit(requested_lead_times)} are "
+                    f"Requested lead times {convert_timedelta64_list_to_largest_common_unit(requested_lead_times)} are "  # noqa: E501
                     f"not available in the dataset."
-                    f" Available lead times: {convert_timedelta64_list_to_largest_common_unit(dataset_lead_times)}"  # type:ignore[misc]
+                    f" Available lead times: {convert_timedelta64_list_to_largest_common_unit(dataset_lead_times)}"  # type:ignore[misc] # noqa: E501
                 )
                 raise KeyError(msg) from e
         return dataset
