@@ -92,3 +92,58 @@ def test_get_data_retrieval_methods_return_equal_data_arrays(
     b = ds_b.get_data().dataset
 
     xr.testing.assert_equal(a, b)
+
+
+class TestFewsNetCDFFilterStations:
+    """Test suite for the filter_stations functionality in FewsNetCDF."""
+
+    def test_fewsnetcdf_filter_stations_applied(
+        self,
+        fews_netcdf_simulated_forecast_single_frt: FewsNetCDF,
+    ) -> None:
+        """Check that the filter_stations configuration is applied correctly."""
+        station_ids = ["H-MS-SINT"]
+
+        # Update config
+        fews_netcdf_simulated_forecast_single_frt.config.filter_stations = True
+        fews_netcdf_simulated_forecast_single_frt.config.station_ids = station_ids
+        if fews_netcdf_simulated_forecast_single_frt.config.filter_stations:
+            datasource = fews_netcdf_simulated_forecast_single_frt.get_data()
+            assert all(
+                station_id in datasource.dataset[StandardDim.station].to_numpy()  # type:ignore[misc]
+                for station_id in station_ids
+            )
+
+    def test_fewsnetcdf_filter_stations_raises_on_non_existing_station(
+        self,
+        fews_netcdf_simulated_forecast_single_frt: FewsNetCDF,
+    ) -> None:
+        """Check that an error is raised when the specified station_ids do not exist."""
+        fews_netcdf_simulated_forecast_single_frt.config.filter_stations = True
+        fews_netcdf_simulated_forecast_single_frt.config.station_ids = ["non_existing_station"]
+        with pytest.raises(KeyError, match="not all values found in index 'station'"):
+            fews_netcdf_simulated_forecast_single_frt.get_data()
+
+
+class TestFewsNetCDFFilterVariables:
+    """Test suite for the filter_variables functionality in FewsNetCDF."""
+
+    def test_fewsnetcdf_filter_variables_applied(
+        self,
+        fews_netcdf_simulated_forecast_single_frt: FewsNetCDF,
+    ) -> None:
+        """Check that the filter_variables configuration is applied correctly."""
+        parameter_ids = ["discharge"]
+
+        fews_netcdf_simulated_forecast_single_frt.config.parameter_ids = parameter_ids
+        datasource = fews_netcdf_simulated_forecast_single_frt.get_data()
+        assert all(variable_id in datasource.dataset.data_vars for variable_id in parameter_ids)
+
+    def test_fewsnetcdf_filter_variables_raises_on_non_existing_variable(
+        self,
+        fews_netcdf_simulated_forecast_single_frt: FewsNetCDF,
+    ) -> None:
+        """Check that an error is raised when the specified parameter_ids do not exist."""
+        fews_netcdf_simulated_forecast_single_frt.config.parameter_ids = ["non_existing_variable"]
+        with pytest.raises(KeyError, match="non_existing_variable"):
+            fews_netcdf_simulated_forecast_single_frt.get_data()
