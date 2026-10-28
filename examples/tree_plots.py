@@ -314,7 +314,7 @@ def rank_histogram_plot(
     *,
     pair_ids: Sequence[str] | None = None,
     score_name: str = "rank_histogram",
-    rank_var: str = "histogram_rank",
+    rank_var: str = "rank_histogram",
     station: object | None = None,
     lead_time: object | None = None,
     template: go.layout.Template = PLOT_TEMPLATE,
@@ -388,7 +388,7 @@ def rank_histogram_3d_plot(
     *,
     pair_ids: Sequence[str] | None = None,
     score_name: str = "rank_histogram",
-    rank_var: str = "histogram_rank",
+    rank_var: str = "rank_histogram",
     station: object | None = None,
     template: go.layout.Template = PLOT_TEMPLATE,
 ) -> go.Figure:
@@ -397,7 +397,7 @@ def rank_histogram_3d_plot(
     This is a three-dimensional version of :func:`rank_histogram_plot`. Instead of collapsing
     the dataset to a single lead time, the ``lead_time`` axis is kept and shown as a third
     dimension: for each verification pair a 3D surface is drawn with ``rank`` on the x-axis,
-    ``lead_time`` (in hours) on the y-axis, and the rank count on the z-axis. This shows all
+    ``lead_time`` (in hours) on the y-axis, and the rank freq on the z-axis. This shows all
     rank histograms across lead times in one figure, so the evolution of the histogram shape
     with increasing lead time becomes visible.
 
@@ -449,7 +449,7 @@ def rank_histogram_3d_plot(
     grid.update_scenes(
         xaxis_title_text="Rank",
         yaxis_title_text="Lead time (h)",
-        zaxis_title_text="Count",
+        zaxis_title_text="Relative Frequency",
     )
     grid.update_layout(
         template=template,
