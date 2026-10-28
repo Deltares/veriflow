@@ -14,6 +14,7 @@ from zarr.errors import GroupNotFoundError
 from veriflow.cache.config import ReadWriteMode, ZarrCacheConfig
 from veriflow.configuration.utils import LeadTimes, TimePeriod
 from veriflow.constants import FORECAST_DATA_TYPES, HISTORICAL_DATA_TYPES, StandardDim, TimeUnits
+from veriflow.utils import _chunk_along_forecast_reference_time
 
 logger = logging.getLogger(__name__)
 
@@ -78,21 +79,23 @@ class DataRequest(BaseModel):
                 C      ####
                 missing:   R               available: (none)
 
-            (4) left overlap (R starts before C)
+            (4) left overlap (R starts before C, C covers R's end)
                 R   ######
-                C       ######
+                C       ########
                 missing:   R.start .. C.start
                 available: C.start .. R.end
 
-            (5) right overlap (R starts inside C)
-                R       ######
+            (5) right overlap (C covers R's start, R ends after C)
+                R       ########
                 C   ######
                 missing:   C.end .. R.end
                 available: R.start .. C.end
+
+        An edge shared exactly between R and C (e.g. ``R.end == C.end``) counts as covered on
+        that side, not as a gap - this matters because R.end routinely resolves to the same
+        rolling-archive boundary that was already cached on a previous run, and treating that
+        as "still missing" would discard an already-cached range and re-fetch everything.
         """
-        # Requested fully contained in (or equal to) cached → nothing missing.
-        if requested.start >= cached.start and requested.end <= cached.end:
-            return None, requested
         #  RRRR
         #        CCCC
         if requested.end <= cached.start:
@@ -101,26 +104,27 @@ class DataRequest(BaseModel):
         #  CCCC
         if requested.start >= cached.end:
             return requested, None
+        # Requested fully contained in (or equal to) cached → nothing missing.
+        if requested.start >= cached.start and requested.end <= cached.end:
+            return None, requested
         #  RRRR
-        #   CC      (cached strictly inside requested)
-        if requested.start <= cached.start and requested.end >= cached.end:
+        #   CC      (cached strictly inside requested on both sides - can't be expressed as a
+        #            single missing/available pair, so treat all of it as missing)
+        if requested.start < cached.start and requested.end > cached.end:
             return requested, None
         # RRRR
-        #   CCCC    (left overlap: requested starts before cached, ends inside cached)
-        if requested.start < cached.start <= requested.end < cached.end:
+        #   CCCC    (left overlap: only the start is missing, cache covers up to/past R.end)
+        if requested.start < cached.start:
             return TimePeriod(start=requested.start, end=cached.start), TimePeriod(
                 start=cached.start,
                 end=requested.end,
             )
         #   RRRR
-        # CCCC      (right overlap: requested starts inside cached, ends after cached)
-        if cached.start < requested.start <= cached.end < requested.end:
-            return TimePeriod(start=cached.end, end=requested.end), TimePeriod(
-                start=requested.start,
-                end=cached.end,
-            )
-        msg = "Unexpected case of intersecting time periods."
-        raise ValueError(msg)
+        # CCCC      (right overlap: only the end is missing, cache covers from/before R.start)
+        return TimePeriod(start=cached.end, end=requested.end), TimePeriod(
+            start=requested.start,
+            end=cached.end,
+        )
 
     @staticmethod
     def _to_lead_times(values: list[np.timedelta64]) -> LeadTimes:
@@ -339,25 +343,9 @@ class ZarrCache:
         config: ZarrCacheConfig,
     ) -> None:
         self.config = config
-        self.storage_options = self._build_storage_options()
+        self.storage_options = self.config.resolved_storage_options
         msg = f"Zarr cache initialized with path: {self.config.path}"
         logger.info(msg)
-
-    def _build_storage_options(self) -> dict[str, object] | None:
-        """Build storage_options for xr.open_zarr based on path and config.
-
-        Returns ``None`` for non-remote (local) paths so that xarray opens the store
-        directly from the local filesystem.
-        """
-        if not self.config.is_remote_path():
-            return None
-
-        options: dict[str, object] = {}
-        if self.config.auth_config is not None:
-            options.update(self.config.auth_config.to_storage_options())
-        if self.config.storage_options is not None:
-            options.update(self.config.storage_options)
-        return options
 
     def get_dataset(self, source: str) -> xr.Dataset | None:
         """Open a dataset from the cache."""
@@ -371,7 +359,7 @@ class ZarrCache:
             )
             time_end = datetime.now()  # noqa: DTZ005
             msg = (
-                f"Opened dataset for source '{source}' from {list(self.config.path)} "
+                f"Opened dataset for source '{source}' from {self.config.path} "
                 f"(took {(time_end - time_start).total_seconds():.2f} seconds)"
             )
             logger.info(msg)
@@ -380,7 +368,7 @@ class ZarrCache:
 
         if not hasattr(ds, "data_type"):
             msg = (
-                f"Dataset for source '{source}' in {list(self.config.path)} is missing the "
+                f"Dataset for source '{source}' in {self.config.path} is missing the "
                 "'data_type' attribute. This is required for proper sorting of the dataset."
             )
             raise ValueError(msg)
@@ -411,6 +399,27 @@ class ZarrCache:
 
         return ds
 
+    @staticmethod
+    def _drop_duplicate_coords(dataset: xr.Dataset, dim: str) -> xr.Dataset:
+        """Drop duplicate coordinate values along ``dim``, keeping the first occurrence.
+
+        Datasources can hand back a dataset with repeated coordinate values along ``dim`` (e.g.
+        when combining multiple source files with overlapping time ranges). The ``is_new`` check
+        in :meth:`append` only compares incoming values against what is already cached, so it
+        would not catch duplicates that are already present within ``dataset`` itself - those
+        would otherwise be written to the store as-is and persist as duplicates on every
+        subsequent read.
+        """
+        deduplicated = dataset.drop_duplicates(dim, keep="first")
+        n_dropped = dataset.sizes[dim] - deduplicated.sizes[dim]
+        if n_dropped > 0:
+            msg = (
+                f"Dropping {n_dropped} duplicate coordinate value(s) along dimension '{dim}' "
+                "from the dataset before writing to the cache."
+            )
+            logger.warning(msg)
+        return deduplicated
+
     def append(
         self,
         new_dataset: xr.Dataset,
@@ -429,7 +438,13 @@ class ZarrCache:
         cached; the cached data itself is never loaded into memory, keeping the cache
         lazy-friendly. New coordinate values are appended along ``dim`` (``append_dim``), new
         variables are added in place (``mode="a"``), and an empty store is created from scratch.
+        Duplicate coordinate values within ``new_dataset`` itself along ``append_dim`` are
+        dropped (keeping the first occurrence) before writing, since the store is never
+        deduplicated after the fact.
         """
+        if append_dim is not None and append_dim in new_dataset.coords:
+            new_dataset = self._drop_duplicate_coords(new_dataset, append_dim)
+
         cached = self.get_dataset(source)
         group = f"datasets/{source}"
 
@@ -449,6 +464,9 @@ class ZarrCache:
             if not bool(is_new.any()):
                 return
             to_add = new_dataset.sel({append_dim: incoming[is_new]})  # type: ignore[misc]
+
+        # Chunk the dataset along the forecast reference time dimension before writing to Zarr.
+        to_add = _chunk_along_forecast_reference_time(to_add)
 
         to_add.to_zarr(  # type: ignore[call-overload]
             self.config.path,
@@ -497,7 +515,7 @@ class ZarrCache:
 
         If ``source`` is specified, only the corresponding subgroup is deleted.
         """
-        options = self.config.storage_options or {}
+        options = self.storage_options if self.storage_options is not None else {}
 
         # Automatically infers protocol (e.g., 's3' or 'file') from the path
         fs, clean_path = fsspec.core.url_to_fs(self.config.path, **options)  # type:ignore[misc]
