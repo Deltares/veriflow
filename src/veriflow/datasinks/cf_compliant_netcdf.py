@@ -31,8 +31,15 @@ class CFCompliantNetCDF(BaseDatasink):
     def __init__(self, config: CFCompliantNetCDFConfig) -> None:
         self.config: CFCompliantNetCDFConfig = config
 
+    @staticmethod
+    def _create_output_directory(directory: Path) -> None:
+        """Create the output directory if it does not exist."""
+        Path(directory).mkdir(parents=True, exist_ok=True)
+
     def write_data(self, dt: VeriflowDataTree) -> None:
         """Write the data in the xarray DataTree to the file as specified in the output config."""
+        # Create the output directory if it does not exist
+        self._create_output_directory(self.config.directory)
         filepath = Path(self.config.directory) / self.config.filename
 
         # Metadata attrs according to CF-compliancy
