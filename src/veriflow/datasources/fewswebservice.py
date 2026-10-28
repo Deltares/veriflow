@@ -170,7 +170,7 @@ class FewsWebservice(BaseDatasource):
             module_instance_id=self.config.module_instance_id,
         )
 
-    def resolve_available_forecast_reference_time_period(self) -> TimePeriod | None:
+    def fetch_available_forecast_reference_time_period(self) -> TimePeriod | None:
         """Return the forecast reference time period available in the webservice.
 
         Querying only the configured window (rather than the source's whole history) lets the
