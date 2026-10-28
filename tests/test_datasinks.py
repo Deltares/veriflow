@@ -98,6 +98,16 @@ def test_cf_compliant_netcdf_write_force_overwrite_false_raises(
         datasink_cf_compliant_netcdf.write_data(output_datatree_without_scores)
 
 
+def test_write_data_cf_compliant_netcdf_creates_output_directory(
+    tmpdir: Path,
+) -> None:
+    """Test that writing creates a missing output directory."""
+    output_directory = tmpdir / "nested" / "output"
+    assert not output_directory.exists()
+    CFCompliantNetCDF._create_output_directory(output_directory)
+    assert output_directory.exists()
+
+
 @pytest.mark.parametrize(
     "dt_fixture",
     [
