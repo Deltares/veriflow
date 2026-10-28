@@ -96,7 +96,7 @@ class RankHistogram(BaseScore):
     """Compute the rank histogram (Talagrand diagram) over the specified dimensions.
 
     For external documentation, see below:
-    https://xskillscore.readthedocs.io/en/stable/api/xskillscore.rank_histogram.html?highlight=rank%20histogram#xskillscore.rank_histogram
+    https://scores.readthedocs.io/en/stable/api.html#scores.probability.rank_histogram
     """
 
     kind = "rank_histogram"
