@@ -274,7 +274,7 @@ class BaseDatasource(Base):
                 )
             except KeyError as e:
                 requested_lead_times = lead_times.timedelta64
-                dataset_lead_times = dataset[StandardDim.lead_time].to_numpy()  # type:ignore[misc]
+                dataset_lead_times = list(dataset[StandardDim.lead_time].to_numpy())  # type:ignore[misc]
 
                 msg = (
                     f"Requested lead times {convert_timedelta64_list_to_largest_common_unit(requested_lead_times)} are "  # noqa: E501
