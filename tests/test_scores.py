@@ -53,24 +53,60 @@ def test_ensemble_crps(
     assert result.name == score_config_crps.score_adapter
 
 
-def test_ensemble_rank_histogram(
-    score_config_rank_histogram: RankHistogramConfig,
-    xarray_observed_historical: xr.Dataset,
-    xarray_simulated_forecast_ensemble: xr.Dataset,
-) -> None:
-    """Test CRPS."""
-    variable = "var_0"
-    obs = xarray_observed_historical[variable]
-    sim = xarray_simulated_forecast_ensemble[variable]
-    obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
-    sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
-    obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
+class TestRankHistogram:
+    """Tests for the RankHistogram score."""
 
-    result = RankHistogram(score_config_rank_histogram).validate_and_compute(
-        obs=obs_reprojected,
-        sim=sim,
-    )
-    assert result.name == "histogram_rank"
+    def test_ensemble_rank_histogram_has_expected_output_name(
+        self,
+        score_config_rank_histogram: RankHistogramConfig,
+        xarray_observed_historical: xr.Dataset,
+        xarray_simulated_forecast_ensemble: xr.Dataset,
+    ) -> None:
+        """Test CRPS."""
+        variable = "var_0"
+        obs = xarray_observed_historical[variable]
+        sim = xarray_simulated_forecast_ensemble[variable]
+        obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
+        sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
+        obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
+
+        result = RankHistogram(score_config_rank_histogram).validate_and_compute(
+            obs=obs_reprojected,
+            sim=sim,
+        )
+        assert len(result.data_vars) == 1
+        assert "rank_histogram" in result.data_vars
+
+    def test_ensemble_rank_histogram_runs_without_dimension_reduction(
+        self,
+        score_config_rank_histogram: RankHistogramConfig,
+        xarray_observed_historical: xr.Dataset,
+        xarray_simulated_forecast_ensemble: xr.Dataset,
+    ) -> None:
+        """Test that the rank histogram runs without dimension reduction."""
+        variable = "var_0"
+        obs = xarray_observed_historical[variable]
+        sim = xarray_simulated_forecast_ensemble[variable]
+        obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
+        sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
+        obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
+
+        # Adjust the config to have no dimension reduction
+        score_config_rank_histogram.reduce_dims = []
+
+        result = RankHistogram(score_config_rank_histogram).validate_and_compute(
+            obs=obs_reprojected,
+            sim=sim,
+        )
+
+        assert "rank_histogram" in result.data_vars
+        assert result["rank_histogram"].shape == (3, 10, 120, 11)
+        assert result["rank_histogram"].dims == (
+            StandardDim.station,
+            StandardDim.forecast_reference_time,
+            StandardDim.lead_time,
+            "rank",
+        )
 
 
 def test_probabilistic_crps_cdf(
@@ -260,9 +296,10 @@ def test_ensemble_rank_histogram_gridded(
     )
 
     # Check that output is a DataArray
-    assert isinstance(result, xr.DataArray)
+    assert isinstance(result, xr.Dataset)
     # Check output has rank dimension
     assert "rank" in result.dims or "realization" in result.dims
+
     # Check spatial dimensions preserved
     assert "x" in result.dims or "x" in result.coords
     assert "y" in result.dims or "y" in result.coords
