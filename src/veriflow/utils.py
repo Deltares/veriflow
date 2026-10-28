@@ -26,9 +26,7 @@ def get_chunk_settings_along_forecast_reference_time(
     silently skip rechunking any dims that only appear in a nested group's data.
     """
     if isinstance(obj, xr.DataTree):
-        dims: set[Hashable] = set()
-        for node in obj.subtree:
-            dims.update(node.dims)
+        dims: set[Hashable] = {dim for node in obj.subtree for dim in node.dims}
     else:
         dims = set(obj.dims)
     return {dim: 1 if dim == StandardDim.forecast_reference_time else -1 for dim in dims}
