@@ -164,7 +164,7 @@ class BaseDatasource(Base):
     def fetch_data(self) -> Self:
         """Fetch data from datasource."""
 
-    def resolve_available_forecast_reference_time_period(self) -> TimePeriod | None:
+    def fetch_available_forecast_reference_time_period(self) -> TimePeriod | None:
         """Return the period actually available from the source right now, if resolvable.
 
         Used to clamp an open-ended/rolling configured verification period (e.g. "up to now")
@@ -184,8 +184,8 @@ class BaseDatasource(Base):
     def _implements_frt_resolution(self) -> bool:
         """Check if the datasource implements forecast reference time resolution."""
         return (
-            type(self).resolve_available_forecast_reference_time_period
-            is not BaseDatasource.resolve_available_forecast_reference_time_period
+            type(self).fetch_available_forecast_reference_time_period
+            is not BaseDatasource.fetch_available_forecast_reference_time_period
         )
 
     def clamp_verification_period_on_frt_to_available_period(self, available: TimePeriod) -> None:
@@ -530,7 +530,7 @@ class BaseDatasource(Base):
         # Clamp the configured verification period to what the source actually has available,
         # before it is used to build the cache request or fetch data.
         if self.config.data_type in FORECAST_DATA_TYPES and self._implements_frt_resolution():
-            available_period = self.resolve_available_forecast_reference_time_period()
+            available_period = self.fetch_available_forecast_reference_time_period()
             if available_period is not None:
                 self.clamp_verification_period_on_frt_to_available_period(available_period)
             else:
