@@ -6,10 +6,11 @@ import numpy as np
 import xarray as xr
 
 from veriflow.constants import StandardDim
+from veriflow.types import DataArraySetTree, DataSetTree, TDataSetTree
 
 
 def get_chunk_settings_along_forecast_reference_time(
-    obj: xr.Dataset | xr.DataArray | xr.DataTree,
+    obj: DataArraySetTree,
 ) -> dict[Hashable, int]:
     """Build a dask chunking dict safe for writing ``obj`` to Zarr.
 
@@ -32,7 +33,7 @@ def get_chunk_settings_along_forecast_reference_time(
     return {dim: 1 if dim == StandardDim.forecast_reference_time else -1 for dim in dims}
 
 
-def _drop_chunk_encoding(obj: xr.Dataset | xr.DataTree) -> None:
+def _drop_chunk_encoding(obj: DataSetTree) -> None:
     """Strip 'chunks'/'preferred_chunks' from every variable's ``encoding``, in place.
 
     These are commonly inherited from wherever a variable was originally read from (e.g. a
@@ -49,7 +50,7 @@ def _drop_chunk_encoding(obj: xr.Dataset | xr.DataTree) -> None:
             variable.encoding.pop("preferred_chunks", None)  # type:ignore[misc]
 
 
-def _chunk_along_forecast_reference_time(obj: xr.Dataset | xr.DataTree) -> xr.Dataset | xr.DataTree:
+def _chunk_along_forecast_reference_time(obj: TDataSetTree) -> TDataSetTree:
     """Chunk along the forecast reference time dimension with size 1.
 
     This function first resets any existing chunk encoding on the dataset or DataTree,
@@ -94,10 +95,12 @@ def convert_byte_string_coords_to_utf8(
     return ds
 
 
-def convert_timedelta64_list_to_largest_common_unit(time_deltas: list[np.timedelta64]) -> list[str]:
+def convert_timedelta64_list_to_largest_common_unit(
+    time_deltas: Sequence[np.timedelta64],
+) -> list[str]:
     """Format a list of lead times as strings."""
 
-    def determine_smallest_unit(time_deltas: list[np.timedelta64]) -> str:
+    def determine_smallest_unit(time_deltas: Sequence[np.timedelta64]) -> str:
         """Determine the largest time unit, in which all lead times can be expressed as integers."""
         if not time_deltas:
             msg = "Lead times list is empty."
@@ -108,7 +111,7 @@ def convert_timedelta64_list_to_largest_common_unit(time_deltas: list[np.timedel
         units = ["D", "h", "m", "s", "ms", "us", "ns"]
         for unit in units:
             if all(
-                (lt / np.timedelta64(1, unit)).astype(int) * np.timedelta64(1, unit) == lt
+                (lt / np.timedelta64(1, unit)).astype(int) * np.timedelta64(1, unit) == lt  # type:ignore[misc,call-overload]
                 for lt in time_deltas
             ):
                 return unit
@@ -118,12 +121,12 @@ def convert_timedelta64_list_to_largest_common_unit(time_deltas: list[np.timedel
 
     smallest_unit = determine_smallest_unit(time_deltas)
     return [
-        str((lt / np.timedelta64(1, smallest_unit)).astype(int)) + smallest_unit
+        str((lt / np.timedelta64(1, smallest_unit)).astype(int)) + smallest_unit  # type:ignore[misc,call-overload]
         for lt in time_deltas
     ]
 
 
-def stringify_timedelta64_list(time_deltas: list[np.timedelta64]) -> list[str]:
+def stringify_timedelta64_list(time_deltas: Sequence[np.timedelta64]) -> list[str]:
     """Convert a list of np.timedelta64 objects to strings with the largest common unit."""
     converted_time_deltas = convert_timedelta64_list_to_largest_common_unit(time_deltas)
     return [str(td) for td in converted_time_deltas]
