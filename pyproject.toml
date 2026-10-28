@@ -14,7 +14,6 @@ requires-python = ">=3.11"
 dependencies = [
     "xarray~=2026.0",
     "scores~=2.0",
-    "xskillscore~=0.0.26",
     "pydantic~=2.0",
     "pydantic-settings~=2.0",
     "typer~=0.24",
@@ -24,6 +23,7 @@ dependencies = [
     "requests~=2.0",
     "zarr>=3.1.6",
     "s3fs>=2026.4.0",
+    "dask>=2026.4.0"
 ]
 
 [project.scripts]
