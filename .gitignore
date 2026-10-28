@@ -169,4 +169,3 @@ cython_debug/
 
 # Project cache
 .verification_cache
-test_local_config.py
