@@ -425,7 +425,7 @@ def score_plot(
 def rank_histogram_pair_plot(
     ds: xr.Dataset,
     *,
-    rank_var: str = "histogram_rank",
+    rank_var: str = "rank_histogram",
     template: go.layout.Template = PLOT_TEMPLATE,
 ) -> go.Figure:
     """Build a standalone rank-histogram bar chart for one verification pair.
@@ -443,7 +443,7 @@ def rank_histogram_pair_plot(
         ),
     )
     fig.update_xaxes(title_text="Rank")
-    fig.update_yaxes(title_text="Count")
+    fig.update_yaxes(title_text="Relative Frequency")
     fig.update_layout(template=template)
     return fig
 
@@ -451,7 +451,7 @@ def rank_histogram_pair_plot(
 def rank_histogram_3d_pair_plot(
     ds: xr.Dataset,
     *,
-    rank_var: str = "histogram_rank",
+    rank_var: str = "rank_histogram",
     template: go.layout.Template = PLOT_TEMPLATE,
 ) -> go.Figure:
     """Build a standalone 3D rank-histogram surface for one verification pair.
@@ -484,14 +484,16 @@ def rank_histogram_3d_pair_plot(
             y=lead_time_hours(ds),
             z=np.asarray(hist.values, dtype=float),
             colorscale="Earth",
-            colorbar={"title": "Count"},
-            hovertemplate=("Rank: %{x}<br>Lead time: %{y} h<br>Count: %{z}<extra></extra>"),
+            colorbar={"title": "Relative Frequency"},
+            hovertemplate=(
+                "Rank: %{x}<br>Lead time: %{y} h<br>Relative Frequency: %{z}<extra></extra>"
+            ),
         ),
     )
     fig.update_scenes(
         xaxis_title_text="Rank",
         yaxis_title_text="Lead time (h)",
-        zaxis_title_text="Count",
+        zaxis_title_text="Relative Frequency",
     )
     fig.update_layout(template=template)
     return fig
