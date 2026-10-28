@@ -5,10 +5,10 @@ import pytest
 import xarray as xr
 
 from veriflow.utils import (
+    _drop_chunk_encoding,
     convert_byte_string_coord_to_utf8,
     convert_byte_string_coords_to_utf8,
     convert_timedelta64_list_to_largest_common_unit,
-    drop_chunk_encoding,
     get_chunk_settings_along_forecast_reference_time,
     stringify_timedelta64_list,
 )
@@ -116,5 +116,5 @@ def test_drop_chunk_encoding(dt: xr.DataTree) -> None:
     dt["da1"].encoding["chunks"] = (1, 3)
     assert "chunks" in dt["da1"].encoding
     assert dt["da1"].encoding["chunks"] == (1, 3)
-    drop_chunk_encoding(dt)
+    _drop_chunk_encoding(dt)
     assert "chunks" not in dt["da1"].encoding

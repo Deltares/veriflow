@@ -32,7 +32,7 @@ def get_chunk_settings_along_forecast_reference_time(
     return {dim: 1 if dim == StandardDim.forecast_reference_time else -1 for dim in dims}
 
 
-def drop_chunk_encoding(obj: xr.Dataset | xr.DataTree) -> None:
+def _drop_chunk_encoding(obj: xr.Dataset | xr.DataTree) -> None:
     """Strip 'chunks'/'preferred_chunks' from every variable's ``encoding``, in place.
 
     These are commonly inherited from wherever a variable was originally read from (e.g. a
@@ -49,7 +49,7 @@ def drop_chunk_encoding(obj: xr.Dataset | xr.DataTree) -> None:
             variable.encoding.pop("preferred_chunks", None)  # type:ignore[misc]
 
 
-def chunk_along_forecast_reference_time(obj: xr.Dataset | xr.DataTree) -> xr.Dataset | xr.DataTree:
+def _chunk_along_forecast_reference_time(obj: xr.Dataset | xr.DataTree) -> xr.Dataset | xr.DataTree:
     """Chunk along the forecast reference time dimension with size 1.
 
     This function first resets any existing chunk encoding on the dataset or DataTree,
@@ -58,7 +58,7 @@ def chunk_along_forecast_reference_time(obj: xr.Dataset | xr.DataTree) -> xr.Dat
     :func:`get_chunk_settings_along_forecast_reference_time`. Chunks along all other dimensions
     are set to -1 (i.e. unchunked).
     """
-    drop_chunk_encoding(obj)
+    _drop_chunk_encoding(obj)
     return obj.chunk(get_chunk_settings_along_forecast_reference_time(obj))
 
 

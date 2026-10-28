@@ -14,7 +14,7 @@ from zarr.errors import GroupNotFoundError
 from veriflow.cache.config import ReadWriteMode, ZarrCacheConfig
 from veriflow.configuration.utils import LeadTimes, TimePeriod
 from veriflow.constants import FORECAST_DATA_TYPES, HISTORICAL_DATA_TYPES, StandardDim, TimeUnits
-from veriflow.utils import chunk_along_forecast_reference_time
+from veriflow.utils import _chunk_along_forecast_reference_time
 
 logger = logging.getLogger(__name__)
 
@@ -466,7 +466,7 @@ class ZarrCache:
             to_add = new_dataset.sel({append_dim: incoming[is_new]})  # type: ignore[misc]
 
         # Chunk the dataset along the forecast reference time dimension before writing to Zarr.
-        to_add = chunk_along_forecast_reference_time(to_add)
+        to_add = _chunk_along_forecast_reference_time(to_add)
 
         to_add.to_zarr(  # type: ignore[call-overload]
             self.config.path,

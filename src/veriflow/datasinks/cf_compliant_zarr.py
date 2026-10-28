@@ -7,7 +7,7 @@ from veriflow.configuration.default.datasinks import CFCompliantZarrConfig
 from veriflow.constants import NAME, VERSION
 from veriflow.datasinks.base import BaseDatasink
 from veriflow.datatree.datatree import VeriflowDataTree
-from veriflow.utils import chunk_along_forecast_reference_time
+from veriflow.utils import _chunk_along_forecast_reference_time
 
 __all__ = [
     "CFCompliantZarr",
@@ -64,7 +64,7 @@ class CFCompliantZarr(BaseDatasink):
         filtered_dt.attrs = dt.attrs.copy()  # type: ignore[misc]
 
         # Chunk the datatree along the forecast reference time dimension before writing to Zarr.
-        filtered_dt = chunk_along_forecast_reference_time(filtered_dt)
+        filtered_dt = _chunk_along_forecast_reference_time(filtered_dt)
 
         filtered_dt.to_zarr(
             self.config.path,
