@@ -10,7 +10,11 @@ For reference, see: https://scores.readthedocs.io/en/stable/included.html#probab
 from typing import ClassVar
 
 import xarray as xr
-from scores.probability import crps_cdf, crps_for_ensemble, rank_histogram  # type: ignore[import-untyped]
+from scores.probability import (  # type: ignore[import-untyped]
+    crps_cdf,
+    crps_for_ensemble,
+    rank_histogram,
+)
 
 from veriflow.configuration.default.scores import (
     CrpsCDFConfig,
@@ -105,7 +109,24 @@ class RankHistogram(BaseScore):
     def __init__(self, config: RankHistogramConfig) -> None:
         self.config: RankHistogramConfig = config
 
-    def compute(self, obs: xr.DataArray, sim: xr.DataArray) -> xr.DataArray | xr.Dataset:
+    @staticmethod
+    def validate_has_rank_dim(result: xr.DataArray | xr.Dataset) -> None:
+        """Validate that the rank histogram result has the expected 'rank' dimension."""
+        if "rank" not in result.dims:
+            msg = (
+                "Rank histogram result must have a 'rank' dimension; got dimensions "
+                f"{tuple(result.dims)}."
+            )
+            raise ValueError(msg)
+
+    @staticmethod
+    def validate_is_data_array(result: xr.DataArray | xr.Dataset) -> None:
+        """Validate that the result is an xarray DataArray."""
+        if not isinstance(result, xr.DataArray):  # type:ignore[misc]
+            msg = f"Expected result to be an xarray DataArray, got {type(result)}."
+            raise TypeError(msg)
+
+    def compute(self, obs: xr.DataArray, sim: xr.DataArray) -> xr.Dataset:
         """Compute the histogram of ranks over the specified dimensions."""
         # This current implementation requires aligned dimensions
         obs, sim = xr.align(obs, sim)
@@ -119,4 +140,7 @@ class RankHistogram(BaseScore):
             reduce_dims=reduce_dims or [],
             ens_member_dim=StandardDim.realization.value,
         )
-        return result
+        # Validate the result using the dedicated method
+        RankHistogram.validate_has_rank_dim(result)
+        RankHistogram.validate_is_data_array(result)
+        return result.to_dataset(name="rank_histogram")  # type:ignore[misc]
