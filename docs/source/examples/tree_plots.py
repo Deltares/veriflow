@@ -1,7 +1,7 @@
 """Multi-pair Plotly figures composed from a whole verification ``xr.DataTree``.
 
 This module provides ``get_pair_dataset``/``get_score_dataset`` (plot-ready ``xr.Dataset``
-builders for a single verification pair) and the high-level figure builders (``crps_plot``,
+builders for a single verification pair) and the high-level figure builders (``plot_score_vs_lead_time``,
 ``scatter_plot``, ``rank_histogram_plot``, ``rank_histogram_3d_plot``,
 ``reanalysis_timeseries_plot``, ``forecast_timeseries_plot``): each figure builder takes the
 ``xr.DataTree`` itself (see ``veriflow.datatree.datatree.VeriflowAccessor``), fetches every
@@ -22,7 +22,7 @@ Typical usage::
     ds = get_pair_dataset(dt, pair_id)
 
     scatter_plot(dt, lead_time=ds.coords["lead_time"][0])
-    crps_plot(dt, stations=["station-a", "station-b"])
+    plot_score_vs_lead_time(dt, stations=["station-a", "station-b"])
     reanalysis_timeseries_plot(dt, station="some-station", error_var="mean_error")
 """
 
@@ -243,7 +243,7 @@ def scatter_plot(
     return grid
 
 
-def crps_plot(
+def plot_score_vs_lead_time(
     dt: VeriflowDataTree,
     *,
     pair_ids: Sequence[str] | None = None,
@@ -314,7 +314,7 @@ def rank_histogram_plot(
     *,
     pair_ids: Sequence[str] | None = None,
     score_name: str = "rank_histogram",
-    rank_var: str = "histogram_rank",
+    rank_var: str = "rank_histogram",
     station: object | None = None,
     lead_time: object | None = None,
     template: go.layout.Template = PLOT_TEMPLATE,
@@ -388,7 +388,7 @@ def rank_histogram_3d_plot(
     *,
     pair_ids: Sequence[str] | None = None,
     score_name: str = "rank_histogram",
-    rank_var: str = "histogram_rank",
+    rank_var: str = "rank_histogram",
     station: object | None = None,
     template: go.layout.Template = PLOT_TEMPLATE,
 ) -> go.Figure:
@@ -397,7 +397,7 @@ def rank_histogram_3d_plot(
     This is a three-dimensional version of :func:`rank_histogram_plot`. Instead of collapsing
     the dataset to a single lead time, the ``lead_time`` axis is kept and shown as a third
     dimension: for each verification pair a 3D surface is drawn with ``rank`` on the x-axis,
-    ``lead_time`` (in hours) on the y-axis, and the rank count on the z-axis. This shows all
+    ``lead_time`` (in hours) on the y-axis, and the rank freq on the z-axis. This shows all
     rank histograms across lead times in one figure, so the evolution of the histogram shape
     with increasing lead time becomes visible.
 
@@ -449,7 +449,7 @@ def rank_histogram_3d_plot(
     grid.update_scenes(
         xaxis_title_text="Rank",
         yaxis_title_text="Lead time (h)",
-        zaxis_title_text="Count",
+        zaxis_title_text="Relative Frequency",
     )
     grid.update_layout(
         template=template,
