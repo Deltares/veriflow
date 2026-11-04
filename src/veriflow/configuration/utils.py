@@ -441,13 +441,13 @@ class BaseZarrConfig(BaseModel):
     def resolved_storage_options(self) -> dict[str, object] | None:
         """Build the final storage_options for ``xr.open_zarr``/``to_zarr``.
 
-        Merges 'auth_config' (auto-populated from S3_-prefixed environment variables for
+        Merges 'auth_config' (auto-populated from ``S3_``-prefixed environment variables for
         remote paths) with the explicit 'storage_options' override. Returns ``None`` for
         local paths so that xarray opens the store directly from the local filesystem. This
         is the single place that should ever build storage_options from a ``BaseZarrConfig``
         - duplicating this logic elsewhere risks silently dropping 'auth_config' (and thus
         falling back to boto3's default credential discovery instead of the configured
-        S3_-prefixed credentials).
+        ``S3_``-prefixed credentials).
         """
         if not self.is_remote_path():
             return None
