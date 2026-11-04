@@ -298,7 +298,7 @@ class FewsWebservice(BaseDatasource):
                         parameter_ids=self.config.parameter_ids,
                         station_ids=self.config.location_ids,
                         filter_stations=False,  # The query to the webservice already filters
-                        # stations
+                        filter_variables=False,  # The query to the webservice already filters
                     ),
                 )
                 datasource.cache = None
@@ -444,6 +444,8 @@ class FewsWebservice(BaseDatasource):
                         source_id=self.config.source_id,
                         parameter_ids=self.config.parameter_ids,
                         station_ids=self.config.location_ids,
+                        filter_stations=False,  # The query to the webservice already filters
+                        filter_variables=False,  # The query to the webservice already filters
                     ),
                 )
                 datasource.cache = None
@@ -500,6 +502,8 @@ class FewsWebservice(BaseDatasource):
                         netcdf_kind=FewsNetCDFKind.simulated_forecast_per_lead_time,
                         id_mapping=self.config.id_mapping,
                         source_id=self.config.source_id,
+                        filter_stations=False,
+                        filter_variables=False,
                     ),
                 )
 

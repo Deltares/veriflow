@@ -136,6 +136,7 @@ class FewsNetCDFConfig(BaseDatasourceConfig, LocalFiles):
     station_ids: Annotated[list[str], Field(min_length=1)] | None = None
     parameter_ids: Annotated[list[str], Field(min_length=1)] | None = None
     filter_stations: bool = True
+    filter_variables: bool = True
 
 
 class NetCDFConfig(BaseDatasourceConfig, LocalFiles):
