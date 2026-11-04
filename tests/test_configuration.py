@@ -56,9 +56,9 @@ def test_schema_up_to_date(tmp_path: Path) -> None:
 
     # Check that the generated schema is identical to the one in the repository
     with file_path_schema.open("r", encoding="utf-8") as f:
-        schema_in_repo = yaml.safe_load(f)  # type:ignore[misc]
+        schema_in_repo = yaml.safe_load(f)
     with tmp_file_path.open("r", encoding="utf-8") as f:
-        generated_schema = yaml.safe_load(f)  # type:ignore[misc]
+        generated_schema = yaml.safe_load(f)
     assert schema_in_repo == generated_schema  # type:ignore[misc]
 
 
@@ -110,7 +110,7 @@ def test_schema_dump_with_user_models(tmp_path: Path) -> None:
     assert tmpfile.exists()
 
     with tmpfile.open("r", encoding="utf-8") as f:
-        schema = yaml.safe_load(f)  # type:ignore[misc]
+        schema = yaml.safe_load(f)
 
         # Check that the user-provided configuration is part of the schema
         assert (

@@ -175,7 +175,7 @@ class IdMappingConfig(BaseModel):
         if self.station is not None:
             dataset = dataset.assign_coords(
                 {  # type:ignore[misc]
-                    StandardDim.station: (  # type:ignore[misc]
+                    StandardDim.station: (
                         StandardDim.station,
                         dataset[StandardDim.station]  # type:ignore[misc]
                         .to_series()
