@@ -543,6 +543,11 @@
           "default": true,
           "title": "Filter Stations",
           "type": "boolean"
+        },
+        "filter_variables": {
+          "default": true,
+          "title": "Filter Variables",
+          "type": "boolean"
         }
       },
       "required": [
