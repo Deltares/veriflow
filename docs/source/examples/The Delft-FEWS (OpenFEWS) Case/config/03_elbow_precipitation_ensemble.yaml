@@ -7,23 +7,23 @@ general:
     end: "2026-06-01T00:00:00Z"
   verification_pairs:
     - id: PC_GEPS
-      obs: observed
-      sim: simulated_GEPS
+      observations_source_id: observed
+      simulations_source_id: simulated_GEPS
       variable: PC
     - id: PC_GEFS
-      obs: observed
-      sim: simulated_GEFS
+      observations_source_id: observed
+      simulations_source_id: simulated_GEFS
       variable: PC
     - id: PC_IFS
-      obs: observed
-      sim: simulated_IFS
+      observations_source_id: observed
+      simulations_source_id: simulated_IFS
       variable: PC
   lead_times:
     unit: D
     values: [1, 2, 3, 4, 5, 6]
 datasources:
   - import_adapter: fewswebservice
-    source: observed
+    source_id: observed
     data_type: observed_historical
     location_ids:
       - "3031092"
@@ -33,7 +33,7 @@ datasources:
     webservice_version: "2025.02"
 
   - import_adapter: fewswebservice
-    source: simulated_GEPS
+    source_id: simulated_GEPS
     data_type: simulated_forecast_ensemble
     location_ids:
       - "3031092"
@@ -44,7 +44,7 @@ datasources:
     webservice_version: "2025.02"
 
   - import_adapter: fewswebservice
-    source: simulated_GEFS
+    source_id: simulated_GEFS
     data_type: simulated_forecast_ensemble
     location_ids:
       - "3031092"
@@ -55,7 +55,7 @@ datasources:
     webservice_version: "2025.02"
 
   - import_adapter: fewswebservice
-    source: simulated_IFS
+    source_id: simulated_IFS
     data_type: simulated_forecast_ensemble
     location_ids:
       - "3031092"

@@ -7,16 +7,16 @@ general:
     end: "2026-06-08T00:00:00Z"
   verification_pairs:
     - id: PC_RDPA
-      obs: observed
-      sim: simulated_RDPA
+      observations_source_id: observed
+      simulations_source_id: simulated_RDPA
       variable: PC
     - id: PC_HRDPA
-      obs: observed
-      sim: simulated_HRDPA
+      observations_source_id: observed
+      simulations_source_id: simulated_HRDPA
       variable: PC
 datasources:
   - import_adapter: fewswebservice
-    source: observed
+    source_id: observed
     data_type: observed_historical
     location_ids:
       - "3031092"
@@ -41,7 +41,7 @@ datasources:
     webservice_version: "2025.02"
 
   - import_adapter: fewswebservice
-    source: simulated_RDPA
+    source_id: simulated_RDPA
     data_type: observed_historical
     location_ids:
       - "3031092"
@@ -65,7 +65,7 @@ datasources:
     module_instance_id: PreprocessRDPA
     webservice_version: "2025.02"
   - import_adapter: fewswebservice
-    source: simulated_HRDPA
+    source_id: simulated_HRDPA
     data_type: observed_historical
     location_ids:
       - "3031092"
