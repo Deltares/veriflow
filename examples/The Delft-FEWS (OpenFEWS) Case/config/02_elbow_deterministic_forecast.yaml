@@ -34,11 +34,8 @@ datasources:
       - "05BH802"
       - "05BL810"
       - "05BF827"
-
     parameter_ids: ["PC.obs"]
     module_instance_id: ImportMeteoStations
-    webservice_version: "2025.02"
-  
   - import_adapter: fewswebservice
     source_id: simulated
     data_type: simulated_forecast_single
@@ -61,14 +58,10 @@ datasources:
       - "05BF827"
     parameter_ids: ["PC.nwp"]
     module_instance_id: PreprocessGDPS
-    webservice_version: "2025.02"
-
 scores:
   - score_adapter: continuous_scores
     scores: [mean_error, mae, rmse]
     reduce_dims: []
-  
-
 id_mapping:
   variable:
     PC:
