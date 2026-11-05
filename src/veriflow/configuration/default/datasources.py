@@ -105,6 +105,7 @@ class FewsWebserviceSettings(BaseSettings):
     version: FewsWebserviceVersionString = "2025.01"
     max_workers_in_thread_pool: int = 2
     archive_kind: ArchiveKind = ArchiveKind.open_archive
+    verify: bool = True
 
 
 class FewsWebserviceConfig(BaseDatasourceConfig):
