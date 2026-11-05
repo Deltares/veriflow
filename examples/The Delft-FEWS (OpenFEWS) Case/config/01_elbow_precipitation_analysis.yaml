@@ -38,8 +38,6 @@ datasources:
     parameter_ids:
       - PC.obs
     module_instance_id: ImportMeteoStations
-    webservice_version: "2025.02"
-
   - import_adapter: fewswebservice
     source_id: simulated_RDPA
     data_type: observed_historical
@@ -63,7 +61,6 @@ datasources:
     parameter_ids:
       - PC.sim
     module_instance_id: PreprocessRDPA
-    webservice_version: "2025.02"
   - import_adapter: fewswebservice
     source_id: simulated_HRDPA
     data_type: observed_historical
@@ -87,8 +84,6 @@ datasources:
     parameter_ids:
       - PC.sim
     module_instance_id: PreprocessHRDPA
-    webservice_version: "2025.02"
-
 scores:
   - score_adapter: continuous_scores
     scores: [mean_error, mae, rmse]
