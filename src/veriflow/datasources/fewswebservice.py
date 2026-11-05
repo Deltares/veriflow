@@ -103,10 +103,10 @@ class FewsWebservice(BaseDatasource):
 
         # Initialize the webservice client
         self.client = FewsWebserviceClient(
-            url=self.config.auth_config.url.unicode_string(),
-            username=self.config.auth_config.username.get_secret_value(),
-            password=self.config.auth_config.password.get_secret_value(),
-            verify=self.config.auth_config.verify,
+            url=self.config.fews_webservice_settings.url.unicode_string(),
+            username=self.config.fews_webservice_settings.username.get_secret_value(),
+            password=self.config.fews_webservice_settings.password.get_secret_value(),
+            verify=self.config.fews_webservice_settings.verify,
         )
 
     @property
