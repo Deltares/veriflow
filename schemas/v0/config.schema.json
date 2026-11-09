@@ -572,49 +572,6 @@
       "title": "FewsNetCDFKind",
       "type": "string"
     },
-    "FewsWebserviceAuthConfig": {
-      "additionalProperties": false,
-      "description": "Get url, username and password safely from environment variables.\n\nThis config class inherits from :class:`pydantic_settings.BaseSettings`,\nthat will try to infer field values from environment variables.\n\nEnvironment variables:\n\n- ``FEWSWEBSERVICE_URL``: URL of the FEWS webservice (required).\n- ``FEWSWEBSERVICE_USERNAME``: Username for the FEWS webservice (set to \"\" if not required).\n- ``FEWSWEBSERVICE_PASSWORD``: Password for the FEWS webservice (set to \"\" if not required).\n- ``FEWSWEBSERVICE_VERIFY``: TLS certificate verification. Either ``true``/``false``, or a\n  path to a CA bundle file/directory to use instead of the system default. Defaults to\n  ``true``. Only disable this for trusted internal networks with self-signed certificates;\n  prefer pointing it at a CA bundle instead.\n\nsee: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#usage\n\nNotes\n-----\nFor local development, an easy and recommended way to set environment variables is to\nuse a ``.env`` file in the project root with the required environment variables, and they\nwill be automatically loaded when you instantiate this config class. For example:\n\n.. code-block:: python\n\n    from dotenv import load_dotenv\n    load_dotenv()  # Load environment variables from .env file\n\n    # You can check that the variables are loaded correctly\n    import os\n    print(os.getenv(\"FEWSWEBSERVICE_URL\"))",
-      "properties": {
-        "url": {
-          "format": "uri",
-          "minLength": 1,
-          "title": "Url",
-          "type": "string"
-        },
-        "username": {
-          "format": "password",
-          "title": "Username",
-          "type": "string",
-          "writeOnly": true
-        },
-        "password": {
-          "format": "password",
-          "title": "Password",
-          "type": "string",
-          "writeOnly": true
-        },
-        "verify": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "string"
-            }
-          ],
-          "default": true,
-          "title": "Verify"
-        }
-      },
-      "required": [
-        "url",
-        "username",
-        "password"
-      ],
-      "title": "FewsWebserviceAuthConfig",
-      "type": "object"
-    },
     "FewsWebserviceConfig": {
       "additionalProperties": true,
       "description": "A fews webservice input config element.",
@@ -746,16 +703,32 @@
           "type": "string"
         },
         "username": {
-          "format": "password",
-          "title": "Username",
-          "type": "string",
-          "writeOnly": true
+          "anyOf": [
+            {
+              "format": "password",
+              "type": "string",
+              "writeOnly": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Username"
         },
         "password": {
-          "format": "password",
-          "title": "Password",
-          "type": "string",
-          "writeOnly": true
+          "anyOf": [
+            {
+              "format": "password",
+              "type": "string",
+              "writeOnly": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Password"
         },
         "version": {
           "default": "2025.01",
@@ -772,12 +745,15 @@
         "archive_kind": {
           "$ref": "#/$defs/ArchiveKind",
           "default": "open_archive"
+        },
+        "verify": {
+          "default": true,
+          "title": "Verify",
+          "type": "boolean"
         }
       },
       "required": [
-        "url",
-        "username",
-        "password"
+        "url"
       ],
       "title": "FewsWebserviceSettings",
       "type": "object"
