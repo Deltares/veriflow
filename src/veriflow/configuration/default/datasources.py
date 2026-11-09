@@ -100,8 +100,8 @@ class FewsWebserviceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="FEWSWEBSERVICE_")
 
     url: AnyUrl
-    username: SecretStr
-    password: SecretStr
+    username: SecretStr | None = None
+    password: SecretStr | None = None
     version: FewsWebserviceVersionString = "2025.01"
     max_workers_in_thread_pool: int = 2
     archive_kind: ArchiveKind = ArchiveKind.open_archive

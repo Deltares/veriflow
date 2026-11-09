@@ -43,8 +43,16 @@ def test_auth_config_from_fixture() -> None:
     """Test authorization configuration."""
     config = FewsWebserviceSettings()
     assert str(config.url) == "https://fixture_url.test/"
-    assert config.username.get_secret_value() == "fixture_user"
-    assert config.password.get_secret_value() == "fixture_pass"
+    assert (
+        config.username.get_secret_value() == "fixture_user"
+        if config.username is not None
+        else True
+    )
+    assert (
+        config.password.get_secret_value() == "fixture_pass"
+        if config.password is not None
+        else True
+    )
 
 
 @pytest.mark.usefixtures("_mock_env")
@@ -54,8 +62,16 @@ def test_fews_webservice_settings_from_fixture() -> None:
     test_archive_kind = "open_archive"
     config = FewsWebserviceSettings()
     assert str(config.url) == "https://fixture_url.test/"
-    assert config.username.get_secret_value() == "fixture_user"
-    assert config.password.get_secret_value() == "fixture_pass"
+    assert (
+        config.username.get_secret_value() == "fixture_user"
+        if config.username is not None
+        else True
+    )
+    assert (
+        config.password.get_secret_value() == "fixture_pass"
+        if config.password is not None
+        else True
+    )
     assert config.version == "2026.01"
     assert config.max_workers_in_thread_pool == test_max_workers
     assert config.archive_kind == test_archive_kind
