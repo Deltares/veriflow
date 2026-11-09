@@ -30,8 +30,6 @@ datasources:
     parameter_ids:
       - PC.obs
     module_instance_id: ImportMeteoStations
-    webservice_version: "2025.02"
-
   - import_adapter: fewswebservice
     source_id: simulated_GEPS
     data_type: simulated_forecast_ensemble
@@ -41,8 +39,6 @@ datasources:
       - PC.nwp
     module_instance_id: PreprocessGEPS
     ensemble_id: GEPS
-    webservice_version: "2025.02"
-
   - import_adapter: fewswebservice
     source_id: simulated_GEFS
     data_type: simulated_forecast_ensemble
@@ -52,8 +48,6 @@ datasources:
       - PC.nwp
     module_instance_id: PreprocessGEFS
     ensemble_id: GEFS
-    webservice_version: "2025.02"
-
   - import_adapter: fewswebservice
     source_id: simulated_IFS
     data_type: simulated_forecast_ensemble
@@ -63,14 +57,11 @@ datasources:
       - PC.nwp
     module_instance_id: PreprocessIFS
     ensemble_id: IFS
-    webservice_version: "2025.02"
-
 scores:
   - score_adapter: crps_for_ensemble
   - score_adapter: rank_histogram
     reduce_dims:
       - forecast_reference_time
-      
 id_mapping: 
   variable:
     PC:

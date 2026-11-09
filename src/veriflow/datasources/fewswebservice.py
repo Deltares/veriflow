@@ -18,8 +18,8 @@ from veriflow.api.fewswebservice import DocumentFormat, FewsWebserviceClient, Ti
 from veriflow.configuration.default.datasources import (
     ArchiveKind,
     FewsNetCDFConfig,
-    FewsWebserviceAuthConfig,
     FewsWebserviceConfig,
+    FewsWebserviceSettings,
     ForecastRetrievalMethod,
 )
 from veriflow.configuration.utils import TimePeriod
@@ -31,10 +31,10 @@ from veriflow.datasources.fewsnetcdf import (
 )
 from veriflow.types import DataSpec
 
-__all__ = [  # noqa: RUF022
+__all__ = [
     "FewsWebservice",
     "FewsWebserviceConfig",
-    "FewsWebserviceAuthConfig",
+    "FewsWebserviceSettings",
 ]
 
 T = TypeVar("T")
@@ -103,10 +103,14 @@ class FewsWebservice(BaseDatasource):
 
         # Initialize the webservice client
         self.client = FewsWebserviceClient(
-            url=self.config.auth_config.url.unicode_string(),
-            username=self.config.auth_config.username.get_secret_value(),
-            password=self.config.auth_config.password.get_secret_value(),
-            verify=self.config.auth_config.verify,
+            url=self.config.fews_webservice_settings.url.unicode_string(),
+            username=self.config.fews_webservice_settings.username.get_secret_value()
+            if self.config.fews_webservice_settings.username is not None
+            else None,
+            password=self.config.fews_webservice_settings.password.get_secret_value()
+            if self.config.fews_webservice_settings.password is not None
+            else None,
+            verify=self.config.fews_webservice_settings.verify,
         )
 
     @property
@@ -159,6 +163,8 @@ class FewsWebservice(BaseDatasource):
             parameter_ids=self.config.parameter_ids,
             module_instance_ids=self.config.module_instance_id,
             ensemble_id=self.config.ensemble_id,
+            time_step_id=self.config.time_step_id,
+            qualifier_ids=self.config.qualifier_ids,
             start_forecast_time=frt_period.start,
             end_forecast_time=frt_period.end,
             document_format=DocumentFormat.PI_JSON,
@@ -270,6 +276,8 @@ class FewsWebservice(BaseDatasource):
                     module_instance_ids=self.config.module_instance_id,
                     start_time=self.config.verification_period_on_time.start,
                     end_time=self.config.verification_period_on_time.end,
+                    qualifier_ids=self.config.qualifier_ids,
+                    time_step_id=self.config.time_step_id,
                     export_id_map=self.config.export_id_map,
                     timeseries_type=TimeseriesType.EXTERNAL_HISTORICAL
                     if self.config.data_type == DataType.observed_historical
@@ -362,6 +370,8 @@ class FewsWebservice(BaseDatasource):
                                 parameter_ids=config.parameter_ids,
                                 module_instance_ids=config.module_instance_id,
                                 ensemble_id=config.ensemble_id,
+                                qualifier_ids=config.qualifier_ids,
+                                time_step_id=config.time_step_id,
                                 start_forecast_time=forecast_reference_time,
                                 end_forecast_time=forecast_reference_time,
                                 export_id_map=config.export_id_map,
@@ -377,6 +387,8 @@ class FewsWebservice(BaseDatasource):
                                 parameter_ids=config.parameter_ids,
                                 module_instance_ids=config.module_instance_id,
                                 ensemble_id=config.ensemble_id,
+                                qualifier_ids=config.qualifier_ids,
+                                time_step_id=config.time_step_id,
                                 start_forecast_time=min(forecast_reference_times),
                                 end_forecast_time=max(forecast_reference_times),
                                 external_forecast_times=[forecast_reference_time],
@@ -473,6 +485,8 @@ class FewsWebservice(BaseDatasource):
                         parameter_ids=self.config.parameter_ids,
                         module_instance_ids=self.config.module_instance_id,
                         ensemble_id=self.config.ensemble_id,
+                        qualifier_ids=self.config.qualifier_ids,
+                        time_step_id=self.config.time_step_id,
                         start_time=self.config.verification_period_on_time.start,
                         end_time=self.config.verification_period_on_time.end,
                         lead_time=fp,
