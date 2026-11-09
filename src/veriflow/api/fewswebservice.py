@@ -86,6 +86,12 @@ class FewsWebserviceClient:
             return [self.format_datetime(t) for t in datetime_list if datetime_list]
         return None
 
+    def format_boolean(self, *, value: bool | None) -> str | None:
+        """Format boolean to lowercase string for URL parameters."""
+        if value is None:
+            return None
+        return "true" if value else "false"
+
     def get_timeseries(  # noqa: PLR0913, PLR0917
         self,
         location_ids: list[str],
@@ -127,10 +133,10 @@ class FewsWebserviceClient:
             "exportIdMap": export_id_map,
             "timeSeriesType": timeseries_type,
             "timeStepId": time_step_id,
-            "showThresholds": show_thresholds,
+            "showThresholds": self.format_boolean(value=show_thresholds),
             "documentFormat": document_format,
-            "onlyHeaders": only_headers,
-            "omitEmptyTimeSeries": True,
+            "onlyHeaders": self.format_boolean(value=only_headers),
+            "omitEmptyTimeSeries": self.format_boolean(value=True),
         }
 
         if document_format == DocumentFormat.PI_NETCDF:
