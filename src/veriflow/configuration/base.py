@@ -277,6 +277,16 @@ class BaseDatasinkConfig(BaseConfig):
             "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
         ),
     ] = False
+    include_input_data_processed: Annotated[
+        bool,
+        Field(
+            description="Whether to include the preprocessed input data in the output. This is "
+            "the input data after applying the configured preprocessors (only present for "
+            "sources that are preprocessed). "
+            "See for reference: "
+            "https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+        ),
+    ] = False
     crs: Annotated[
         CRSString | None,
         Field(
@@ -386,5 +396,30 @@ class BaseCategoricalScoreConfig(BaseScoreConfig):
         Field(
             description="A list of event definitions. For each event, a categorical score will be "
             "computed.",
+        ),
+    ]
+
+
+class BasePreprocessorConfig(BaseConfig):
+    """Base class for preprocessor configurations."""
+
+    preprocessor_adapter: str
+    source_id: Annotated[
+        Source,
+        Field(
+            description="The id of the input to preprocess. This is the source_id of a "
+            "datasource, or the output_source_id of an earlier preprocessor. Preprocessors are "
+            "applied in the configured order.",
+        ),
+    ]
+    output_source_id: Annotated[
+        Source,
+        Field(
+            description="Unique id for the preprocessed data. Verification pairs can reference "
+            "this id (as observations_source_id or simulations_source_id) to verify the "
+            "preprocessed data, while the original source stays available under its own id. "
+            "It must differ from all datasource source_ids and from the output_source_id of other "
+            "preprocessors. The preprocessed data is staged in the 'input_data_processed' node of "
+            "the datatree, the raw data stays available in 'input_data'.",
         ),
     ]

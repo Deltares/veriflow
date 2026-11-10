@@ -418,3 +418,147 @@ def test_get_output_for_datasink_multiple_pairs(
         pair_node = result[pair_id]
         assert DataTreeNode.ALIGNED_INPUT in pair_node.children
         assert DataTreeNode.OUTPUT not in pair_node.children
+
+
+@pytest.fixture
+def processed_observations(xarray_observed_historical: xr.Dataset) -> xr.Dataset:
+    """Create processed observations (own source_id) with values that differ from the raw."""
+    processed = xarray_observed_historical.copy(deep=True)
+    processed["var_0"] = processed["var_0"] * 2
+    return processed.assign_attrs(source_id="observation_processed")
+
+
+def test_processed_and_raw_input_data_can_both_be_used_for_pairing(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+    fake_verification_pair: VerificationPair,
+) -> None:
+    """Pairs can reference the raw or the processed id, and the raw data is kept."""
+    dt = input_data_datatree
+    raw_before = dt.veriflow.get_input_data("observation_source").copy(deep=True)
+    dt.veriflow.add_input_data_processed([processed_observations])
+    processed_pair = VerificationPair(
+        id="processed_pair",
+        observations_source_id="observation_processed",
+        simulations_source_id="simulation_ensemble_source",
+        variable="var_0",
+    )
+
+    obs_raw, sim_raw_pair = dt.veriflow.get_pair(fake_verification_pair)
+    obs_processed, sim_processed_pair = dt.veriflow.get_pair(processed_pair)
+
+    # The simulations are a forecast, so the observations are mapped into forecast space
+    raw_sim = dt.veriflow.get_input_data("simulation_ensemble_source")["var_0"]
+    expected_raw = VeriflowAccessor.map_historical_into_forecast_space(
+        raw_before["var_0"],
+        raw_sim,
+    )
+    expected_processed = VeriflowAccessor.map_historical_into_forecast_space(
+        processed_observations["var_0"],
+        raw_sim,
+    )
+    xr.testing.assert_equal(obs_raw, expected_raw)
+    xr.testing.assert_equal(obs_processed, expected_processed)
+    assert not obs_raw.equals(obs_processed)
+    xr.testing.assert_equal(sim_raw_pair, raw_sim)
+    xr.testing.assert_equal(sim_processed_pair, raw_sim)
+    # The processed data carries its own source_id, and the raw data is untouched
+    assert obs_processed.attrs["source_id"] == "observation_processed"
+    xr.testing.assert_identical(dt.veriflow.get_input_data("observation_source"), raw_before)
+
+
+def test_add_input_data_processed_rejects_raw_source_id(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+) -> None:
+    """Processed data cannot use the source_id of a raw input dataset."""
+    with pytest.raises(ValueError, match="already used by a raw input dataset"):
+        input_data_datatree.veriflow.add_input_data_processed(
+            [processed_observations.assign_attrs(source_id="observation_source")],
+        )
+
+
+def test_processed_input_data_node_is_not_a_verification_pair(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+) -> None:
+    """The input_data_processed node is not listed as verification pair."""
+    input_data_datatree.veriflow.add_input_data_processed([processed_observations])
+
+    assert DataTreeNode.INPUT_DATA_PROCESSED in input_data_datatree.children
+    assert input_data_datatree.veriflow.verification_pairs == []
+
+
+def test_add_input_data_processed_twice_raises(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+) -> None:
+    """Processed data of a source can only be staged once."""
+    input_data_datatree.veriflow.add_input_data_processed([processed_observations])
+    with pytest.raises(ValueError, match="already exists"):
+        input_data_datatree.veriflow.add_input_data_processed([processed_observations])
+
+
+@pytest.mark.parametrize("include_input_data_processed", [True, False])
+def test_filter_nodes_input_data_processed(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+    *,
+    include_input_data_processed: bool,
+) -> None:
+    """The processed input data is only included when requested."""
+    input_data_datatree.veriflow.add_input_data_processed([processed_observations])
+
+    result = input_data_datatree.veriflow.filter_nodes(
+        include_input_data=False,
+        include_aligned_input_data=False,
+        include_output=False,
+        include_input_data_processed=include_input_data_processed,
+    )
+
+    assert (DataTreeNode.INPUT_DATA_PROCESSED in result.children) is include_input_data_processed
+    assert DataTreeNode.INPUT_DATA not in result.children
+
+
+def test_get_input_data_for_processed_only_source(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+) -> None:
+    """Preprocessed data with its own output id is available next to the raw data."""
+    input_data_datatree.veriflow.add_input_data_processed([processed_observations])
+
+    xr.testing.assert_identical(
+        input_data_datatree.veriflow.get_input_data("observation_processed"),
+        processed_observations,
+    )
+    # The original is still available under its own id
+    assert (
+        input_data_datatree.veriflow.get_input_data("observation_source").attrs["source_id"]
+        == "observation_source"
+    )
+    # The processed-only id has no raw data
+    with pytest.raises(ValueError, match="No input data found for source_id"):
+        input_data_datatree.veriflow.get_input_data("observation_processed", processed=False)
+
+
+def test_get_input_data_unknown_source_lists_available_ids(
+    input_data_datatree: VeriflowDataTree,
+    processed_observations: xr.Dataset,
+) -> None:
+    """A clear error lists the available ids, including preprocessed ones."""
+    input_data_datatree.veriflow.add_input_data_processed([processed_observations])
+    with pytest.raises(ValueError, match="observation_processed") as exc_info:
+        input_data_datatree.veriflow.get_input_data("unknown")
+    assert "observation_source" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("reserved_id", ["input_data", "input_data_processed"])
+def test_reserved_verification_pair_ids(reserved_id: str) -> None:
+    """Names of datatree nodes for input data cannot be used as verification pair id."""
+    with pytest.raises(ValueError, match="reserved"):
+        VerificationPair(
+            observations_source_id="observation_source",
+            simulations_source_id="simulation_ensemble_source",
+            id=reserved_id,
+            variable="var_0",
+        )

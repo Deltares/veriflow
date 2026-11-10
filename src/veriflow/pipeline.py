@@ -11,6 +11,7 @@ from cftime import CFWarning  # type:ignore[import-untyped]
 from xarray import SerializationWarning
 
 from veriflow.cache import ZarrCache
+from veriflow.configuration.base import BasePreprocessorConfig
 from veriflow.configuration.config import Config
 from veriflow.configuration.file import ConfigFile, ConfigKind
 from veriflow.constants import StandardAttribute
@@ -19,6 +20,8 @@ from veriflow.datasinks.base import BaseDatasink
 from veriflow.datasources import DEFAULT_DATASOURCES
 from veriflow.datasources.base import BaseDatasource
 from veriflow.datatree.datatree import VeriflowDataTree
+from veriflow.preprocessors import DEFAULT_PREPROCESSORS
+from veriflow.preprocessors.base import BasePreprocessor
 from veriflow.scores import DEFAULT_SCORES
 from veriflow.scores.base import BaseCategoricalScore, BaseScore
 from veriflow.transformations import parse_crs, project_to_crs
@@ -28,7 +31,10 @@ __all__ = ["run_pipeline"]
 logger = logging.getLogger(__name__)
 
 
-TItem = TypeVar("TItem", bound=BaseDatasource | BaseDatasink | BaseScore | BaseCategoricalScore)
+TItem = TypeVar(
+    "TItem",
+    bound=BaseDatasource | BaseDatasink | BaseScore | BaseCategoricalScore | BasePreprocessor,
+)
 
 
 def align_crs(
@@ -94,11 +100,52 @@ def load_config(config: tuple[Path, ConfigKind] | Config) -> Config:
     ).content
 
 
+def preprocess_input_data(
+    dt: VeriflowDataTree,
+    preprocessor_configs: Sequence[BasePreprocessorConfig],
+    available_preprocessors: Sequence[type[BasePreprocessor]],
+) -> None:
+    """Apply the configured preprocessors to the input data and stage the results in the datatree.
+
+    Preprocessors are applied in the configured order, so a preprocessor can use the output of an
+    earlier one. The raw input data stays untouched in the datatree. The preprocessed data is
+    staged in a separate node, under its unique ``output_source_id``, and can be used in
+    verification pairs.
+    """
+    preprocessed: dict[str, xr.Dataset] = {}
+    for preprocessor_config in preprocessor_configs:
+        preprocessor_kind = find_matching_kind_in_list(
+            items=available_preprocessors,
+            kind=preprocessor_config.preprocessor_adapter,
+        )
+        preprocessor = cast(
+            "BasePreprocessor",
+            preprocessor_kind.from_config(
+                preprocessor_config.model_dump(),  # type: ignore[misc] # Allow Any
+            ),
+        )
+        source_id = preprocessor_config.source_id
+        output_source_id = preprocessor_config.output_source_id
+        input_dataset = preprocessed.get(source_id)
+        if input_dataset is None:
+            input_dataset = dt.veriflow.get_input_data(source_id)
+        preprocessed[output_source_id] = preprocessor.preprocess(input_dataset).assign_attrs(
+            {StandardAttribute.source_id: output_source_id},  # type:ignore[misc]
+        )
+        msg = (
+            f"Successfully applied preprocessor {preprocessor_config.preprocessor_adapter} "
+            f"to source {source_id}, resulting in source {output_source_id}."
+        )
+        logger.info(msg)
+    dt.veriflow.add_input_data_processed(preprocessed.values())
+
+
 def run_pipeline(
     config: tuple[Path, ConfigKind] | Config,
     user_datasources: list[type[BaseDatasource]] | None = None,
     user_scores: list[type[BaseScore] | type[BaseCategoricalScore]] | None = None,
     user_datasinks: list[type[BaseDatasink]] | None = None,
+    user_preprocessors: list[type[BasePreprocessor]] | None = None,
 ) -> VeriflowDataTree:
     """Execute a verification pipeline as defined in the configuration.
 
@@ -113,6 +160,8 @@ def run_pipeline(
         Option to plug-in a user-implementation of a Score., by default None
     user_datasinks : list[type[BaseDatasink]] | None, optional
         Option to plug-in a user-implementation of a DataSink., by default None
+    user_preprocessors : list[type[BasePreprocessor]] | None, optional
+        Option to plug-in a user-implementation of a Preprocessor., by default None
 
     Returns
     -------
@@ -163,6 +212,10 @@ def run_pipeline(
     available_datasinks = merge_user_and_default_items(
         DEFAULT_DATASINKS,
         user_datasinks,
+    )
+    available_preprocessors = merge_user_and_default_items(
+        DEFAULT_PREPROCESSORS,
+        user_preprocessors,
     )
 
     config = load_config(config)
@@ -234,9 +287,12 @@ def run_pipeline(
             [datasource.dataset for datasource in datasources],
         )
 
-        msg = "Successfully loaded all data from sources."
-        logger.info(msg)
+        logger.info("Successfully loaded all data from sources.")
 
+        # Preprocess the input data before staging it for verification pairs.
+        preprocess_input_data(dt, config.preprocessors or [], available_preprocessors)
+
+        # Align and stage input data for each verification pair
         for verification_pair in config.general.verification_pairs:
             obs, sim = dt.veriflow.get_pair(verification_pair)
             dt.veriflow.add_staged_input_data(

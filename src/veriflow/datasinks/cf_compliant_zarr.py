@@ -56,6 +56,7 @@ class CFCompliantZarr(BaseDatasink):
         }
         filtered_dt = dt.veriflow.filter_nodes(
             include_input_data=self.config.include_input_data,
+            include_input_data_processed=self.config.include_input_data_processed,
             include_aligned_input_data=self.config.include_aligned_input_data,
             include_output=self.config.include_output,
         )
