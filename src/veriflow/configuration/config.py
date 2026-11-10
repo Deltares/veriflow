@@ -28,9 +28,9 @@ from collections.abc import Sequence
 from enum import StrEnum
 from functools import reduce
 from pathlib import Path
-from typing import Annotated, TypeVar
+from typing import Annotated, Self, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from veriflow.configuration.default.datasinks import (
     CFCompliantNetCDFConfig,
@@ -42,6 +42,7 @@ from veriflow.configuration.default.datasources import (
     NetCDFConfig,
     ZarrConfig,
 )
+from veriflow.configuration.default.preprocessors import TimeAggregationConfig
 from veriflow.configuration.default.scores import (
     CategoricalScoresConfig,
     ContinuousScoresConfig,
@@ -55,6 +56,7 @@ from veriflow.constants import SCHEMA_VERSION
 from .base import (
     BaseDatasinkConfig,
     BaseDatasourceConfig,
+    BasePreprocessorConfig,
     BaseScoreConfig,
     GeneralInfoConfig,
     IdMappingConfig,
@@ -62,7 +64,7 @@ from .base import (
 
 TItem = TypeVar(
     "TItem",
-    bound=BaseDatasourceConfig | BaseDatasinkConfig | BaseScoreConfig,
+    bound=BaseDatasourceConfig | BaseDatasinkConfig | BaseScoreConfig | BasePreprocessorConfig,
 )
 
 __all__ = [
@@ -90,9 +92,37 @@ class Config(BaseModel):
     version: SupportedSchemaVersion = SupportedSchemaVersion.V0
     general: GeneralInfoConfig
     datasources: Annotated[Sequence[BaseDatasourceConfig], Field(min_length=1)]
+    preprocessors: Annotated[Sequence[BasePreprocessorConfig] | None, Field(min_length=1)] = None
     scores: Annotated[Sequence[BaseScoreConfig] | None, Field(min_length=1)] = None
     datasinks: Annotated[Sequence[BaseDatasinkConfig] | None, Field(min_length=1)] = None
     id_mapping: IdMappingConfig | None = None
+
+    @model_validator(mode="after")
+    def preprocessor_source_ids_valid(self) -> Self:
+        """Check the source and output ids of the preprocessors.
+
+        Preprocessors are applied in order. Each preprocessor must refer to a configured datasource
+        or to the output of an earlier preprocessor, and an output_source_id must be unique.
+        """
+        available = {datasource.source_id for datasource in self.datasources}
+        for preprocessor in self.preprocessors or []:
+            if preprocessor.source_id not in available:
+                msg = (
+                    f"Preprocessor '{preprocessor.preprocessor_adapter}' refers to source_id "
+                    f"'{preprocessor.source_id}', which is not configured in datasources or as "
+                    f"output_source_id of an earlier preprocessor. Available ids: "
+                    f"{sorted(available)}."
+                )
+                raise ValueError(msg)
+            if preprocessor.output_source_id in available:
+                msg = (
+                    f"Preprocessor '{preprocessor.preprocessor_adapter}' has output_source_id "
+                    f"'{preprocessor.output_source_id}', which is already used by a datasource "
+                    "or another preprocessor. An output_source_id must be unique."
+                )
+                raise ValueError(msg)
+            available.add(preprocessor.output_source_id)
+        return self
 
     @staticmethod
     def write_schema(
@@ -100,6 +130,7 @@ class Config(BaseModel):
         user_datasources_config: list[type[BaseDatasourceConfig]] | None = None,
         users_scores_config: list[type[BaseScoreConfig]] | None = None,
         user_datasinks_config: list[type[BaseDatasinkConfig]] | None = None,
+        user_preprocessors_config: list[type[BasePreprocessorConfig]] | None = None,
     ) -> None:
         """Generate a YAML schema from the Pydantic model.
 
@@ -122,6 +153,8 @@ class Config(BaseModel):
             Option to provide user-implemented config classes, by default None
         user_datasink_config : list[type[BaseDatasinkConfig]] | None, optional
             Option to provide user-implemented config classes, by default None
+        user_preprocessors_config : list[type[BasePreprocessorConfig]] | None, optional
+            Option to provide user-implemented config classes, by default None
 
         """
         default_datasources_config: list[type[BaseDatasourceConfig]] = [
@@ -140,6 +173,7 @@ class Config(BaseModel):
             SALScoreConfig,
         ]
         default_datasinks_config: list[type[BaseDatasinkConfig]] = [CFCompliantNetCDFConfig]
+        default_preprocessors_config: list[type[BasePreprocessorConfig]] = [TimeAggregationConfig]
 
         def create_config_union(
             models: list[type[TItem]],
@@ -165,6 +199,12 @@ class Config(BaseModel):
             else default_datasinks_config
         )
 
+        merged_preprocessors_models = (
+            default_preprocessors_config + user_preprocessors_config
+            if user_preprocessors_config is not None
+            else default_preprocessors_config
+        )
+
         CombinedDataSourceConfig = create_config_union(  # noqa: N806
             merged_datasource_models,
             discriminator="import_adapter",
@@ -178,8 +218,14 @@ class Config(BaseModel):
             discriminator="export_adapter",
         )
 
+        CombinedPreprocessorConfig = create_config_union(  # noqa: N806
+            merged_preprocessors_models,
+            discriminator="preprocessor_adapter",
+        )
+
         class ConfigSchema(Config):
             datasources: CombinedDataSourceConfig  # type:ignore[valid-type]
+            preprocessors: CombinedPreprocessorConfig | None = None  # type:ignore[valid-type]
             scores: CombinedScoreConfig  # type:ignore[valid-type]
             datasinks: CombinedDatasinkConfig | None = None  # type:ignore[valid-type]
 

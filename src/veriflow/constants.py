@@ -75,6 +75,23 @@ class ScoreKind(StrEnum):
 
 
 @unique
+class PreprocessorKind(StrEnum):
+    """Enumeration of the implemented preprocessors."""
+
+    time_aggregation = "time_aggregation"
+
+
+@unique
+class TimeAggregationMethod(StrEnum):
+    """Supported aggregation methods for the time aggregation preprocessor."""
+
+    mean = "mean"
+    min = "min"
+    max = "max"
+    sum = "sum"
+
+
+@unique
 class SupportedContinuousScore(StrEnum):
     """Supported continuous scores."""
 

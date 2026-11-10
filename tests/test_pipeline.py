@@ -1,5 +1,6 @@
 """Test the functions in the pipeline module."""
 
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -7,6 +8,7 @@ from pytest_lazy_fixtures import lf
 
 from veriflow.configuration.base import GeneralInfoConfig
 from veriflow.configuration.config import SupportedSchemaVersion
+from veriflow.configuration.default.preprocessors import TimeAggregationConfig
 from veriflow.configuration.default.scores import (
     BaseScoreConfig,
     CategoricalScoresConfig,
@@ -15,21 +17,28 @@ from veriflow.configuration.default.scores import (
     ThresholdEvent,
 )
 from veriflow.configuration.file import Config
+from veriflow.configuration.utils import TimeDelta, VerificationPair
 from veriflow.constants import (
     DataType,
+    PreprocessorKind,
     ScoreKind,
     StandardDim,
     SupportedCategoricalScores,
     SupportedContinuousScore,
+    TimeAggregationMethod,
+    TimeUnits,
 )
 from veriflow.datasinks.cf_compliant_netcdf import CFCompliantNetCDF
 from veriflow.datasources.csv import Csv
 from veriflow.datasources.fewsnetcdf import FewsNetCDF
 from veriflow.datasources.netcdf import NetCDF
+from veriflow.datatree.datatree import DataTreeNode
 from veriflow.pipeline import run_pipeline
 
 if TYPE_CHECKING:
     import xarray as xr
+
+# mypy: disable-error-code="misc"
 
 
 @pytest.mark.parametrize(
@@ -133,3 +142,193 @@ def test_pipeline_historical_data_only(
     assert "mae" in score_dataset.data_vars
     assert score_dataset["mae"].dims == ("station",)
     assert all(score_dataset["mae"] == 0)
+
+
+def test_pipeline_time_aggregation(
+    xarray_general_info_config_historical: GeneralInfoConfig,
+    xarray_observed_historical_datasource: NetCDF,
+    datasink_cf_compliant_netcdf: CFCompliantNetCDF,
+) -> None:
+    """Run the pipeline with a daily mean aggregation of the observations and simulations."""
+    obs_source_id = xarray_observed_historical_datasource.config.source_id
+    sim_source_id = "simulation_ensemble_source"
+    output_ids = {obs_source_id: "observation_daily", sim_source_id: "simulation_daily"}
+
+    # The verification pair uses the aggregated data
+    general = xarray_general_info_config_historical.model_copy(
+        update={
+            "verification_pairs": [
+                VerificationPair(
+                    id="pair_daily",
+                    observations_source_id=output_ids[obs_source_id],
+                    simulations_source_id=output_ids[sim_source_id],
+                    variable="var_1",
+                ),
+            ],
+        },
+    )
+    continuous_score_config = ContinuousScoresConfig(
+        general=general,
+        score_adapter=ScoreKind.continuous_scores,
+        scores=[SupportedContinuousScore.rmse, SupportedContinuousScore.mae],
+        reduce_dims=[StandardDim.time],
+    )
+
+    # Create a dummy simulation, by copying the observed historical
+    dummy_config = xarray_observed_historical_datasource.config.model_copy()
+    dummy_config.source_id = sim_source_id
+    dummy_config.data_type = DataType.simulated_historical
+
+    preprocessors = [
+        TimeAggregationConfig(
+            preprocessor_adapter=PreprocessorKind.time_aggregation,
+            source_id=source_id,
+            output_source_id=output_id,
+            frequency=TimeDelta(value=1, unit=TimeUnits.day),
+            method=TimeAggregationMethod.mean,
+            closed="left",
+            label="left",
+        )
+        for source_id, output_id in output_ids.items()
+    ]
+    datasink_config = datasink_cf_compliant_netcdf.config.model_copy(
+        update={"include_input_data_processed": True},
+    )
+
+    config = Config(
+        version=SupportedSchemaVersion.V0,
+        general=general,
+        datasources=[xarray_observed_historical_datasource.config, dummy_config],
+        preprocessors=preprocessors,
+        scores=[continuous_score_config],
+        datasinks=[datasink_config],
+    )
+    output_datatree = run_pipeline(config)
+
+    # The raw data stays hourly, the processed data and the paired data are daily. The datasource
+    # fixture has lead times starting at 1 day, so it holds 9 instead of 10 days of data.
+    days = 9
+    hours = days * 24
+    for source_id, output_id in output_ids.items():
+        raw = output_datatree.veriflow.get_input_data(source_id)
+        processed = output_datatree.veriflow.get_input_data(output_id)
+        assert raw.sizes[StandardDim.time] == hours
+        assert processed.sizes[StandardDim.time] == days
+        assert processed.attrs["source_id"] == output_id
+    assert set(output_datatree[DataTreeNode.INPUT_DATA].children) == set(output_ids)
+    assert set(output_datatree[DataTreeNode.INPUT_DATA_PROCESSED].children) == set(
+        output_ids.values(),
+    )
+    aligned_input = output_datatree.veriflow.get_aligned_input("pair_daily")
+    assert aligned_input[DataTreeNode.OBSERVATIONS].to_dataset().sizes[StandardDim.time] == days
+
+    # Since the two datasources are identical, we expect perfect scores on the aggregated data.
+    score_dataset = cast(
+        "xr.DataTree",
+        output_datatree[f"pair_daily/output/{continuous_score_config.score_adapter}"],
+    )
+    score_dataset.load()
+    assert all(score_dataset["rmse"] == 0)
+
+    # The datasink wrote the output, including the processed input data
+    assert (Path(datasink_config.directory) / datasink_config.filename).exists()
+
+
+def test_pipeline_time_aggregation_with_output_source_id(
+    xarray_general_info_config_historical: GeneralInfoConfig,
+    xarray_observed_historical_datasource: NetCDF,
+) -> None:
+    """Verification pairs can use original and preprocessed data via the output_source_id."""
+    obs_id = xarray_observed_historical_datasource.config.source_id
+    sim_id = "simulation_ensemble_source"
+    dummy_config = xarray_observed_historical_datasource.config.model_copy()
+    dummy_config.source_id = sim_id
+    dummy_config.data_type = DataType.simulated_historical
+
+    def aggregation(
+        source_id: str,
+        output_source_id: str,
+        method: TimeAggregationMethod,
+        days: int,
+    ) -> TimeAggregationConfig:
+        return TimeAggregationConfig(
+            preprocessor_adapter=PreprocessorKind.time_aggregation,
+            source_id=source_id,
+            output_source_id=output_source_id,
+            frequency=TimeDelta(value=days, unit=TimeUnits.day),
+            method=method,
+            closed="left",
+            label="left",
+        )
+
+    # The last preprocessor uses the output of the first one
+    preprocessors = [
+        aggregation(obs_id, "observation_daily", TimeAggregationMethod.mean, 1),
+        aggregation(sim_id, "simulation_daily", TimeAggregationMethod.mean, 1),
+        aggregation("observation_daily", "observation_2daily_max", TimeAggregationMethod.max, 2),
+    ]
+    general = xarray_general_info_config_historical.model_copy(
+        update={
+            "verification_pairs": [
+                VerificationPair(
+                    id="pair_original",
+                    observations_source_id=obs_id,
+                    simulations_source_id=sim_id,
+                    variable="var_1",
+                ),
+                VerificationPair(
+                    id="pair_daily",
+                    observations_source_id="observation_daily",
+                    simulations_source_id="simulation_daily",
+                    variable="var_1",
+                ),
+            ],
+        },
+    )
+    continuous_score_config = ContinuousScoresConfig(
+        general=general,
+        score_adapter=ScoreKind.continuous_scores,
+        scores=[SupportedContinuousScore.rmse],
+        reduce_dims=[StandardDim.time],
+    )
+    config = Config(
+        version=SupportedSchemaVersion.V0,
+        general=general,
+        datasources=[xarray_observed_historical_datasource.config, dummy_config],
+        preprocessors=preprocessors,
+        scores=[continuous_score_config],
+    )
+
+    output_datatree = run_pipeline(config)
+
+    # Raw data only holds the original ids, the processed data holds the output ids
+    assert set(output_datatree[DataTreeNode.INPUT_DATA].children) == {obs_id, sim_id}
+    assert set(output_datatree[DataTreeNode.INPUT_DATA_PROCESSED].children) == {
+        "observation_daily",
+        "simulation_daily",
+        "observation_2daily_max",
+    }
+    sizes = {
+        output_id: output_datatree.veriflow.get_input_data(output_id).sizes[StandardDim.time]
+        for output_id in ("observation_daily", "observation_2daily_max")
+    }
+    assert sizes == {"observation_daily": 9, "observation_2daily_max": 5}  # 4 full + 1 partial bin
+
+    # Both pairs are verified, one on the original (hourly), one on the preprocessed (daily) data
+    assert set(output_datatree.veriflow.verification_pairs) == {"pair_original", "pair_daily"}
+    for pair_id, expected_steps, expected_obs_source in (
+        ("pair_original", 9 * 24, obs_id),
+        ("pair_daily", 9, "observation_daily"),
+    ):
+        observations = output_datatree.veriflow.get_aligned_input(pair_id)[
+            DataTreeNode.OBSERVATIONS
+        ].to_dataset()
+        assert observations.sizes[StandardDim.time] == expected_steps
+        assert observations["var_1"].attrs["source_id"] == expected_obs_source
+
+        score_dataset = cast(
+            "xr.DataTree",
+            output_datatree[f"{pair_id}/output/{continuous_score_config.score_adapter}"],
+        )
+        score_dataset.load()
+        assert all(score_dataset["rmse"] == 0)

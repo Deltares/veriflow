@@ -150,11 +150,16 @@ def test_schema_dump_with_user_models(tmp_path: Path) -> None:
         export_adapter: Literal["userdatasink"]
         some_other_property: list[int]
 
+    class UserPreprocessorConfig(BaseModel):
+        preprocessor_adapter: Literal["userpreprocessor"]
+        some_other_property: list[int]
+
     Config.write_schema(
         tmpfile,
         user_datasources_config=[UserDatasourceConfig],  # type:ignore[list-item]
         users_scores_config=[UserScoreconfig],  # type:ignore[list-item]
         user_datasinks_config=[UserDataSinkConfig],  # type:ignore[list-item]
+        user_preprocessors_config=[UserPreprocessorConfig],  # type:ignore[list-item]
     )
     assert tmpfile.exists()
 
@@ -171,6 +176,11 @@ def test_schema_dump_with_user_models(tmp_path: Path) -> None:
             "userdatasink"
             in schema["properties"]["datasinks"]["anyOf"][0]["items"]["discriminator"]["mapping"]  # type:ignore[misc]
         )
+        preprocessor_mapping = schema["properties"]["preprocessors"]["anyOf"][0]["items"][  # type:ignore[misc]
+            "discriminator"
+        ]["mapping"]
+        assert "userpreprocessor" in preprocessor_mapping  # type:ignore[misc]
+        assert "time_aggregation" in preprocessor_mapping  # type:ignore[misc]
 
 
 def test_lead_time_config() -> None:
