@@ -293,6 +293,20 @@ class StandardAttribute:
     source_id = "source_id"
 
 
+def _run_git(args: list[str], cwd: pathlib.Path) -> subprocess.CompletedProcess[str] | None:
+    """Run a git command, returning None when git cannot be executed (e.g. not installed)."""
+    try:
+        return subprocess.run(  # noqa: S603 # No S603 since we are pretty certain the input is not dangerous
+            ["git", *args],  # noqa: S607 # git is expected to be found on the PATH, if available
+            cwd=cwd,
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except OSError:
+        return None
+
+
 def _set_version_info() -> tuple[str, str]:
     version = importlib_metadata.version("veriflow")
     version_extra = ""
@@ -301,25 +315,18 @@ def _set_version_info() -> tuple[str, str]:
     #   https://github.com/Deltares/veriflow/issues/36
     #   See issue link for details
     this_dir = pathlib.Path(__file__).parent
-    command = ["git", "rev-parse", "HEAD"]
-    completed = subprocess.run(command, cwd=this_dir, capture_output=True, check=False, text=True)  # noqa: S603 # No S603 since we are pretty certain the input is not dangerous
-    if completed.returncode == 0:
+    completed = _run_git(["rev-parse", "HEAD"], this_dir)
+    if completed is not None and completed.returncode == 0:
         # Git is installed, and this file is in a directory that is part of a git repository
         # Add git commit hash as version_extra
         stdout = completed.stdout
         version_extra = "+" + stdout.strip()
         # Also check whether there are uncommitted changes on top of the commit
-        command = ["git", "diff", "HEAD"]
-        completed = subprocess.run(  # noqa: S603 # No S603 since we are pretty certain the input is not dangerous
-            command,
-            cwd=this_dir,
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        if completed.stdout:
+        completed = _run_git(["diff", "HEAD"], this_dir)
+        if completed is not None and completed.stdout:
             version_extra += ".dirty"
     else:
+        # Git is not installed, or this file is not part of a git repository
         origin = importlib_metadata.distribution("veriflow").origin  # type: ignore[misc] # Since not sure what will be returned, there is the long if statement
         if (
             origin  # type: ignore[misc] # Since not sure what will be returned, there is the long if statement
