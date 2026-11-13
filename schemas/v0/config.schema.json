@@ -52,6 +52,12 @@
           "title": "Include Input Data",
           "type": "boolean"
         },
+        "include_input_data_processed": {
+          "default": false,
+          "description": "Whether to include the preprocessed input data in the output. This is the input data after applying the configured preprocessors (only present for sources that are preprocessed). See for reference: https://deltares.github.io/veriflow/api/_generated/veriflow.datatree.datatree.html",
+          "title": "Include Input Data Processed",
+          "type": "boolean"
+        },
         "crs": {
           "anyOf": [
             {
@@ -1258,6 +1264,114 @@
       "title": "ThresholdEvent",
       "type": "object"
     },
+    "TimeAggregationConfig": {
+      "additionalProperties": true,
+      "description": "Configuration for aggregating a historical dataset to a coarser time step.\n\nWraps ``xarray`` resampling (``Dataset.resample(time=...)``). For example, to compute hourly\nvalues as the mean over the past 60 minutes from 10-minute data, use ``frequency`` of 1 hour,\n``method`` mean and (the defaults) ``closed`` and ``label`` right.",
+      "properties": {
+        "preprocessor_adapter": {
+          "const": "time_aggregation",
+          "title": "Preprocessor Adapter",
+          "type": "string"
+        },
+        "source_id": {
+          "description": "The id of the input to preprocess. This is the source_id of a datasource, or the output_source_id of an earlier preprocessor. Preprocessors are applied in the configured order.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "output_source_id": {
+          "description": "Unique id for the preprocessed data. Verification pairs can reference this id (as observations_source_id or simulations_source_id) to verify the preprocessed data, while the original source stays available under its own id. It must differ from all datasource source_ids and from the output_source_id of other preprocessors. The preprocessed data is staged in the 'input_data_processed' node of the datatree, the raw data stays available in 'input_data'.",
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "title": "Output Source Id",
+          "type": "string"
+        },
+        "frequency": {
+          "$ref": "#/$defs/TimeDelta",
+          "description": "The output time step, as a value and a unit (e.g. 1 hour)."
+        },
+        "method": {
+          "$ref": "#/$defs/TimeAggregationMethod",
+          "description": "The aggregation method applied to the values in each output interval."
+        },
+        "closed": {
+          "default": "right",
+          "description": "Which side of the output interval is closed. With 'right' an interval covers (t - frequency, t], so a timestamp aggregates the values over the past 'frequency'. With 'left' an interval covers [t, t + frequency).",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "title": "Closed",
+          "type": "string"
+        },
+        "label": {
+          "default": "right",
+          "description": "Which edge of the output interval is used as the timestamp of the aggregated value.",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "title": "Label",
+          "type": "string"
+        },
+        "min_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional minimum number of valid (non-missing) input values required in an output interval. Intervals with fewer values (e.g. incomplete intervals at the start or end of the data) become NaN. When omitted, all intervals with at least one value are aggregated.",
+          "title": "Min Count"
+        }
+      },
+      "required": [
+        "preprocessor_adapter",
+        "source_id",
+        "output_source_id",
+        "frequency",
+        "method"
+      ],
+      "title": "TimeAggregationConfig",
+      "type": "object"
+    },
+    "TimeAggregationMethod": {
+      "description": "Supported aggregation methods for the time aggregation preprocessor.",
+      "enum": [
+        "mean",
+        "min",
+        "max",
+        "sum"
+      ],
+      "title": "TimeAggregationMethod",
+      "type": "string"
+    },
+    "TimeDelta": {
+      "description": "A fixed-length duration, configured as a value and a unit (e.g. ``value: 1, unit: h``).",
+      "properties": {
+        "value": {
+          "description": "The number of time units.",
+          "exclusiveMinimum": 0,
+          "title": "Value",
+          "type": "integer"
+        },
+        "unit": {
+          "$ref": "#/$defs/TimeUnits",
+          "description": "The time unit. Only fixed-length units are supported (so not years or months): W, D, h, m, s or ns."
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "title": "TimeDelta",
+      "type": "object"
+    },
     "TimeUnits": {
       "description": "Time unit strings, compatible with numpy datetime64 and timedelta64.",
       "enum": [
@@ -1274,10 +1388,10 @@
       "type": "string"
     },
     "VerificationPair": {
-      "description": "Configuration for a verification pair.\n\nThe id uniquely identifies the verification pair.\nThe observations_source_id and simulations_source_id fields reference the respective data\nsources and should match with the configured source_id in the datasource configuration.\nThe variable field specifies the (internal; i.e. after id mapping) physical variable to be\nverified.",
+      "description": "Configuration for a verification pair.\n\nThe id uniquely identifies the verification pair.\nThe observations_source_id and simulations_source_id fields reference the respective data\nsources and should match with the configured source_id in the datasource configuration, or with\nthe output_source_id of a preprocessor to verify preprocessed data.\nThe variable field specifies the (internal; i.e. after id mapping) physical variable to be\nverified.",
       "properties": {
         "id": {
-          "description": "Unique identifier for the verification pair. All strings are allowed, but 'input_data' is reserved. And can not be used.",
+          "description": "Unique identifier for the verification pair. All strings are allowed, but 'input_data' and 'input_data_processed' are reserved. And can not be used.",
           "minLength": 1,
           "title": "Id",
           "type": "string"
@@ -1601,6 +1715,31 @@
       },
       "title": "Datasources",
       "type": "array"
+    },
+    "preprocessors": {
+      "anyOf": [
+        {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "time_aggregation": "#/$defs/TimeAggregationConfig"
+              },
+              "propertyName": "preprocessor_adapter"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/TimeAggregationConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preprocessors"
     },
     "scores": {
       "items": {

@@ -31,6 +31,7 @@ __all__ = [
     "Range",
     # "S3AuthConfig",
     "Source",
+    "TimeDelta",
     "TimePeriod",
     "Variable",
     "VerificationPair",
@@ -133,6 +134,39 @@ class LeadTimes(BaseModel):
         return min(self.stdlib_timedelta)
 
 
+class TimeDelta(BaseModel):
+    """A fixed-length duration, configured as a value and a unit (e.g. ``value: 1, unit: h``)."""
+
+    value: Annotated[int, Field(gt=0, description="The number of time units.")]
+    unit: Annotated[
+        TimeUnits,
+        Field(
+            description="The time unit. Only fixed-length units are supported (so not years or "
+            "months): W, D, h, m, s or ns.",
+        ),
+    ]
+
+    @field_validator("unit", mode="after")
+    @classmethod
+    def unit_has_fixed_length(cls, v: TimeUnits) -> TimeUnits:
+        """Reject calendar units, which have no fixed length."""
+        if v in (TimeUnits.year, TimeUnits.month):
+            msg = f"Unit '{v.value}' has no fixed length. Use W, D, h, m, s or ns instead."
+            raise ValueError(msg)
+        return v
+
+    @property
+    def timedelta64(self) -> np.timedelta64:
+        """As numpy timedelta64."""
+        return np.timedelta64(self.value, self.unit.value)
+
+    @property
+    def stdlib_timedelta(self) -> timedelta:
+        """As datetime timedelta (microsecond precision)."""
+        td_us = self.timedelta64.astype("timedelta64[us]")
+        return timedelta(microseconds=int(td_us.astype("int64")))  # type:ignore[misc]
+
+
 class TimePeriod(BaseModel):
     """A time period config element."""
 
@@ -192,7 +226,8 @@ class VerificationPair(BaseModel):
 
     The id uniquely identifies the verification pair.
     The observations_source_id and simulations_source_id fields reference the respective data
-    sources and should match with the configured source_id in the datasource configuration.
+    sources and should match with the configured source_id in the datasource configuration, or with
+    the output_source_id of a preprocessor to verify preprocessed data.
     The variable field specifies the (internal; i.e. after id mapping) physical variable to be
     verified.
     """
@@ -202,7 +237,7 @@ class VerificationPair(BaseModel):
         Field(
             min_length=1,
             description="Unique identifier for the verification pair. All strings are allowed, but "
-            "'input_data' is reserved. And can not be used.",
+            "'input_data' and 'input_data_processed' are reserved. And can not be used.",
         ),
     ]
     observations_source_id: Annotated[Source, Field(description="Source ID for the observations.")]
@@ -219,9 +254,9 @@ class VerificationPair(BaseModel):
     @field_validator("id", mode="after")
     @classmethod
     def id_not_reserved(cls, v: str) -> str:
-        """Reject 'input_data', reserved as the DataTree node name for raw input datasets."""
-        if v == "input_data":
-            msg = "'input_data' is a reserved id and cannot be used as a verification pair id."
+        """Reject names reserved as DataTree node names for input datasets."""
+        if v in ("input_data", "input_data_processed"):
+            msg = f"'{v}' is a reserved id and cannot be used as a verification pair id."
             raise ValueError(msg)
         return v
 

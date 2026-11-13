@@ -112,6 +112,7 @@ class DataTreeNode(StrEnum):
 
     ROOT = "veriflow-datatree"
     INPUT_DATA = "input_data"
+    INPUT_DATA_PROCESSED = "input_data_processed"
     ALIGNED_INPUT = "aligned_input"
     OUTPUT = "output"
     OBSERVATIONS = "observations"
@@ -125,10 +126,15 @@ class VeriflowAccessor:
     The DataTree layout is as follows:
 
     - The root node is ``veriflow-datatree``.
-    - The the root node's child nodes are ``input_data`` and one or more verification pairs.
+    - The the root node's child nodes are ``input_data``, optionally ``input_data_processed``, and
+      one or more verification pairs.
     - The ``input_data`` node holds the validated input datasets. These are instances of
       `xr.Dataset`as fetched from the configured datasources. They are instances of `xr.Dataset`
       keyed by their ``source_id``.
+    - The ``input_data_processed`` node only exists when preprocessors are configured. It holds the
+      preprocessed datasets, keyed by the unique ``output_source_id`` of the preprocessor that
+      created them. Verification pairs can reference these ids next to the ids of the raw datasets
+      in ``input_data``, which are never modified.
     - Each ``verification_pair``  node represents a verification pair, identified by its unique ID,
       and has two main child nodes: ``aligned_input`` and ``output``.
 
@@ -149,6 +155,8 @@ class VeriflowAccessor:
         │   ├── source_id_a
         │   └── source_id_b
         │   └── source_id_c
+        ├── input_data_processed
+        │   └── source_id_a
         ├── verification_pair_1
         │   ├── aligned_input
         │   │   ├── observations
@@ -182,7 +190,11 @@ class VeriflowAccessor:
     @property
     def verification_pairs(self) -> list[str]:
         """Get a list of verification pair IDs in the DataTree."""
-        return [name for name in self.dt.children if name != DataTreeNode.INPUT_DATA]
+        return [
+            name
+            for name in self.dt.children
+            if name not in (DataTreeNode.INPUT_DATA, DataTreeNode.INPUT_DATA_PROCESSED)
+        ]
 
     @staticmethod
     def map_historical_into_forecast_space(
@@ -253,8 +265,8 @@ class VeriflowAccessor:
         resulting DataArrays. This method is called by the verification pipeline at runtime
         to retrieve the correct data for one of the configured verification pairs.
         """
-        obs_ds = self._get_input_data(verification_pair.observations_source_id)
-        sim_ds = self._get_input_data(verification_pair.simulations_source_id)
+        obs_ds = self.get_input_data(verification_pair.observations_source_id)
+        sim_ds = self.get_input_data(verification_pair.simulations_source_id)
 
         variable = verification_pair.variable
         if variable not in obs_ds.data_vars:
@@ -274,8 +286,9 @@ class VeriflowAccessor:
             )
             raise ValueError(msg)
 
-        obs = obs_ds[variable]
-        sim = sim_ds[variable]
+        # Shallow copies, so propagating attrs below does not modify the stored input datasets
+        obs = obs_ds[variable].copy(deep=False)
+        sim = sim_ds[variable].copy(deep=False)
 
         def _propagate_attrs(da: xr.DataArray, ds: xr.Dataset) -> None:
             """Propagate dataset-level attrs needed downstream onto the extracted DataArray."""
@@ -403,6 +416,53 @@ class VeriflowAccessor:
             self._validate_path_does_not_exist(path_in_dt)
             self.dt[path_in_dt] = dataset
 
+    def add_input_data_processed(self, data: Iterable[xr.Dataset]) -> None:
+        """Add preprocessed input datasets to the datatree, keyed by their (unique) source_id.
+
+        The source_id of a preprocessed dataset must differ from the source_id of any raw input
+        dataset, so verification pairs can unambiguously reference either.
+        """
+        for dataset in data:
+            source_id = cast("str", dataset.verification.source_id)  # type:ignore[misc]
+            if self._path_exists_in_dt(f"{DataTreeNode.INPUT_DATA}/{source_id}"):
+                msg = (
+                    f"Preprocessed data cannot use source_id '{source_id}', because it is already "
+                    "used by a raw input dataset."
+                )
+                raise ValueError(msg)
+            path_in_dt = f"{DataTreeNode.INPUT_DATA_PROCESSED}/{source_id}"
+            self._validate_path_does_not_exist(path_in_dt)
+            self.dt[path_in_dt] = dataset
+
+    def get_input_data(self, source_id: str, *, processed: bool = True) -> xr.Dataset:
+        """Get the input dataset of a source.
+
+        When ``processed`` is True, the preprocessed dataset with this id is returned if it exists
+        (this includes ids that only exist as preprocessor output). Otherwise (or when
+        ``processed`` is False), the raw input dataset is returned.
+        """
+        processed_path = f"{DataTreeNode.INPUT_DATA_PROCESSED}/{source_id}"
+        if processed and self._path_exists_in_dt(processed_path):
+            return cast("xr.Dataset", self.dt[processed_path].to_dataset())
+        if not self._path_exists_in_dt(f"{DataTreeNode.INPUT_DATA}/{source_id}"):
+            msg = (
+                f"No input data found for source_id '{source_id}'. Available source_ids: "
+                f"{self._available_source_ids(processed=processed)}."
+            )
+            raise ValueError(msg)
+        return self._get_input_data(source_id)
+
+    def _available_source_ids(self, *, processed: bool) -> list[str]:
+        """List the source ids with input data (raw and, optionally, preprocessed)."""
+        nodes = [DataTreeNode.INPUT_DATA]
+        if processed:
+            nodes.append(DataTreeNode.INPUT_DATA_PROCESSED)
+        ids: set[str] = set()
+        for node in nodes:
+            if self._path_exists_in_dt(node):
+                ids.update(cast("xr.DataTree", self.dt[node]).children)
+        return sorted(ids)
+
     def _get_input_data(self, source_id: str) -> xr.Dataset:
         """Get a raw input dataset previously added via ``add_input_data``, by source_id."""
         return cast(
@@ -416,17 +476,25 @@ class VeriflowAccessor:
         include_input_data: bool,
         include_aligned_input_data: bool,
         include_output: bool,
+        include_input_data_processed: bool = False,
     ) -> xr.DataTree:
         """Filter the datatree based on the specified inclusion flags.
 
         Builds a new DataTree containing only the parts of this DataTree selected by
-        ``config``: the raw ``input_data`` node, and/or the ``aligned_input`` and ``output``
-        nodes under each verification pair, in any combination.
+        ``config``: the raw ``input_data`` node, the ``input_data_processed`` node, and/or the
+        ``aligned_input`` and ``output`` nodes under each verification pair, in any combination.
         """
         filtered_dt = cast("xr.DataTree", xr.DataTree(name=self.dt.name))
 
         if include_input_data and self._path_exists_in_dt(DataTreeNode.INPUT_DATA):
             filtered_dt[DataTreeNode.INPUT_DATA] = self.dt[DataTreeNode.INPUT_DATA]
+
+        if include_input_data_processed and self._path_exists_in_dt(
+            DataTreeNode.INPUT_DATA_PROCESSED,
+        ):
+            filtered_dt[DataTreeNode.INPUT_DATA_PROCESSED] = self.dt[
+                DataTreeNode.INPUT_DATA_PROCESSED
+            ]
 
         for pair_id in self.verification_pairs:
             if include_aligned_input_data:
