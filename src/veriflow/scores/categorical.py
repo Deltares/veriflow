@@ -121,6 +121,9 @@ class CategoricalScores(BaseCategoricalScore):
     config_class = CategoricalScoresConfig
     supported_data_specs: ClassVar[set[DataSpec]] = {
         (DataType.simulated_forecast_single, SpatialType.point),
+        (DataType.simulated_forecast_ensemble, SpatialType.point),
+        (DataType.simulated_forecast_single, SpatialType.gridded),
+        (DataType.simulated_forecast_ensemble, SpatialType.gridded),
     }
 
     def __init__(self, config: CategoricalScoresConfig) -> None:
@@ -155,7 +158,11 @@ class CategoricalScores(BaseCategoricalScore):
             obs_events=obs_events,
         )
         # Compute preserve_dims filtered to actual data dimensions
-        _, preserve_dims = compute_reduce_and_preserve_dims(self.config.reduce_dims, sim.dims)
+        _, preserve_dims = compute_reduce_and_preserve_dims(
+            self.config.reduce_dims,
+            sim.dims,
+            allow_realization_dim=True,
+        )
         basic_contingency_manager = binary_contingency_manager.transform(  # type:ignore[misc]
             preserve_dims=preserve_dims,
         )
