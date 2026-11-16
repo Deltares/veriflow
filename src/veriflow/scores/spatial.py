@@ -41,10 +41,12 @@ _SAL_COMPONENTS = ("structure", "amplitude", "location")
 class SALScore(BaseScore):
     """Structure-Amplitude-Location (SAL) spatial verification score.
 
-    Computes the SAL score of ``pysteps`` on 2D ``(y, x)`` fields for single
-    deterministic gridded forecasts against gridded observations. For each forecast slice
-    (along any non-spatial dimensions such as ``forecast_reference_time`` and ``lead_time``)
-    the structure, amplitude and location components are returned as separate variables.
+    Computes the SAL score of ``pysteps`` on 2D ``(y, x)`` fields for deterministic
+    or ensemble gridded forecasts against gridded observations. For each forecast slice
+    (along any non-spatial dimensions such as ``forecast_reference_time``, ``lead_time``
+    and ``realization``) the structure, amplitude and location components are returned
+    as separate variables. Ensemble members are evaluated independently; the
+    ``realization`` dimension is preserved without reduction.
 
     For reference, see:
     https://pysteps.readthedocs.io/en/stable/generated/pysteps.verification.salscores.sal.html
@@ -54,6 +56,7 @@ class SALScore(BaseScore):
     config_class = SALScoreConfig
     supported_data_specs: ClassVar[set[DataSpec]] = {
         (DataType.simulated_forecast_single, SpatialType.gridded),
+        (DataType.simulated_forecast_ensemble, SpatialType.gridded),
     }
 
     def __init__(self, config: SALScoreConfig) -> None:
