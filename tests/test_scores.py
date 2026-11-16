@@ -1,7 +1,6 @@
 """Module to test the available scores."""
 
 import importlib
-import sys
 from copy import deepcopy
 
 import pytest

@@ -99,9 +99,9 @@ class Zarr(BaseDatasource):
         # Filter the dataset by configured stations and variables, if any. Set the
         # data_type attribute to the configured value, if any.
         if self.config.stations is not None:
-            dataset = dataset.sel(station=self.config.stations)
+            dataset = dataset.sel(station=self.config.stations)  # type: ignore[misc]
         if self.config.variables is not None:
-            dataset = dataset[self.config.variables]
+            dataset = dataset[self.config.variables]  # type: ignore[misc]
         dataset.attrs["data_type"] = self.config.data_type  # type: ignore[misc]
 
         # Resolve the CRS: a configured 'crs' takes precedence, otherwise the one already
