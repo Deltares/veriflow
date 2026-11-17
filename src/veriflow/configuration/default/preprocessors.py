@@ -51,3 +51,45 @@ class TimeAggregationConfig(BasePreprocessorConfig):
             "value are aggregated.",
         ),
     ] = None
+
+
+class RollingWindowConfig(BasePreprocessorConfig):
+    """Configuration for aggregating using a centered or aligned rolling window.
+
+    This preprocessor computes rolling window statistics over the time dimension. For example,
+    to compute the maximum value over a centered 6-hour window (3 hours before and after each
+    timestamp), use ``window_size`` of 6 hours, ``method`` max and ``center`` true.
+
+    When ``center`` is false, the window is right-aligned (aligned to the past), similar to
+    moving averages or exponential smoothing in forecasting.
+
+    Examples:
+        - Centered 6h max: window_size=6h, method=max, center=true
+        - Right-aligned 12h mean: window_size=12h, method=mean, center=false
+    """
+
+    preprocessor_adapter: Literal[PreprocessorKind.rolling_window]
+    window_size: Annotated[
+        TimeDelta,
+        Field(description="The size of the rolling window (e.g. 6 hours)."),
+    ]
+    method: Annotated[
+        TimeAggregationMethod,
+        Field(description="The aggregation method applied to values in each window."),
+    ]
+    center: Annotated[
+        bool,
+        Field(
+            description="If True, center the window (equal time before and after each timestamp). "
+            "If False, right-align the window (past values only). Default is True.",
+        ),
+    ] = True
+    min_count: Annotated[
+        int | None,
+        Field(
+            ge=1,
+            description="Optional minimum number of valid (non-missing) input values required in "
+            "a window. Windows with fewer values become NaN. When omitted, all windows with at "
+            "least one value are aggregated.",
+        ),
+    ] = None

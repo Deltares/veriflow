@@ -42,7 +42,7 @@ from veriflow.configuration.default.datasources import (
     NetCDFConfig,
     ZarrConfig,
 )
-from veriflow.configuration.default.preprocessors import TimeAggregationConfig
+from veriflow.configuration.default.preprocessors import TimeAggregationConfig, RollingWindowConfig
 from veriflow.configuration.default.scores import (
     CategoricalScoresConfig,
     ContinuousScoresConfig,

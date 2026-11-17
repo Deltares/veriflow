@@ -79,6 +79,7 @@ class PreprocessorKind(StrEnum):
     """Enumeration of the implemented preprocessors."""
 
     time_aggregation = "time_aggregation"
+    rolling_window = "rolling_window"
 
 
 @unique
