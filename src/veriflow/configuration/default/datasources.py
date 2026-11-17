@@ -13,7 +13,7 @@ from veriflow.configuration.utils import (
     LocalFile,
     LocalFiles,
 )
-from veriflow.constants import DataSourceKind, DataType
+from veriflow.constants import DataSourceKind, DataType, ForecastReferenceTimeMethod
 
 
 class ArchiveKind(StrEnum):
@@ -117,6 +117,7 @@ class FewsWebserviceConfig(BaseDatasourceConfig):
     )
     location_ids: Annotated[list[str], Field(min_length=1)]
     parameter_ids: Annotated[list[str], Field(min_length=1)]
+    forecast_reference_time_method: ForecastReferenceTimeMethod = ForecastReferenceTimeMethod.default
     module_instance_id: Annotated[str, Field(min_length=1)]
     ensemble_id: Annotated[str, Field(min_length=1)] | None = None
     qualifier_ids: Annotated[list[str], Field(min_length=1)] | None = None
@@ -196,6 +197,7 @@ class FewsNetCDFConfig(BaseDatasourceConfig, LocalFiles):
     netcdf_kind: FewsNetCDFKind
     station_ids: Annotated[list[str], Field(min_length=1)] | None = None
     parameter_ids: Annotated[list[str], Field(min_length=1)] | None = None
+    forecast_reference_time_method: ForecastReferenceTimeMethod = ForecastReferenceTimeMethod.default
     filter_stations: bool = True
     filter_variables: bool = True
 
