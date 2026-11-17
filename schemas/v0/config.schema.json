@@ -500,6 +500,11 @@
         "data_type": {
           "$ref": "#/$defs/DataType"
         },
+        "forecast_reference_time_method": {
+          "$ref": "#/$defs/ForecastReferenceTimeMethod",
+          "type": "string",
+          "default": "default"
+        },
         "spatial_type": {
           "$ref": "#/$defs/SpatialType",
           "default": "point"
@@ -590,6 +595,11 @@
         },
         "data_type": {
           "$ref": "#/$defs/DataType"
+        },
+        "forecast_reference_time_method": {
+          "$ref": "#/$defs/ForecastReferenceTimeMethod",
+          "type": "string",
+          "default": "default"
         },
         "spatial_type": {
           "$ref": "#/$defs/SpatialType",
@@ -765,6 +775,12 @@
         "retrieve_forecast_data_per_lead_time"
       ],
       "title": "ForecastRetrievalMethod",
+      "type": "string"
+    },
+    "ForecastReferenceTimeMethod": {
+      "description": "Enumeration of the forecast reference time methods.",
+      "enum": ["default", "overrule_analysis_time"],
+      "title": "ForecastReferenceTimeMethod",
       "type": "string"
     },
     "GeneralInfoConfig": {

@@ -42,6 +42,13 @@ class DataType(StrEnum):
     simulated_forecast_probabilistic = "simulated_forecast_probabilistic"
     threshold = "threshold"
 
+@unique
+class ForecastReferenceTimeMethod(StrEnum):
+    """Enumeration of the forecast reference time methods."""
+
+    default = "default"
+    overrule_analysis_time = "overrule_analysis_time"
+
 
 @unique
 class SpatialType(StrEnum):

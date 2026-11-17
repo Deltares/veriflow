@@ -14,6 +14,7 @@ from veriflow.configuration.default.datasources import FewsNetCDFConfig, FewsNet
 from veriflow.constants import (
     FORECAST_DATA_TYPES,
     DataType,
+    ForecastReferenceTimeMethod,
     SpatialType,
     StandardCoord,
     StandardDim,
@@ -55,11 +56,13 @@ class Preprocessor:
         filter_variables: list[str] | None = None,
         filter_stations: list[str] | None = None,
         filter_lead_times: list[np.timedelta64] | None = None,
+        overrule_analysis_time: bool = False,
     ) -> None:
         self.fews_netcdf_kind = fews_netcdf_kind
         self.variables = filter_variables
         self.stations = filter_stations
         self.lead_times = filter_lead_times
+        self.overrule_analysis_time = overrule_analysis_time
 
     @staticmethod
     def rename_to_internal(
@@ -162,6 +165,11 @@ class Preprocessor:
             dataset,
         )
 
+        if self.overrule_analysis_time:
+            ## List [:1] retains dimension in output shape
+            dataset = dataset.assign_coords(
+                {StandardDim.forecast_reference_time: dataset[StandardDim.time][:1].data}
+            )
         if self.fews_netcdf_kind == FewsNetCDFKind.simulated_historical:
             # We handle simulated historical NetCDFs separately, because this type is returned in
             #   a forecast format by the FEWS-Webservice, including the analysis_time dimensions.
@@ -563,6 +571,8 @@ class FewsNetCDF(BaseDatasource):
     def fetch_data(self) -> Self:
         """Retrieve fewsnetcdf content as an xarray Dataset."""
         # Configure pre-processing
+        overrule_analysis_time = self.config.forecast_reference_time_method == 'overrule_analysis_time'
+ 
         preprocessor = Preprocessor(
             fews_netcdf_kind=self.config.netcdf_kind,
             filter_stations=self.config.station_ids if self.config.filter_stations else None,
@@ -570,6 +580,7 @@ class FewsNetCDF(BaseDatasource):
             filter_lead_times=self.config.lead_times.timedelta64
             if self.config.lead_times is not None
             else None,
+            overrule_analysis_time=overrule_analysis_time,
         )
 
         # External historical data type
