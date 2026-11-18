@@ -165,6 +165,30 @@ def test_single_continuous_scores(
     assert "kge" in result
 
 
+def test_ensemble_continuous_scores(
+    score_config_continuous: ContinuousScoresConfig,
+    xarray_observed_historical: xr.Dataset,
+    xarray_simulated_forecast_ensemble: xr.Dataset,
+) -> None:
+    """Test that continuous scores are computed per ensemble member."""
+    variable = "var_0"
+    obs = xarray_observed_historical[variable]
+    sim = xarray_simulated_forecast_ensemble[variable]
+    obs.attrs["data_type"] = xarray_observed_historical.attrs["data_type"]
+    sim.attrs["data_type"] = xarray_simulated_forecast_ensemble.attrs["data_type"]
+    obs_reprojected = VeriflowAccessor.map_historical_into_forecast_space(obs, sim)
+
+    result = ContinuousScores(score_config_continuous).validate_and_compute(
+        obs=obs_reprojected,
+        sim=sim,
+    )
+    assert isinstance(result, xr.Dataset)
+    for score in score_config_continuous.scores:
+        assert score in result
+        assert StandardDim.realization in result[score].dims
+        assert StandardDim.forecast_reference_time not in result[score].dims
+
+
 def test_categorical_scores(
     score_config_categorical: CategoricalScoresConfig,
     xarray_observed_historical: xr.Dataset,

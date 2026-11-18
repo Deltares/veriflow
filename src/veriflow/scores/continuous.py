@@ -55,6 +55,7 @@ class ContinuousScores(BaseScore):
         (DataType.simulated_forecast_single, SpatialType.point),
         (DataType.observed_historical, SpatialType.point),
         (DataType.simulated_historical, SpatialType.point),
+        (DataType.simulated_forecast_ensemble, SpatialType.point),
     }
 
     def __init__(self, config: ContinuousScoresConfig) -> None:
