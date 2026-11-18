@@ -122,6 +122,7 @@ class RollingWindow(BasePreprocessor):
 
         aggregated[window_dim].attrs = dataset[window_dim].attrs
         aggregated.attrs = dict(dataset.attrs)  # type:ignore[misc]
-        aggregated = aggregated.chunk({StandardDim.realization: -1})
+        if StandardDim.realization in aggregated.dims:
+            aggregated = aggregated.chunk({StandardDim.realization: -1})
         validate_input_data(aggregated)
         return aggregated
