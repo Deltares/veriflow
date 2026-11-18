@@ -1,5 +1,7 @@
 """Test the preprocessors."""
 
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -148,6 +150,70 @@ def test_time_aggregation_min_count_masks_incomplete_intervals(
     assert np.isnan(values[0]).all()
     assert np.isnan(values[-1]).all()
     assert not np.isnan(values[1:-1]).any()
+
+
+@pytest.mark.parametrize(
+    ("origin", "offset", "first_end"),
+    [
+        ("start_day", "20min", "2025-01-01T00:20"),
+        ("start_day", "-10min", "2025-01-01T00:50"),
+        ("start", None, "2025-01-01T00:10"),
+        ("2025-01-01T00:20:00", None, "2025-01-01T00:20"),
+        (
+            pd.Timestamp("2025-01-01T00:20").to_pydatetime(),
+            timedelta(minutes=10),
+            "2025-01-01T00:30",
+        ),
+    ],
+)
+def test_time_aggregation_origin_and_offset(
+    observed_10min: xr.Dataset,
+    origin: str | datetime,
+    offset: str | timedelta | None,
+    first_end: str,
+) -> None:
+    """Origins and signed offsets change both interval membership and output timestamps."""
+    config = make_config(
+        frequency=TimeDelta(value=1, unit=TimeUnits.hour),
+        origin=origin,
+        offset=offset,
+    )
+    preprocessor = TimeAggregation.from_config(config.model_dump(mode="json"))
+    result = preprocessor.preprocess(observed_10min)
+
+    expected_times = pd.date_range(first_end, periods=4, freq="h")
+    np.testing.assert_array_equal(result[StandardDim.time].to_numpy(), expected_times)
+    for end in expected_times:
+        members = observed_10min.where(
+            (observed_10min.time > end - pd.Timedelta(hours=1)) & (observed_10min.time <= end),
+            drop=True,
+        )
+        for var in observed_10min.data_vars:
+            np.testing.assert_allclose(
+                result[var].sel(time=end).to_numpy(),
+                members[var].mean(StandardDim.time).to_numpy(),
+                rtol=1e-5,
+            )
+
+
+def test_time_aggregation_daily_offset(xarray_observed_historical: xr.Dataset) -> None:
+    """A daily mean labelled 07:00 includes the preceding 24 hours, including 07:00."""
+    config = make_config(origin="start_day", offset="7h", min_count=24)
+    result = TimeAggregation(config).preprocess(xarray_observed_historical)
+
+    expected_times = pd.date_range("2025-01-01T07:00", periods=N_DAYS + 1, freq="D")
+    np.testing.assert_array_equal(result[StandardDim.time].to_numpy(), expected_times)
+    for var in xarray_observed_historical.data_vars:
+        expected = xarray_observed_historical[var].sel(
+            time=slice("2025-01-01T08:00", "2025-01-02T07:00"),
+        ).mean(StandardDim.time)
+        np.testing.assert_allclose(
+            result[var].sel(time="2025-01-02T07:00").to_numpy(),
+            expected.to_numpy(),
+            rtol=1e-5,
+        )
+        assert np.isnan(result[var].isel(time=0).to_numpy()).all()
+        assert np.isnan(result[var].isel(time=-1).to_numpy()).all()
 
 
 def test_time_aggregation_gap_is_not_zero_for_sum(observed_10min: xr.Dataset) -> None:

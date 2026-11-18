@@ -1315,6 +1315,44 @@
           "title": "Label",
           "type": "string"
         },
+        "origin": {
+          "anyOf": [
+            {
+              "enum": [
+                "epoch",
+                "start",
+                "start_day",
+                "end",
+                "end_day"
+              ],
+              "type": "string"
+            },
+            {
+              "format": "date-time",
+              "type": "string"
+            }
+          ],
+          "default": "start_day",
+          "description": "Anchor for the resampling intervals, passed to xarray.resample. Use 'epoch', 'start', 'start_day', 'end', 'end_day', or an ISO datetime matching the time coordinate's timezone. Defaults to midnight on the first day ('start_day').",
+          "title": "Origin"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "format": "duration",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Duration added to the resampling origin, passed to xarray.resample (e.g. '7h' or '-1h'). Changes interval boundaries, not just output timestamps. Omit for no offset.",
+          "title": "Offset"
+        },
         "min_count": {
           "anyOf": [
             {

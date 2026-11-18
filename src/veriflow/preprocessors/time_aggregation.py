@@ -47,6 +47,8 @@ class TimeAggregation(BasePreprocessor):
             time=pd.Timedelta(self.config.frequency.timedelta64),
             closed=self.config.closed,
             label=self.config.label,
+            origin=self.config.origin,
+            offset=self.config.offset,
         )
         aggregated = cast(
             "xr.Dataset",

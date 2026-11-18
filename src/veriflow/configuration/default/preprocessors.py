@@ -1,5 +1,6 @@
 """A module for default implementation of preprocessor configurations."""
 
+from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -41,6 +42,22 @@ class TimeAggregationConfig(BasePreprocessorConfig):
             "aggregated value.",
         ),
     ] = "right"
+    origin: Annotated[
+        Literal["epoch", "start", "start_day", "end", "end_day"] | datetime,
+        Field(
+            description="Anchor for the resampling intervals, passed to xarray.resample. Use "
+            "'epoch', 'start', 'start_day', 'end', 'end_day', or an ISO datetime matching the "
+            "time coordinate's timezone. Defaults to midnight on the first day ('start_day').",
+        ),
+    ] = "start_day"
+    offset: Annotated[
+        str | timedelta | None,
+        Field(
+            description="Duration added to the resampling origin, passed to xarray.resample "
+            "(e.g. '7h' or '-1h'). Changes interval boundaries, not just output timestamps. "
+            "Omit for no offset.",
+        ),
+    ] = None
     min_count: Annotated[
         int | None,
         Field(
