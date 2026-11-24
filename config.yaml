@@ -1,0 +1,231 @@
+# yaml-language-server: $schema=https://deltares.github.io/veriflow/v0/config.schema.json
+#
+# Reference config for the v1.0.0 config review session (see CONFIG.md).
+# It exercises every datasource, score and datasink currently registered in the
+# v0 schema (Config.write_schema), with every required AND optional option filled
+# in. Optional options are marked with a trailing "#optional" comment. Field
+# values are illustrative examples only (not a working setup).
+#
+# Settings that should instead be set via environment variables (FewsWebserviceSettings,
+# FEWSWEBSERVICE_*; S3AuthConfig, S3_*) are deliberately left out of this file; see the
+# inline comments at "fews_webservice_settings" and "auth_config" below.
+version: v0 #optional (defaults to "v0")
+
+general:
+  verification_period:
+    dimension: forecast_reference_time #optional (defaults to "forecast_reference_time")
+    start: "2024-01-01T00:00:00Z"
+    end: "2024-12-31T00:00:00Z"
+  verification_pairs:
+    - id: discharge_hindcast
+      observations_source_id: observed
+      simulations_source_id: simulated_hindcast
+      variable: discharge
+    - id: discharge_forecast
+      observations_source_id: observed
+      simulations_source_id: simulated_forecast
+      variable: discharge
+    - id: precipitation_gridded
+      observations_source_id: observed
+      simulations_source_id: simulated_gridded
+      variable: precipitation
+  lead_times: #optional
+    unit: D
+    values: [1, 2, 3, 4, 5, 6]
+  cache: #optional
+    path: "./.cache/veriflow_zarr_cache"
+    group: "cache" #optional
+    # auth_config is intentionally omitted: for a remote ("s3://...") path it is
+    # auto-populated from the S3_ENDPOINT_URL / S3_REGION_NAME / S3_ACCESS_KEY_ID /
+    # S3_SECRET_ACCESS_KEY / S3_SESSION_TOKEN / S3_ANON environment variables. Set those
+    # instead of configuring "auth_config" in YAML (see S3AuthConfig).
+    storage_options: #optional
+      default_fill_cache: "false"
+    consolidated: true #optional
+    read_write_mode: rw #optional (defaults to "r")
+
+datasources:
+  # 1. FewsWebserviceConfig (import_adapter: fewswebservice)
+  - import_adapter: fewswebservice
+    source_id: observed
+    data_type: observed_historical
+    spatial_type: point #optional (defaults to "point")
+    # fews_webservice_settings is intentionally omitted: it is populated from the
+    # FEWSWEBSERVICE_URL (required) / FEWSWEBSERVICE_USERNAME / FEWSWEBSERVICE_PASSWORD /
+    # FEWSWEBSERVICE_VERSION / FEWSWEBSERVICE_MAX_WORKERS_IN_THREAD_POOL /
+    # FEWSWEBSERVICE_ARCHIVE_KIND environment variables. Set those instead of configuring
+    # "fews_webservice_settings" in YAML (see FewsWebserviceSettings).
+    location_ids:
+      - "05BJ010"
+    parameter_ids:
+      - "Q.obs"
+      - "P.obs"
+    module_instance_id: ImportObserved
+    ensemble_id: null #optional (defaults to null; set for ensemble sources)
+    qualifier_ids: #optional
+      - primary
+    time_step_id: nonequidistant #optional
+    export_id_map: IdOPVLFEWS #optional
+    forecast_retrieval_method: retrieve_forecast_data_per_lead_time #optional (defaults to "retrieve_all_forecast_data")
+
+  # 2. FewsNetCDFConfig (import_adapter: fewsnetcdf)
+  - import_adapter: fewsnetcdf
+    source_id: simulated_hindcast
+    data_type: simulated_historical
+    spatial_type: point #optional (defaults to "point")
+    directory: "./data/fews_netcdf"
+    filename_glob: "*.nc"
+    netcdf_kind: simulated_historical
+    station_ids: #optional
+      - "05BJ010"
+    parameter_ids: #optional
+      - "Q.sim"
+    filter_stations: true #optional (defaults to true)
+    filter_variables: true #optional (defaults to true)
+
+  # 3. NetCDFConfig (import_adapter: netcdf)
+  - import_adapter: netcdf
+    source_id: simulated_forecast
+    data_type: simulated_forecast_ensemble
+    spatial_type: point #optional (defaults to "point")
+    directory: "./data/netcdf_forecast"
+    filename_glob: "*.nc"
+    stations: #optional
+      - "05BJ010"
+    variables: #optional
+      - "Q.sim"
+
+  # 4. ZarrConfig (import_adapter: zarr)
+  - import_adapter: zarr
+    source_id: simulated_gridded
+    data_type: simulated_forecast_single
+    spatial_type: gridded #optional (defaults to "point")
+    path: "./data/precipitation_forecast.zarr"
+    group: "forecast" #optional
+    # auth_config is intentionally omitted: for a remote ("s3://...") path it is
+    # auto-populated from the S3_ENDPOINT_URL / S3_REGION_NAME / S3_ACCESS_KEY_ID /
+    # S3_SECRET_ACCESS_KEY / S3_SESSION_TOKEN / S3_ANON environment variables. Set those
+    # instead of configuring "auth_config" in YAML (see S3AuthConfig).
+    storage_options: #optional
+      default_fill_cache: "false"
+    consolidated: true #optional
+    crs: "EPSG:4326" #optional (read from the dataset's 'crs' attribute when omitted)
+    variables: #optional
+      - "P.sim"
+    stations: null #optional (only relevant for point data; unused here since spatial_type is "gridded")
+
+  # 5. CsvConfig (import_adapter: csv)
+  - import_adapter: csv
+    source_id: thresholds
+    data_type: threshold
+    spatial_type: point #optional (defaults to "point")
+    directory: "./data/thresholds"
+    filename: "discharge_thresholds.csv"
+    stations:
+      - "05BJ010"
+    variables:
+      - "discharge"
+    thresholds:
+      - "warning_stage"
+      - "flood_stage"
+
+scores:
+  # 1. CrpsForEnsembleConfig (score_adapter: crps_for_ensemble)
+  - score_adapter: crps_for_ensemble
+    reduce_dims: #optional
+      - forecast_reference_time
+    crs: "EPSG:4326" #optional
+    verification_pair_ids: #optional (defaults to all verification_pairs from general)
+      - discharge_forecast
+    method: ecdf #optional (defaults to "ecdf")
+
+  # 2. RankHistogramConfig (score_adapter: rank_histogram)
+  - score_adapter: rank_histogram
+    reduce_dims: #optional
+      - forecast_reference_time
+    crs: "EPSG:4326" #optional
+    verification_pair_ids: #optional (defaults to all verification_pairs from general)
+      - discharge_forecast
+
+  # 3. CrpsCDFConfig (score_adapter: crps_cdf)
+  - score_adapter: crps_cdf
+    reduce_dims: #optional
+      - forecast_reference_time
+    crs: "EPSG:4326" #optional
+    verification_pair_ids: #optional (defaults to all verification_pairs from general)
+      - discharge_forecast
+    integration_method: exact #optional (defaults to "exact")
+
+  # 4. ContinuousScoresConfig (score_adapter: continuous_scores)
+  - score_adapter: continuous_scores
+    scores:
+      - mae
+      - rmse
+      - nse
+      - kge
+    reduce_dims: #optional (required to be non-empty when "nse" is included in scores)
+      - time
+    crs: "EPSG:4326" #optional
+    verification_pair_ids: #optional (defaults to all verification_pairs from general)
+      - discharge_hindcast
+
+  # 5. CategoricalScoresConfig (score_adapter: categorical_scores)
+  - score_adapter: categorical_scores
+    scores:
+      - critical_success_index
+      - hit_rate
+      - false_alarm_ratio
+    events:
+      - threshold: warning_stage
+        operator: greater_than_or_equal_to
+      - threshold: flood_stage
+        operator: greater_than
+    return_contingency_table: true #optional (defaults to true)
+    reduce_dims: #optional
+      - forecast_reference_time
+    crs: "EPSG:4326" #optional
+    verification_pair_ids: #optional (defaults to all verification_pairs from general)
+      - discharge_forecast
+
+  # 6. SALScoreConfig (score_adapter: sal)
+  - score_adapter: sal
+    crs: "EPSG:4326" #optional
+    verification_pair_ids: #optional (defaults to all verification_pairs from general)
+      - precipitation_gridded
+    thr_factor: 0.067 #optional (defaults to 0.067)
+    thr_quantile: 0.95 #optional (defaults to 0.95)
+
+datasinks: #optional
+  # 1. CFCompliantNetCDFConfig (export_adapter: cf_compliant_netcdf) - the only datasink
+  # currently registered in the v0 schema. CFCompliantZarrConfig and the FEWS NetCDF
+  # output adapter also exist in the codebase (src/veriflow/configuration/default/datasinks.py)
+  # but are not yet added to Config.write_schema's default_datasinks_config, so they cannot
+  # be expressed here without failing schema validation. See CONFIG.md review findings.
+  - export_adapter: cf_compliant_netcdf
+    directory: "./output"
+    filename: "verification_results.nc"
+    force_overwrite: true #optional (defaults to true)
+    include_output: true #optional (defaults to true)
+    include_aligned_input_data: true #optional (defaults to true)
+    include_input_data: false #optional (defaults to false)
+    crs: "EPSG:4326" #optional
+    conventions: "CF-1.7" #optional (fixed value, defaults to "CF-1.7")
+    title: "Veriflow v1.0.0 config review example" #optional (auto-generated if omitted)
+    institution: "Deltares"
+    comment: "Example full configuration for v1.0.0 config review." #optional (auto-generated if omitted)
+
+id_mapping: #optional
+  variable: #optional
+    discharge:
+      observed: Q.obs
+      simulated_hindcast: Q.sim
+      simulated_forecast: Q.sim
+    precipitation:
+      observed: P.obs
+      simulated_gridded: P.sim
+  station: #optional
+    station_001:
+      observed: "05BJ010"
+      simulated_hindcast: "05BJ010"
+      simulated_forecast: "05BJ010"
+      simulated_gridded: "05BJ010"
